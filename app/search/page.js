@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 const freelancers = [
   {
     id: 1,
@@ -87,7 +87,13 @@ function StarRating({ rating }) {
 }
 
 export default function SearchPage() {
-  const [query, setQuery] = useState('')
+  const searchParams = useSearchParams()
+const [query, setQuery] = useState('')
+
+useEffect(() => {
+  const q = searchParams.get('q')
+  if (q) setQuery(q)
+}, [searchParams])
   const [sortBy, setSortBy] = useState('rating')
 
   const filtered = freelancers
