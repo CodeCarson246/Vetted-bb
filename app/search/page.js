@@ -19,6 +19,7 @@ function SearchPage() {
   const [freelancers, setFreelancers] = useState([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user))
@@ -57,26 +58,49 @@ function SearchPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="flex items-center justify-between px-8 py-5 bg-white border-b border-gray-100">
-        <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
-        <div className="flex gap-4 items-center">
-          {user ? (
-            <>
-              <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user.email}</a>
-              <a href="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium">Dashboard</a>
-              <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Log out</button>
-            </>
-          ) : (
-            <>
-              <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
-              <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
-            </>
-          )}
+      <nav className="relative bg-white border-b border-gray-100">
+        <div className="flex items-center justify-between px-8 py-5">
+          <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
+          <div className="hidden sm:flex gap-4 items-center">
+            {user ? (
+              <>
+                <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user.email}</a>
+                <a href="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium">Dashboard</a>
+                <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Log out</button>
+              </>
+            ) : (
+              <>
+                <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
+                <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
+              </>
+            )}
+          </div>
+          <button className="sm:hidden p-2 text-gray-600" onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />}
+            </svg>
+          </button>
         </div>
+        {menuOpen && (
+          <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
+            {user ? (
+              <>
+                <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user.email}</a>
+                <a href="/dashboard" className="text-gray-700 font-medium">Dashboard</a>
+                <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="text-left text-red-500 font-medium">Log out</button>
+              </>
+            ) : (
+              <>
+                <a href="/login" className="text-gray-700 font-medium">Log in</a>
+                <a href="/signup" className="text-blue-600 font-medium">Sign up</a>
+              </>
+            )}
+          </div>
+        )}
       </nav>
 
-      <div className="max-w-5xl mx-auto px-8 py-10">
-        <div className="flex gap-3 mb-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
+        <div className="flex flex-col sm:flex-row gap-3 mb-8">
           <input
             type="text"
             value={query}
@@ -119,7 +143,7 @@ function SearchPage() {
                     {f.name.split(" ").map(n => n[0]).join("")}
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-start justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-gray-900">{f.name}</h3>
@@ -131,7 +155,7 @@ function SearchPage() {
                         </div>
                         <p className="text-blue-600 text-sm font-medium">{f.trade} · {f.location}</p>
                       </div>
-                      <p className="font-bold text-gray-900">${f.hourly_rate}<span className="text-sm text-gray-400 font-normal">/hr</span></p>
+                      <p className="font-bold text-gray-900 sm:text-right">${f.hourly_rate}<span className="text-sm text-gray-400 font-normal">/hr</span></p>
                     </div>
                     <div className="flex gap-4 mt-2">
                       <div className="flex items-center gap-1">

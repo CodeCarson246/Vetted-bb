@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 export default function Dashboard() {
   const router = useRouter()
   const [user, setUser] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -165,17 +166,35 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="flex items-center justify-between px-8 py-5 bg-white border-b border-gray-100">
-        <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
-        <div className="flex gap-4 items-center">
-          <span className="text-gray-600 text-sm font-medium">{user?.email}</span>
-          <button
-            onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
-            className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700"
-          >
-            Log out
+      <nav className="relative bg-white border-b border-gray-100">
+        <div className="flex items-center justify-between px-8 py-5">
+          <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
+          <div className="hidden sm:flex gap-4 items-center">
+            <span className="text-gray-600 text-sm font-medium">{user?.email}</span>
+            <button
+              onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
+              className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700"
+            >
+              Log out
+            </button>
+          </div>
+          <button className="sm:hidden p-2 text-gray-600" onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />}
+            </svg>
           </button>
         </div>
+        {menuOpen && (
+          <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
+            <span className="text-gray-600 text-sm font-medium">{user?.email}</span>
+            <button
+              onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
+              className="text-left text-red-500 font-medium"
+            >
+              Log out
+            </button>
+          </div>
+        )}
       </nav>
 
       <div className="max-w-4xl mx-auto px-8 py-12">
@@ -184,19 +203,19 @@ export default function Dashboard() {
         {profile ? (
           <>
             {/* Current profile summary */}
-            <div className="bg-white rounded-2xl p-8 mb-6 border border-gray-100">
-              <div className="flex gap-6 items-start">
+            <div className="bg-white rounded-2xl p-6 sm:p-8 mb-6 border border-gray-100">
+              <div className="flex flex-col sm:flex-row gap-6 items-start">
                 <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 flex-shrink-0">
                   {profile.name.split(' ').map(n => n[0]).join('')}
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
+                <div className="flex-1 w-full">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div>
                       <h2 className="text-xl font-bold text-gray-900">{profile.name}</h2>
                       <p className="text-blue-600 font-medium">{profile.trade}</p>
                       <p className="text-gray-500 text-sm mt-1">{profile.location}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="sm:text-right">
                       <p className="text-xl font-bold text-gray-900">${profile.hourly_rate}<span className="text-sm text-gray-500 font-normal">/hr</span></p>
                       <span className={`text-xs px-2 py-1 rounded-full font-medium mt-1 inline-block ${profile.available ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
                         {profile.available ? 'Available' : 'Unavailable'}
@@ -374,7 +393,7 @@ export default function Dashboard() {
               <>
                 <h2 className="text-lg font-bold text-gray-900 mb-6">Create your freelancer profile</h2>
                 <form onSubmit={handleCreate} className="flex flex-col gap-5">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
                       <input
