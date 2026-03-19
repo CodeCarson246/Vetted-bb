@@ -16,8 +16,8 @@ export default function Home() {
       <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
         <span className="text-2xl font-bold text-blue-600">Vetted.bb</span>
         <div className="flex gap-4">
-          <button className="text-gray-600 hover:text-gray-900 font-medium">Log in</button>
-          <button className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</button>
+          <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
+          <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
         </div>
       </nav>
 

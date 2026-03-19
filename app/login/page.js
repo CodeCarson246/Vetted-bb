@@ -30,7 +30,7 @@ export default function Login() {
       <nav className="flex items-center justify-between px-8 py-5 bg-white border-b border-gray-100">
         <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
         <div className="flex gap-4">
-          <a href="/login" className="text-gray-600 hover:text-gray:900 font-medium">Log in</a>
+          <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
           <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
         </div>
       </nav>
