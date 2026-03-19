@@ -20,6 +20,12 @@ export default function FreelancerProfile() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('client')
   const [user, setUser] = useState(null)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewHover, setReviewHover] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [reviewError, setReviewError] = useState(null)
+  const [reviewSuccess, setReviewSuccess] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user))
@@ -47,6 +53,33 @@ export default function FreelancerProfile() {
     }
     if (id) fetchData()
   }, [id])
+
+  async function submitReview(e) {
+    e.preventDefault()
+    setReviewSubmitting(true)
+    setReviewError(null)
+
+    const { error } = await supabase.from('reviews').insert({
+      freelancer_id: freelancer.id,
+      author: user.email,
+      rating: reviewRating,
+      comment: reviewComment,
+      type: 'client',
+      date: new Date().toISOString().split('T')[0],
+    })
+
+    if (error) {
+      setReviewError(error.message)
+    } else {
+      const { data: r } = await supabase.from('reviews').select('*').eq('freelancer_id', freelancer.id)
+      setReviews(r || [])
+      setReviewRating(0)
+      setReviewComment('')
+      setReviewSuccess(true)
+      setTimeout(() => setReviewSuccess(false), 3000)
+    }
+    setReviewSubmitting(false)
+  }
 
   if (loading) {
     return (
@@ -175,6 +208,58 @@ export default function FreelancerProfile() {
             )}
           </div>
         </div>
+
+        {user && (
+          <div className="bg-white rounded-2xl p-8 border border-gray-100 mt-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-6">Leave a review</h2>
+            <form onSubmit={submitReview} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                <div className="flex gap-1">
+                  {[1,2,3,4,5].map(star => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      onMouseEnter={() => setReviewHover(star)}
+                      onMouseLeave={() => setReviewHover(0)}
+                      className="text-3xl leading-none transition-colors"
+                    >
+                      <span className={(reviewHover || reviewRating) >= star ? 'text-yellow-400' : 'text-gray-200'}>★</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+                <textarea
+                  required
+                  value={reviewComment}
+                  onChange={e => setReviewComment(e.target.value)}
+                  rows={3}
+                  placeholder="Share your experience working with this freelancer..."
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white resize-none"
+                />
+              </div>
+
+              {reviewError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{reviewError}</p>
+              )}
+              {reviewSuccess && (
+                <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-3">Review submitted — thank you!</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={reviewSubmitting || reviewRating === 0}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {reviewSubmitting ? 'Submitting...' : 'Submit review'}
+              </button>
+            </form>
+          </div>
+        )}
 
       </div>
 

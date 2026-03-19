@@ -18,6 +18,15 @@ export default function Dashboard() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState(null)
 
+  // Client review form state
+  const [clientName, setClientName] = useState('')
+  const [clientRating, setClientRating] = useState(0)
+  const [clientRatingHover, setClientRatingHover] = useState(0)
+  const [clientComment, setClientComment] = useState('')
+  const [clientReviewSubmitting, setClientReviewSubmitting] = useState(false)
+  const [clientReviewError, setClientReviewError] = useState(null)
+  const [clientReviewSuccess, setClientReviewSuccess] = useState(false)
+
   // Create form state
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [createName, setCreateName] = useState('')
@@ -118,6 +127,32 @@ export default function Dashboard() {
       setShowCreateForm(false)
     }
     setCreating(false)
+  }
+
+  async function submitClientReview(e) {
+    e.preventDefault()
+    setClientReviewSubmitting(true)
+    setClientReviewError(null)
+
+    const { error } = await supabase.from('reviews').insert({
+      freelancer_id: profile.id,
+      author: clientName,
+      rating: clientRating,
+      comment: clientComment,
+      type: 'freelancer',
+      date: new Date().toISOString().split('T')[0],
+    })
+
+    if (error) {
+      setClientReviewError(error.message)
+    } else {
+      setClientName('')
+      setClientRating(0)
+      setClientComment('')
+      setClientReviewSuccess(true)
+      setTimeout(() => setClientReviewSuccess(false), 3000)
+    }
+    setClientReviewSubmitting(false)
   }
 
   if (loading) {
@@ -253,6 +288,70 @@ export default function Dashboard() {
                   className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Saving...' : 'Save changes'}
+                </button>
+              </form>
+            </div>
+
+            {/* Leave a review about a client */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-100 mt-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-2">Review a client</h2>
+              <p className="text-sm text-gray-500 mb-6">Rate a client you've worked with so other freelancers know what to expect.</p>
+              <form onSubmit={submitClientReview} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client name</label>
+                  <input
+                    type="text"
+                    required
+                    value={clientName}
+                    onChange={e => setClientName(e.target.value)}
+                    placeholder="e.g. Sarah Johnson"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map(star => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setClientRating(star)}
+                        onMouseEnter={() => setClientRatingHover(star)}
+                        onMouseLeave={() => setClientRatingHover(0)}
+                        className="text-3xl leading-none transition-colors"
+                      >
+                        <span className={(clientRatingHover || clientRating) >= star ? 'text-yellow-400' : 'text-gray-200'}>★</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+                  <textarea
+                    required
+                    value={clientComment}
+                    onChange={e => setClientComment(e.target.value)}
+                    rows={3}
+                    placeholder="Describe your experience working with this client..."
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white resize-none"
+                  />
+                </div>
+
+                {clientReviewError && (
+                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{clientReviewError}</p>
+                )}
+                {clientReviewSuccess && (
+                  <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-3">Review submitted — thank you!</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={clientReviewSubmitting || clientRating === 0}
+                  className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {clientReviewSubmitting ? 'Submitting...' : 'Submit review'}
                 </button>
               </form>
             </div>
