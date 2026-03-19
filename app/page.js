@@ -1,3 +1,4 @@
+'use client'
 const categories = [
   { icon: "🔧", name: "Plumbing" },
   { icon: "⚡", name: "Electrical" },
@@ -24,13 +25,20 @@ export default function Home() {
         <h1 className="text-5xl font-bold text-gray-900 mb-6">Find trusted freelancers in Barbados</h1>
         <p className="text-xl text-gray-500 mb-10">Every freelancer is reviewed by real clients. Every client is reviewed by freelancers. Real accountability, both ways.</p>
         <div className="flex gap-3 max-w-2xl mx-auto">
-          <input
-            type="text"
-            placeholder="What do you need? e.g. plumber, graphic designer..."
-            className="flex-1 px-5 py-4 border border-gray-200 rounded-full text-gray-900 outline-none focus:border-blue-400"
-          />
-          <button className="bg-blue-600 text-white px-8 py-4 rounded-full font-semibold hover:bg-blue-700">Search</button>
-        </div>
+  <input
+    type="text"
+    id="homeSearch"
+    placeholder="What do you need? e.g. plumber, graphic designer..."
+    className="flex-1 px-5 py-4 border border-gray-200 rounded-full text-gray-900 outline-none focus:border-blue-400"
+  />
+  <button
+    className="bg-blue-600 text-white px-8 py-4 rounded-full font-semibold hover:bg-blue-700"
+    onClick={() => {
+      const q = document.getElementById('homeSearch').value
+      window.location.href = `/search?q=${q}`
+    }}
+  >Search</button>
+</div>
       </section>
 
       <section className="max-w-5xl mx-auto px-8 pb-24">
