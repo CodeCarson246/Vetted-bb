@@ -1,80 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-const freelancers = [
-  {
-    id: 1,
-    name: "Marcus Williams",
-    trade: "Electrician",
-    location: "Bridgetown",
-    rating: 4.8,
-    clientRating: 4.9,
-    reviewCount: 47,
-    hourlyRate: "$45",
-    skills: ["Wiring", "Solar Installation", "Circuit Breakers"],
-    available: true,
-  },
-  {
-    id: 2,
-    name: "Alicia Thompson",
-    trade: "Graphic Designer",
-    location: "Speightstown",
-    rating: 4.9,
-    clientRating: 4.7,
-    reviewCount: 32,
-    hourlyRate: "$35",
-    skills: ["Logo Design", "Branding", "Social Media"],
-    available: true,
-  },
-  {
-    id: 3,
-    name: "David Springer",
-    trade: "Plumber",
-    location: "Oistins",
-    rating: 4.6,
-    clientRating: 4.8,
-    reviewCount: 61,
-    hourlyRate: "$40",
-    skills: ["Pipe Repair", "Installations", "Drain Cleaning"],
-    available: false,
-  },
-  {
-    id: 4,
-    name: "Kezia Holder",
-    trade: "Web Developer",
-    location: "Bridgetown",
-    rating: 5.0,
-    clientRating: 4.9,
-    reviewCount: 18,
-    hourlyRate: "$60",
-    skills: ["React", "Next.js", "UI Design"],
-    available: true,
-  },
-  {
-    id: 5,
-    name: "Trevor Brathwaite",
-    trade: "Photographer",
-    location: "Holetown",
-    rating: 4.7,
-    clientRating: 4.6,
-    reviewCount: 29,
-    hourlyRate: "$50",
-    skills: ["Events", "Portraits", "Commercial"],
-    available: true,
-  },
-  {
-    id: 6,
-    name: "Monique Clarke",
-    trade: "Landscaper",
-    location: "Christ Church",
-    rating: 4.8,
-    clientRating: 5.0,
-    reviewCount: 44,
-    hourlyRate: "$30",
-    skills: ["Garden Design", "Maintenance", "Tree Trimming"],
-    available: false,
-  },
-]
+import { supabase } from '@/lib/supabase'
 
 function StarRating({ rating }) {
   return (
@@ -88,12 +15,24 @@ function StarRating({ rating }) {
 
 function SearchPage() {
   const searchParams = useSearchParams()
-const [query, setQuery] = useState('')
+  const [query, setQuery] = useState('')
+  const [freelancers, setFreelancers] = useState([])
+  const [loading, setLoading] = useState(true)
 
-useEffect(() => {
-  const q = searchParams.get('q')
-  if (q) setQuery(q)
-}, [searchParams])
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) setQuery(q)
+  }, [searchParams])
+
+  useEffect(() => {
+    async function fetchFreelancers() {
+      const { data } = await supabase.from('freelancers').select('*')
+      setFreelancers(data || [])
+      setLoading(false)
+    }
+    fetchFreelancers()
+  }, [])
+
   const [sortBy, setSortBy] = useState('rating')
 
   const filtered = freelancers
@@ -105,9 +44,9 @@ useEffect(() => {
     )
     .sort((a, b) => {
       if (sortBy === 'rating') return b.rating - a.rating
-      if (sortBy === 'price_low') return parseInt(a.hourlyRate.slice(1)) - parseInt(b.hourlyRate.slice(1))
-      if (sortBy === 'price_high') return parseInt(b.hourlyRate.slice(1)) - parseInt(a.hourlyRate.slice(1))
-      if (sortBy === 'reviews') return b.reviewCount - a.reviewCount
+      if (sortBy === 'price_low') return parseInt(a.hourly_rate.slice(1)) - parseInt(b.hourly_rate.slice(1))
+      if (sortBy === 'price_high') return parseInt(b.hourly_rate.slice(1)) - parseInt(a.hourly_rate.slice(1))
+      if (sortBy === 'reviews') return b.review_count - a.review_count
       return 0
     })
 
@@ -142,6 +81,12 @@ useEffect(() => {
           </select>
         </div>
 
+        {loading ? (
+          <div className="text-center py-20 text-gray-400">
+            <p className="text-sm">Loading freelancers...</p>
+          </div>
+        ) : (
+          <>
         <p className="text-sm text-gray-500 mb-6">{filtered.length} freelancer{filtered.length !== 1 ? 's' : ''} found</p>
 
         <div className="flex flex-col gap-4">
@@ -171,17 +116,17 @@ useEffect(() => {
                         </div>
                         <p className="text-blue-600 text-sm font-medium">{f.trade} · {f.location}</p>
                       </div>
-                      <p className="font-bold text-gray-900">{f.hourlyRate}<span className="text-sm text-gray-400 font-normal">/hr</span></p>
+                      <p className="font-bold text-gray-900">{f.hourly_rate}<span className="text-sm text-gray-400 font-normal">/hr</span></p>
                     </div>
                     <div className="flex gap-4 mt-2">
                       <div className="flex items-center gap-1">
                         <StarRating rating={f.rating} />
                         <span className="text-sm font-medium text-gray-700">{f.rating}</span>
-                        <span className="text-xs text-gray-400">({f.reviewCount})</span>
+                        <span className="text-xs text-gray-400">({f.review_count})</span>
                       </div>
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <span>Client rating:</span>
-                        <span className="font-medium text-gray-700">{f.clientRating}</span>
+                        <span className="font-medium text-gray-700">{f.client_rating}</span>
                       </div>
                     </div>
                     <div className="flex gap-2 mt-3 flex-wrap">
@@ -195,6 +140,8 @@ useEffect(() => {
             ))
           )}
         </div>
+          </>
+        )}
       </div>
 
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-8">

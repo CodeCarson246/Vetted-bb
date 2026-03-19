@@ -1,19 +1,6 @@
-const freelancer = {
-  name: "Marcus Williams",
-  trade: "Electrician",
-  location: "Bridgetown, Barbados",
-  rating: 4.8,
-  reviewCount: 47,
-  clientRating: 4.9,
-  hourlyRate: "$45",
-  bio: "Licensed electrician with 12 years of experience across residential and commercial projects in Barbados. Specialising in installations, repairs, and solar panel setups.",
-  skills: ["Wiring", "Solar Installation", "Circuit Breakers", "Safety Inspections", "Generator Setup"],
-  reviews: [
-    { author: "Sarah T.", rating: 5, comment: "Marcus was punctual, professional and fixed our issue in under an hour. Would absolutely hire again.", date: "March 2026", type: "client" },
-    { author: "James B.", rating: 5, comment: "Excellent work on our office rewiring. Clean, efficient and fairly priced.", date: "February 2026", type: "client" },
-    { author: "Marcus W.", rating: 4, comment: "Good client, clear instructions and prompt payment. Would work with again.", date: "January 2026", type: "freelancer" },
-  ]
-}
+'use client'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 function StarRating({ rating }) {
   return (
@@ -26,6 +13,49 @@ function StarRating({ rating }) {
 }
 
 export default function FreelancerProfile() {
+  const [freelancer, setFreelancer] = useState(null)
+  const [reviews, setReviews] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      const { data: f } = await supabase
+        .from('freelancers')
+        .select('*')
+        .eq('name', 'Marcus Williams')
+        .single()
+
+      if (f) {
+        const { data: r } = await supabase
+          .from('reviews')
+          .select('*')
+          .eq('freelancer_id', f.id)
+
+        setFreelancer(f)
+        setReviews(r || [])
+      }
+
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-sm text-gray-400">Loading...</p>
+      </main>
+    )
+  }
+
+  if (!freelancer) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-sm text-gray-400">Freelancer not found.</p>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
       <nav className="flex items-center justify-between px-8 py-5 bg-white border-b border-gray-100">
@@ -51,7 +81,7 @@ export default function FreelancerProfile() {
                   <p className="text-gray-500 text-sm mt-1">{freelancer.location}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900">{freelancer.hourlyRate}<span className="text-sm text-gray-500 font-normal">/hr</span></p>
+                  <p className="text-2xl font-bold text-gray-900">{freelancer.hourly_rate}<span className="text-sm text-gray-500 font-normal">/hr</span></p>
                   <button className="mt-2 bg-blue-600 text-white px-6 py-2 rounded-full font-medium hover:bg-blue-700">Contact</button>
                 </div>
               </div>
@@ -62,14 +92,14 @@ export default function FreelancerProfile() {
                   <div className="flex items-center gap-2">
                     <StarRating rating={freelancer.rating} />
                     <span className="font-semibold text-gray-900">{freelancer.rating}</span>
-                    <span className="text-gray-400 text-sm">({freelancer.reviewCount} reviews)</span>
+                    <span className="text-gray-400 text-sm">({freelancer.review_count} reviews)</span>
                   </div>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Client rating</p>
                   <div className="flex items-center gap-2">
-                    <StarRating rating={freelancer.clientRating} />
-                    <span className="font-semibold text-gray-900">{freelancer.clientRating}</span>
+                    <StarRating rating={freelancer.client_rating} />
+                    <span className="font-semibold text-gray-900">{freelancer.client_rating}</span>
                     <span className="text-gray-400 text-sm">(rated by freelancers)</span>
                   </div>
                 </div>
@@ -82,7 +112,7 @@ export default function FreelancerProfile() {
           <h2 className="text-lg font-bold text-gray-900 mb-3">About</h2>
           <p className="text-gray-600 leading-relaxed">{freelancer.bio}</p>
           <div className="flex flex-wrap gap-2 mt-4">
-            {freelancer.skills.map(skill => (
+            {(freelancer.skills || []).map(skill => (
               <span key={skill} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">{skill}</span>
             ))}
           </div>
@@ -91,7 +121,7 @@ export default function FreelancerProfile() {
         <div className="bg-white rounded-2xl p-8 border border-gray-100">
           <h2 className="text-lg font-bold text-gray-900 mb-6">Reviews</h2>
           <div className="flex flex-col gap-4">
-            {freelancer.reviews.map((review, i) => (
+            {reviews.map((review, i) => (
               <div key={i} className="border border-gray-100 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
