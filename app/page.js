@@ -27,7 +27,8 @@ export default function Home() {
         <div className="flex gap-4 items-center">
           {user ? (
             <>
-              <span className="text-gray-600 text-sm font-medium">{user.email}</span>
+              <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user.email}</a>
+              <a href="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium">Dashboard</a>
               <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Log out</button>
             </>
           ) : (
