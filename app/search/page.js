@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 const freelancers = [
   {
@@ -86,7 +86,7 @@ function StarRating({ rating }) {
   )
 }
 
-export default function SearchPage() {
+function SearchPage() {
   const searchParams = useSearchParams()
 const [query, setQuery] = useState('')
 
@@ -201,5 +201,12 @@ useEffect(() => {
         © 2026 Vetted.bb · Connecting Barbados
       </footer>
     </main>
+  )
+}
+export default function Search() {
+  return (
+    <Suspense>
+      <SearchPage />
+    </Suspense>
   )
 }
