@@ -1,4 +1,7 @@
 'use client'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+
 const categories = [
   { icon: "🔧", name: "Plumbing" },
   { icon: "⚡", name: "Electrical" },
@@ -11,13 +14,28 @@ const categories = [
 ]
 
 export default function Home() {
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+  }, [])
+
   return (
     <main className="min-h-screen bg-white">
       <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
         <span className="text-2xl font-bold text-blue-600">Vetted.bb</span>
-        <div className="flex gap-4">
-          <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
-          <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
+        <div className="flex gap-4 items-center">
+          {user ? (
+            <>
+              <span className="text-gray-600 text-sm font-medium">{user.email}</span>
+              <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Log out</button>
+            </>
+          ) : (
+            <>
+              <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
+              <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
+            </>
+          )}
         </div>
       </nav>
 

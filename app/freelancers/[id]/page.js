@@ -19,6 +19,11 @@ export default function FreelancerProfile() {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('client')
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+  }, [])
 
   useEffect(() => {
     async function fetchData() {
@@ -63,9 +68,18 @@ export default function FreelancerProfile() {
     <main className="min-h-screen bg-gray-50">
       <nav className="flex items-center justify-between px-8 py-5 bg-white border-b border-gray-100">
         <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
-        <div className="flex gap-4">
-          <button className="text-gray-600 hover:text-gray-900 font-medium">Log in</button>
-          <button className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</button>
+        <div className="flex gap-4 items-center">
+          {user ? (
+            <>
+              <span className="text-gray-600 text-sm font-medium">{user.email}</span>
+              <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Log out</button>
+            </>
+          ) : (
+            <>
+              <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
+              <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
+            </>
+          )}
         </div>
       </nav>
 
