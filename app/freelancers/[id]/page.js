@@ -73,6 +73,16 @@ export default function FreelancerProfile() {
     } else {
       const { data: r } = await supabase.from('reviews').select('*').eq('freelancer_id', freelancer.id)
       setReviews(r || [])
+
+      const clientReviews = (r || []).filter(rev => rev.type === 'client')
+      const newCount = clientReviews.length
+      const newRating = newCount > 0
+        ? Math.round((clientReviews.reduce((sum, rev) => sum + rev.rating, 0) / newCount) * 10) / 10
+        : 0
+
+      await supabase.from('freelancers').update({ rating: newRating, review_count: newCount }).eq('id', freelancer.id)
+      setFreelancer(prev => ({ ...prev, rating: newRating, review_count: newCount }))
+
       setReviewRating(0)
       setReviewComment('')
       setReviewSuccess(true)
