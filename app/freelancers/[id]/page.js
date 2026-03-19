@@ -18,6 +18,7 @@ export default function FreelancerProfile() {
   const [freelancer, setFreelancer] = useState(null)
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('client')
 
   useEffect(() => {
     async function fetchData() {
@@ -83,7 +84,7 @@ export default function FreelancerProfile() {
                   <p className="text-gray-500 text-sm mt-1">{freelancer.location}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900">{freelancer.hourly_rate}<span className="text-sm text-gray-500 font-normal">/hr</span></p>
+                  <p className="text-2xl font-bold text-gray-900">${freelancer.hourly_rate}<span className="text-sm text-gray-500 font-normal">/hr</span></p>
                   <button className="mt-2 bg-blue-600 text-white px-6 py-2 rounded-full font-medium hover:bg-blue-700">Contact</button>
                 </div>
               </div>
@@ -121,9 +122,23 @@ export default function FreelancerProfile() {
         </div>
 
         <div className="bg-white rounded-2xl p-8 border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900 mb-6">Reviews</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Reviews</h2>
+          <div className="flex gap-1 mb-6 border-b border-gray-100">
+            <button
+              onClick={() => setActiveTab('client')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'client' ? 'text-blue-600 border-b-2 border-blue-600 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Reviews about me
+            </button>
+            <button
+              onClick={() => setActiveTab('freelancer')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'freelancer' ? 'text-blue-600 border-b-2 border-blue-600 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Their client reviews
+            </button>
+          </div>
           <div className="flex flex-col gap-4">
-            {reviews.map((review, i) => (
+            {reviews.filter(r => r.type === activeTab).map((review, i) => (
               <div key={i} className="border border-gray-100 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
@@ -135,16 +150,14 @@ export default function FreelancerProfile() {
                       <p className="text-xs text-gray-400">{review.date}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${review.type === 'client' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
-                      {review.type === 'client' ? 'Client review' : 'Freelancer review'}
-                    </span>
-                    <StarRating rating={review.rating} />
-                  </div>
+                  <StarRating rating={review.rating} />
                 </div>
                 <p className="text-gray-600 text-sm">{review.comment}</p>
               </div>
             ))}
+            {reviews.filter(r => r.type === activeTab).length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-6">No reviews yet.</p>
+            )}
           </div>
         </div>
 
