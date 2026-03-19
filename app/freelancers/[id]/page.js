@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 function StarRating({ rating }) {
@@ -13,6 +14,7 @@ function StarRating({ rating }) {
 }
 
 export default function FreelancerProfile() {
+  const { id } = useParams()
   const [freelancer, setFreelancer] = useState(null)
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
@@ -22,7 +24,7 @@ export default function FreelancerProfile() {
       const { data: f } = await supabase
         .from('freelancers')
         .select('*')
-        .eq('name', 'Marcus Williams')
+        .eq('id', id)
         .single()
 
       if (f) {
@@ -37,8 +39,8 @@ export default function FreelancerProfile() {
 
       setLoading(false)
     }
-    fetchData()
-  }, [])
+    if (id) fetchData()
+  }, [id])
 
   if (loading) {
     return (

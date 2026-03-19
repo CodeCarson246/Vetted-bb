@@ -98,7 +98,7 @@ function SearchPage() {
             </div>
           ) : (
             filtered.map(f => (
-              <a href="/freelancers" key={f.id} className="bg-white rounded-2xl p-6 border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all block">
+              <a href={`/freelancers/${f.id}`} key={f.id} className="bg-white rounded-2xl p-6 border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all block">
                 <div className="flex gap-4 items-start">
                   <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600 flex-shrink-0">
                     {f.name.split(" ").map(n => n[0]).join("")}
