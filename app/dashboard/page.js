@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [showEditForm, setShowEditForm] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   // Edit form state
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -84,6 +85,9 @@ export default function Dashboard() {
           .eq('freelancer_id', p.id)
           .order('date', { ascending: false })
         setReviews(r || [])
+
+        const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false)
+        setUnreadCount(count || 0)
       }
 
       setLoading(false)
@@ -227,11 +231,11 @@ export default function Dashboard() {
       {/* Navbar */}
       <nav className="relative bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
-          <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
+          <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
           <div className="hidden sm:flex gap-4 items-center">
             {profile ? (
               <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                   {profile.avatar_url
                     ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                     : profile.name.split(' ').map(n => n[0]).join('')}
@@ -241,9 +245,22 @@ export default function Dashboard() {
             ) : (
               <span className="text-gray-600 text-sm font-medium">{user?.email}</span>
             )}
+            {profile && (
+              <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-0.5 leading-none">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </a>
+            )}
             <button
               onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
-              className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700"
+              className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#00267F' }}
             >
               Log out
             </button>
@@ -258,7 +275,7 @@ export default function Dashboard() {
           <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
             {profile ? (
               <a href="/dashboard" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                   {profile.avatar_url
                     ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                     : profile.name.split(' ').map(n => n[0]).join('')}
@@ -267,6 +284,16 @@ export default function Dashboard() {
               </a>
             ) : (
               <span className="text-gray-600 text-sm font-medium">{user?.email}</span>
+            )}
+            {profile && (
+              <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
+                Inbox
+                {unreadCount > 0 && (
+                  <span className="min-w-[18px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-1 leading-none">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </a>
             )}
             <button
               onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
@@ -285,7 +312,7 @@ export default function Dashboard() {
             {/* Profile card */}
             <div className="bg-white rounded-2xl p-6 sm:p-8 mb-6 border border-gray-100">
               <div className="flex flex-col sm:flex-row gap-6 items-start">
-                <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden">
+                <div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                   {profile.avatar_url
                     ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                     : profile.name.split(' ').map(n => n[0]).join('')}
@@ -294,7 +321,7 @@ export default function Dashboard() {
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div>
                       <h1 className="text-xl font-bold text-gray-900">{profile.name}</h1>
-                      <p className="text-blue-600 font-medium">{profile.trade}</p>
+                      <p className="font-medium" style={{ color: '#00267F' }}>{profile.trade}</p>
                       <p className="text-gray-500 text-sm">{profile.location}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <StarRating rating={profile.rating} />
@@ -308,13 +335,14 @@ export default function Dashboard() {
                     <div className="flex gap-2 flex-wrap sm:flex-col sm:items-end">
                       <a
                         href={`/freelancers/${profile.id}`}
-                        className="px-4 py-2 border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                        className="px-4 py-2 border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
                       >
                         View public profile
                       </a>
                       <button
                         onClick={() => setShowEditForm(v => !v)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-colors"
+                        className="px-4 py-2 text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+                        style={{ backgroundColor: '#00267F' }}
                       >
                         {showEditForm ? 'Cancel' : 'Edit profile'}
                       </button>
@@ -329,12 +357,12 @@ export default function Dashboard() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Profile photo</label>
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold flex-shrink-0 overflow-hidden">
+                      <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                         {avatarUrl
                           ? <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                           : profile.name.split(' ').map(n => n[0]).join('')}
                       </div>
-                      <label className={`cursor-pointer px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors ${avatarUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <label className={`cursor-pointer px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors ${avatarUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         {avatarUploading ? 'Uploading...' : 'Change photo'}
                         <input type="file" accept="image/jpeg,image/png" className="hidden" disabled={avatarUploading} onChange={handleAvatarUpload} />
                       </label>
@@ -348,7 +376,7 @@ export default function Dashboard() {
                       onChange={e => setBio(e.target.value)}
                       rows={4}
                       placeholder="Tell clients about your experience and what you do..."
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white resize-none"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
                     />
                   </div>
 
@@ -361,7 +389,7 @@ export default function Dashboard() {
                         value={hourlyRate}
                         onChange={e => setHourlyRate(e.target.value)}
                         placeholder="60"
-                        className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white"
+                        className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                       />
                     </div>
                   </div>
@@ -373,7 +401,7 @@ export default function Dashboard() {
                       value={skillsInput}
                       onChange={e => setSkillsInput(e.target.value)}
                       placeholder="e.g. Plumbing, Pipe fitting, Drain repair"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                     />
                   </div>
 
@@ -388,7 +416,12 @@ export default function Dashboard() {
                   {saveError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{saveError}</p>}
                   {saveSuccess && <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-3">Profile updated successfully.</p>}
 
-                  <button type="submit" disabled={saving} className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#00267F' }}
+                  >
                     {saving ? 'Saving...' : 'Save changes'}
                   </button>
                 </form>
@@ -402,7 +435,8 @@ export default function Dashboard() {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-5 py-4 text-sm font-medium transition-colors ${activeTab === tab ? 'text-blue-600 border-b-2 border-blue-600 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`px-5 py-4 text-sm font-medium transition-colors ${activeTab === tab ? 'border-b-2 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
+                    style={activeTab === tab ? { color: '#00267F', borderColor: '#00267F' } : {}}
                   >
                     {tab === 'overview' ? 'Overview' : tab === 'reviews' ? 'Reviews' : 'Leave a review'}
                   </button>
@@ -439,7 +473,8 @@ export default function Dashboard() {
                       </div>
                       <button
                         onClick={() => setActiveTab('leave-a-review')}
-                        className="flex-shrink-0 bg-blue-600 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-blue-700 transition-colors"
+                        className="flex-shrink-0 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+                        style={{ backgroundColor: '#00267F' }}
                       >
                         Leave a review
                       </button>
@@ -487,7 +522,7 @@ export default function Dashboard() {
                             <div key={i} className="border border-gray-100 rounded-xl p-5">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-sm font-semibold text-blue-600">
+                                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-sm font-semibold" style={{ color: '#00267F' }}>
                                     {review.author[0]}
                                   </div>
                                   <div>
@@ -520,7 +555,7 @@ export default function Dashboard() {
                           value={clientName}
                           onChange={e => setClientName(e.target.value)}
                           placeholder="e.g. Sarah Johnson"
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                         />
                       </div>
 
@@ -550,7 +585,7 @@ export default function Dashboard() {
                           onChange={e => setClientComment(e.target.value)}
                           rows={3}
                           placeholder="Describe your experience working with this client..."
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white resize-none"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
                         />
                       </div>
 
@@ -560,7 +595,8 @@ export default function Dashboard() {
                       <button
                         type="submit"
                         disabled={clientReviewSubmitting || clientRating === 0}
-                        className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: '#00267F' }}
                       >
                         {clientReviewSubmitting ? 'Submitting...' : 'Submit review'}
                       </button>
@@ -581,7 +617,8 @@ export default function Dashboard() {
                 <p className="text-gray-500 text-sm mb-8">Create a profile to start getting discovered by clients across Barbados.</p>
                 <button
                   onClick={() => setShowCreateForm(true)}
-                  className="bg-blue-600 text-white px-8 py-3 rounded-full font-medium hover:bg-blue-700"
+                  className="text-white px-8 py-3 rounded-full font-medium hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#00267F' }}
                 >
                   Create your freelancer profile
                 </button>
@@ -593,35 +630,35 @@ export default function Dashboard() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
-                      <input type="text" required value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Jane Smith" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white" />
+                      <input type="text" required value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Jane Smith" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Trade / profession</label>
-                      <input type="text" required value={createTrade} onChange={e => setCreateTrade(e.target.value)} placeholder="e.g. Plumber, Graphic Designer" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white" />
+                      <input type="text" required value={createTrade} onChange={e => setCreateTrade(e.target.value)} placeholder="e.g. Plumber, Graphic Designer" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <input type="text" required value={createLocation} onChange={e => setCreateLocation(e.target.value)} placeholder="e.g. Bridgetown, Barbados" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white" />
+                    <input type="text" required value={createLocation} onChange={e => setCreateLocation(e.target.value)} placeholder="e.g. Bridgetown, Barbados" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                    <textarea required value={createBio} onChange={e => setCreateBio(e.target.value)} rows={4} placeholder="Tell clients about your experience and what you do..." className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white resize-none" />
+                    <textarea required value={createBio} onChange={e => setCreateBio(e.target.value)} rows={4} placeholder="Tell clients about your experience and what you do..." className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Hourly rate</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                      <input type="text" required value={createRate} onChange={e => setCreateRate(e.target.value)} placeholder="60" className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white" />
+                      <input type="text" required value={createRate} onChange={e => setCreateRate(e.target.value)} placeholder="60" className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Skills <span className="text-gray-400 font-normal">(comma separated)</span></label>
-                    <input type="text" value={createSkills} onChange={e => setCreateSkills(e.target.value)} placeholder="e.g. Plumbing, Pipe fitting, Drain repair" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white" />
+                    <input type="text" value={createSkills} onChange={e => setCreateSkills(e.target.value)} placeholder="e.g. Plumbing, Pipe fitting, Drain repair" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
                   </div>
 
                   <div>
@@ -636,7 +673,14 @@ export default function Dashboard() {
 
                   <div className="flex gap-3">
                     <button type="button" onClick={() => setShowCreateForm(false)} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-medium hover:border-gray-300">Cancel</button>
-                    <button type="submit" disabled={creating} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">{creating ? 'Creating...' : 'Create profile'}</button>
+                    <button
+                      type="submit"
+                      disabled={creating}
+                      className="flex-1 text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: '#00267F' }}
+                    >
+                      {creating ? 'Creating...' : 'Create profile'}
+                    </button>
                   </div>
                 </form>
               </>

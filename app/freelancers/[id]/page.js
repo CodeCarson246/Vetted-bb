@@ -29,13 +29,31 @@ export default function FreelancerProfile() {
   const [reviewError, setReviewError] = useState(null)
   const [reviewSuccess, setReviewSuccess] = useState(false)
 
+  // Contact modal state
+  const [contactOpen, setContactOpen] = useState(false)
+  const [senderName, setSenderName] = useState('')
+  const [senderEmail, setSenderEmail] = useState('')
+  const [subject, setSubject] = useState('')
+  const [contactMessage, setContactMessage] = useState('')
+  const [contactSubmitting, setContactSubmitting] = useState(false)
+  const [contactError, setContactError] = useState(null)
+  const [contactSuccess, setContactSuccess] = useState(false)
+
+  const [unreadCount, setUnreadCount] = useState(0)
+
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       const u = data.user
       setUser(u)
       if (u) {
-        const { data: fp } = await supabase.from('freelancers').select('name, avatar_url').eq('user_id', u.id).single()
+        const { data: fp } = await supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single()
         setFreelancerProfile(fp || null)
+        setSenderName(fp?.name || u.email)
+        setSenderEmail(u.email)
+        if (fp) {
+          const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', fp.id).eq('read', false)
+          setUnreadCount(count || 0)
+        }
       }
     })
   }, [])
@@ -62,6 +80,35 @@ export default function FreelancerProfile() {
     }
     if (id) fetchData()
   }, [id])
+
+  async function submitContact(e) {
+    e.preventDefault()
+    setContactSubmitting(true)
+    setContactError(null)
+
+    const { error } = await supabase.from('messages').insert({
+      freelancer_id: freelancer.id,
+      sender_name: senderName,
+      sender_email: senderEmail,
+      subject,
+      message: contactMessage,
+      created_at: new Date().toISOString(),
+      read: false,
+    })
+
+    if (error) {
+      setContactError(error.message)
+    } else {
+      setContactSuccess(true)
+      setTimeout(() => {
+        setContactOpen(false)
+        setContactSuccess(false)
+        setSubject('')
+        setContactMessage('')
+      }, 2000)
+    }
+    setContactSubmitting(false)
+  }
 
   async function submitReview(e) {
     e.preventDefault()
@@ -120,13 +167,13 @@ export default function FreelancerProfile() {
     <main className="min-h-screen bg-gray-50">
       <nav className="relative bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
-          <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
+          <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
           <div className="hidden sm:flex gap-4 items-center">
             {user ? (
               <>
                 {freelancerProfile ? (
                   <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                       {freelancerProfile.avatar_url
                         ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
                         : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
@@ -136,12 +183,36 @@ export default function FreelancerProfile() {
                 ) : (
                   <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user.email}</a>
                 )}
-                <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Log out</button>
+                {freelancerProfile && (
+                  <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-0.5 leading-none">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </a>
+                )}
+                <button
+                  onClick={() => supabase.auth.signOut().then(() => window.location.reload())}
+                  className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  Log out
+                </button>
               </>
             ) : (
               <>
                 <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
-                <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
+                <a
+                  href="/signup"
+                  className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  Sign up
+                </a>
               </>
             )}
           </div>
@@ -157,7 +228,7 @@ export default function FreelancerProfile() {
               <>
                 {freelancerProfile ? (
                   <a href="/dashboard" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                       {freelancerProfile.avatar_url
                         ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
                         : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
@@ -167,12 +238,22 @@ export default function FreelancerProfile() {
                 ) : (
                   <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user.email}</a>
                 )}
+                {freelancerProfile && (
+                  <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
+                    Inbox
+                    {unreadCount > 0 && (
+                      <span className="min-w-[18px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-1 leading-none">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </a>
+                )}
                 <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="text-left text-red-500 font-medium">Log out</button>
               </>
             ) : (
               <>
                 <a href="/login" className="text-gray-700 font-medium">Log in</a>
-                <a href="/signup" className="text-blue-600 font-medium">Sign up</a>
+                <a href="/signup" className="font-medium" style={{ color: '#00267F' }}>Sign up</a>
               </>
             )}
           </div>
@@ -183,7 +264,7 @@ export default function FreelancerProfile() {
 
         <div className="bg-white rounded-2xl p-6 sm:p-8 mb-6 border border-gray-100">
           <div className="flex flex-col sm:flex-row gap-6 items-start">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-blue-100 flex items-center justify-center text-3xl font-bold text-blue-600 flex-shrink-0 overflow-hidden">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-blue-50 flex items-center justify-center text-3xl font-bold flex-shrink-0 overflow-hidden" style={{ color: '#00267F' }}>
               {freelancer.avatar_url
                 ? <img src={freelancer.avatar_url} alt={freelancer.name} className="w-full h-full object-cover" />
                 : freelancer.name.split(" ").map(n => n[0]).join("")}
@@ -192,12 +273,18 @@ export default function FreelancerProfile() {
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">{freelancer.name}</h1>
-                  <p className="text-blue-600 font-medium">{freelancer.trade}</p>
+                  <p className="font-medium" style={{ color: '#00267F' }}>{freelancer.trade}</p>
                   <p className="text-gray-500 text-sm mt-1">{freelancer.location}</p>
                 </div>
                 <div className="sm:text-right">
                   <p className="text-2xl font-bold text-gray-900">${freelancer.hourly_rate}<span className="text-sm text-gray-500 font-normal">/hr</span></p>
-                  <button className="mt-2 bg-blue-600 text-white px-6 py-2 rounded-full font-medium hover:bg-blue-700">Contact</button>
+                  <button
+                    onClick={() => setContactOpen(true)}
+                    className="mt-2 text-white px-6 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#00267F' }}
+                  >
+                    Contact
+                  </button>
                 </div>
               </div>
 
@@ -228,7 +315,7 @@ export default function FreelancerProfile() {
           <p className="text-gray-600 leading-relaxed">{freelancer.bio}</p>
           <div className="flex flex-wrap gap-2 mt-4">
             {(freelancer.skills || []).map(skill => (
-              <span key={skill} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">{skill}</span>
+              <span key={skill} className="bg-blue-50 px-3 py-1 rounded-full text-sm font-medium" style={{ color: '#00267F' }}>{skill}</span>
             ))}
           </div>
         </div>
@@ -238,13 +325,15 @@ export default function FreelancerProfile() {
           <div className="flex gap-1 mb-6 border-b border-gray-100">
             <button
               onClick={() => setActiveTab('client')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'client' ? 'text-blue-600 border-b-2 border-blue-600 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'client' ? 'border-b-2 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
+              style={activeTab === 'client' ? { color: '#00267F', borderColor: '#00267F' } : {}}
             >
               Reviews about me
             </button>
             <button
               onClick={() => setActiveTab('freelancer')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'freelancer' ? 'text-blue-600 border-b-2 border-blue-600 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'freelancer' ? 'border-b-2 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
+              style={activeTab === 'freelancer' ? { color: '#00267F', borderColor: '#00267F' } : {}}
             >
               Their client reviews
             </button>
@@ -303,7 +392,7 @@ export default function FreelancerProfile() {
                   onChange={e => setReviewComment(e.target.value)}
                   rows={3}
                   placeholder="Share your experience working with this freelancer..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white resize-none"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
                 />
               </div>
 
@@ -317,7 +406,8 @@ export default function FreelancerProfile() {
               <button
                 type="submit"
                 disabled={reviewSubmitting || reviewRating === 0}
-                className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#00267F' }}
               >
                 {reviewSubmitting ? 'Submitting...' : 'Submit review'}
               </button>
@@ -330,6 +420,113 @@ export default function FreelancerProfile() {
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-12">
         © 2026 Vetted.bb · Connecting Barbados
       </footer>
+
+      {/* Contact modal */}
+      {contactOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={e => { if (e.target === e.currentTarget) setContactOpen(false) }}
+        >
+          <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-xl">
+            {contactSuccess ? (
+              <div className="text-center py-6">
+                <p className="text-3xl mb-3">✅</p>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Message sent!</h3>
+                <p className="text-sm text-gray-500">Your message has been delivered to {freelancer.name}.</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Contact {freelancer.name}</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">{freelancer.trade} · {freelancer.location}</p>
+                  </div>
+                  <button
+                    onClick={() => setContactOpen(false)}
+                    className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <form onSubmit={submitContact} className="flex flex-col gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Your name</label>
+                      <input
+                        type="text"
+                        required
+                        value={senderName}
+                        onChange={e => setSenderName(e.target.value)}
+                        placeholder="Jane Smith"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Your email</label>
+                      <input
+                        type="email"
+                        required
+                        value={senderEmail}
+                        onChange={e => setSenderEmail(e.target.value)}
+                        placeholder="jane@example.com"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                    <input
+                      type="text"
+                      required
+                      value={subject}
+                      onChange={e => setSubject(e.target.value)}
+                      placeholder="e.g. Looking for a plumber this weekend"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                    <textarea
+                      required
+                      value={contactMessage}
+                      onChange={e => setContactMessage(e.target.value)}
+                      rows={4}
+                      placeholder={`Hi ${freelancer.name}, I'd like to get in touch about...`}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
+                    />
+                  </div>
+
+                  {contactError && (
+                    <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{contactError}</p>
+                  )}
+
+                  <div className="flex gap-3 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setContactOpen(false)}
+                      className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-medium hover:border-gray-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={contactSubmitting}
+                      className="flex-1 text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: '#00267F' }}
+                    >
+                      {contactSubmitting ? 'Sending...' : 'Send message'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   )
 }

@@ -13,19 +13,21 @@ const categories = [
   { icon: "📸", name: "Photography" },
 ]
 
+const iconStyle = { width: '40px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }
+
 const trustSignals = [
   {
-    icon: "✅",
+    icon: <div style={iconStyle}>✅</div>,
     title: "Two-way reviews",
     desc: "Freelancers rate clients. Clients rate freelancers. Real accountability on both sides.",
   },
   {
-    icon: "🪪",
+    icon: <div style={iconStyle}>🪪</div>,
     title: "Verified profiles",
     desc: "Every freelancer on Vetted.bb is a real person based in Barbados.",
   },
   {
-    icon: "🇧🇧",
+    icon: <img src="https://flagcdn.com/bb.svg" width="40" height="28" style={{ borderRadius: '4px' }} alt="Barbados flag" />,
     title: "Barbados based",
     desc: "Built specifically for the local community — not a generic global platform.",
   },
@@ -41,14 +43,19 @@ export default function Home() {
   const [user, setUser] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [freelancerProfile, setFreelancerProfile] = useState(null)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       const u = data.user
       setUser(u)
       if (u) {
-        const { data: fp } = await supabase.from('freelancers').select('name, avatar_url').eq('user_id', u.id).single()
+        const { data: fp } = await supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single()
         setFreelancerProfile(fp || null)
+        if (fp) {
+          const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', fp.id).eq('read', false)
+          setUnreadCount(count || 0)
+        }
       }
     })
   }, [])
@@ -74,6 +81,18 @@ export default function Home() {
                   </a>
                 ) : (
                   <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user.email}</a>
+                )}
+                {freelancerProfile && (
+                  <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-0.5 leading-none">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </a>
                 )}
                 <button
                   onClick={() => supabase.auth.signOut().then(() => window.location.reload())}
@@ -117,6 +136,16 @@ export default function Home() {
                   </a>
                 ) : (
                   <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user.email}</a>
+                )}
+                {freelancerProfile && (
+                  <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
+                    Inbox
+                    {unreadCount > 0 && (
+                      <span className="min-w-[18px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-1 leading-none">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </a>
                 )}
                 <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="text-left text-red-500 font-medium">Log out</button>
               </>

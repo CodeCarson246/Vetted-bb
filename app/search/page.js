@@ -21,14 +21,19 @@ function SearchPage() {
   const [user, setUser] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [freelancerProfile, setFreelancerProfile] = useState(null)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       const u = data.user
       setUser(u)
       if (u) {
-        const { data: fp } = await supabase.from('freelancers').select('name, avatar_url').eq('user_id', u.id).single()
+        const { data: fp } = await supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single()
         setFreelancerProfile(fp || null)
+        if (fp) {
+          const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', fp.id).eq('read', false)
+          setUnreadCount(count || 0)
+        }
       }
     })
   }, [])
@@ -68,13 +73,13 @@ function SearchPage() {
     <main className="min-h-screen bg-gray-50">
       <nav className="relative bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
-          <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
+          <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
           <div className="hidden sm:flex gap-4 items-center">
             {user ? (
               <>
                 {freelancerProfile ? (
                   <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                       {freelancerProfile.avatar_url
                         ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
                         : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
@@ -84,12 +89,36 @@ function SearchPage() {
                 ) : (
                   <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user.email}</a>
                 )}
-                <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Log out</button>
+                {freelancerProfile && (
+                  <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-0.5 leading-none">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </a>
+                )}
+                <button
+                  onClick={() => supabase.auth.signOut().then(() => window.location.reload())}
+                  className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  Log out
+                </button>
               </>
             ) : (
               <>
                 <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
-                <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
+                <a
+                  href="/signup"
+                  className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  Sign up
+                </a>
               </>
             )}
           </div>
@@ -105,7 +134,7 @@ function SearchPage() {
               <>
                 {freelancerProfile ? (
                   <a href="/dashboard" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                       {freelancerProfile.avatar_url
                         ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
                         : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
@@ -115,12 +144,22 @@ function SearchPage() {
                 ) : (
                   <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user.email}</a>
                 )}
+                {freelancerProfile && (
+                  <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
+                    Inbox
+                    {unreadCount > 0 && (
+                      <span className="min-w-[18px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-1 leading-none">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </a>
+                )}
                 <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="text-left text-red-500 font-medium">Log out</button>
               </>
             ) : (
               <>
                 <a href="/login" className="text-gray-700 font-medium">Log in</a>
-                <a href="/signup" className="text-blue-600 font-medium">Sign up</a>
+                <a href="/signup" className="font-medium" style={{ color: '#00267F' }}>Sign up</a>
               </>
             )}
           </div>
@@ -134,12 +173,12 @@ function SearchPage() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search by name, trade or skill..."
-            className="flex-1 px-5 py-3 border border-gray-200 rounded-full text-gray-900 outline-none focus:border-blue-400 bg-white"
+            className="flex-1 px-5 py-3 border border-gray-200 rounded-full text-gray-900 outline-none focus:border-gray-400 bg-white"
           />
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
-            className="px-5 py-3 border border-gray-200 rounded-full text-gray-700 outline-none focus:border-blue-400 bg-white"
+            className="px-5 py-3 border border-gray-200 rounded-full text-gray-700 outline-none focus:border-gray-400 bg-white"
           >
             <option value="rating">Top rated</option>
             <option value="reviews">Most reviewed</option>
@@ -154,61 +193,61 @@ function SearchPage() {
           </div>
         ) : (
           <>
-        <p className="text-sm text-gray-500 mb-6">{filtered.length} freelancer{filtered.length !== 1 ? 's' : ''} found</p>
+            <p className="text-sm text-gray-500 mb-6">{filtered.length} freelancer{filtered.length !== 1 ? 's' : ''} found</p>
 
-        <div className="flex flex-col gap-4">
-          {filtered.length === 0 ? (
-            <div className="text-center py-20 text-gray-400">
-              <p className="text-4xl mb-4">🔍</p>
-              <p className="font-medium">No freelancers found for "{query}"</p>
-              <p className="text-sm mt-2">Try a different search term</p>
-            </div>
-          ) : (
-            filtered.map(f => (
-              <a href={`/freelancers/${f.id}`} key={f.id} className="bg-white rounded-2xl p-6 border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all block">
-                <div className="flex gap-4 items-start">
-                  <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600 flex-shrink-0 overflow-hidden">
-                    {f.avatar_url
-                      ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
-                      : f.name.split(" ").map(n => n[0]).join("")}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-gray-900">{f.name}</h3>
-                          {f.available ? (
-                            <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">Available</span>
-                          ) : (
-                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">Unavailable</span>
-                          )}
-                        </div>
-                        <p className="text-blue-600 text-sm font-medium">{f.trade} · {f.location}</p>
-                      </div>
-                      <p className="font-bold text-gray-900 sm:text-right">${f.hourly_rate}<span className="text-sm text-gray-400 font-normal">/hr</span></p>
-                    </div>
-                    <div className="flex gap-4 mt-2">
-                      <div className="flex items-center gap-1">
-                        <StarRating rating={f.rating} />
-                        <span className="text-sm font-medium text-gray-700">{f.rating}</span>
-                        <span className="text-xs text-gray-400">({f.review_count})</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <span>Client rating:</span>
-                        <span className="font-medium text-gray-700">{f.client_rating}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                      {f.skills.map(skill => (
-                        <span key={skill} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">{skill}</span>
-                      ))}
-                    </div>
-                  </div>
+            <div className="flex flex-col gap-4">
+              {filtered.length === 0 ? (
+                <div className="text-center py-20 text-gray-400">
+                  <p className="text-4xl mb-4">🔍</p>
+                  <p className="font-medium">No freelancers found for "{query}"</p>
+                  <p className="text-sm mt-2">Try a different search term</p>
                 </div>
-              </a>
-            ))
-          )}
-        </div>
+              ) : (
+                filtered.map(f => (
+                  <a href={`/freelancers/${f.id}`} key={f.id} className="bg-white rounded-2xl p-6 border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all block">
+                    <div className="flex gap-4 items-start">
+                      <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center font-bold flex-shrink-0 overflow-hidden" style={{ color: '#00267F' }}>
+                        {f.avatar_url
+                          ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
+                          : f.name.split(" ").map(n => n[0]).join("")}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-gray-900">{f.name}</h3>
+                              {f.available ? (
+                                <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">Available</span>
+                              ) : (
+                                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">Unavailable</span>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium" style={{ color: '#00267F' }}>{f.trade} · {f.location}</p>
+                          </div>
+                          <p className="font-bold text-gray-900 sm:text-right">${f.hourly_rate}<span className="text-sm text-gray-400 font-normal">/hr</span></p>
+                        </div>
+                        <div className="flex gap-4 mt-2">
+                          <div className="flex items-center gap-1">
+                            <StarRating rating={f.rating} />
+                            <span className="text-sm font-medium text-gray-700">{f.rating}</span>
+                            <span className="text-xs text-gray-400">({f.review_count})</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <span>Client rating:</span>
+                            <span className="font-medium text-gray-700">{f.client_rating}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-3 flex-wrap">
+                          {f.skills.map(skill => (
+                            <span key={skill} className="text-xs bg-blue-50 px-2 py-1 rounded-full" style={{ color: '#00267F' }}>{skill}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                ))
+              )}
+            </div>
           </>
         )}
       </div>
@@ -219,6 +258,7 @@ function SearchPage() {
     </main>
   )
 }
+
 export default function Search() {
   return (
     <Suspense>
