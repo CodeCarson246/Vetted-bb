@@ -21,6 +21,7 @@ export default function FreelancerProfile() {
   const [activeTab, setActiveTab] = useState('client')
   const [user, setUser] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [freelancerProfile, setFreelancerProfile] = useState(null)
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewHover, setReviewHover] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
@@ -29,7 +30,14 @@ export default function FreelancerProfile() {
   const [reviewSuccess, setReviewSuccess] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    supabase.auth.getUser().then(async ({ data }) => {
+      const u = data.user
+      setUser(u)
+      if (u) {
+        const { data: fp } = await supabase.from('freelancers').select('name, avatar_url').eq('user_id', u.id).single()
+        setFreelancerProfile(fp || null)
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -116,8 +124,18 @@ export default function FreelancerProfile() {
           <div className="hidden sm:flex gap-4 items-center">
             {user ? (
               <>
-                <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user.email}</a>
-                <a href="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium">Dashboard</a>
+                {freelancerProfile ? (
+                  <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                      {freelancerProfile.avatar_url
+                        ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
+                        : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
+                  </a>
+                ) : (
+                  <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user.email}</a>
+                )}
                 <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Log out</button>
               </>
             ) : (
@@ -137,8 +155,18 @@ export default function FreelancerProfile() {
           <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
             {user ? (
               <>
-                <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user.email}</a>
-                <a href="/dashboard" className="text-gray-700 font-medium">Dashboard</a>
+                {freelancerProfile ? (
+                  <a href="/dashboard" className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                      {freelancerProfile.avatar_url
+                        ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
+                        : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
+                  </a>
+                ) : (
+                  <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user.email}</a>
+                )}
                 <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="text-left text-red-500 font-medium">Log out</button>
               </>
             ) : (
