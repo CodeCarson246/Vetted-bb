@@ -49,7 +49,7 @@ export default function Home() {
     supabase.auth.getUser().then(async ({ data }) => {
       const u = data.user
       setUser(u)
-      if (u) {
+      if (u && u.user_metadata?.role !== 'client') {
         const { data: fp } = await supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single()
         setFreelancerProfile(fp || null)
         if (fp) {
@@ -80,7 +80,7 @@ export default function Home() {
                     <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
                   </a>
                 ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user.email}</a>
+                  <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user?.user_metadata?.full_name || user.email}</a>
                 )}
                 {freelancerProfile && (
                   <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
@@ -135,7 +135,7 @@ export default function Home() {
                     <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
                   </a>
                 ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user.email}</a>
+                  <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name || user.email}</a>
                 )}
                 {freelancerProfile && (
                   <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">

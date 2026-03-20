@@ -16,6 +16,7 @@ function StarRating({ rating }) {
 export default function Dashboard() {
   const router = useRouter()
   const [user, setUser] = useState(null)
+  const [role, setRole] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [profile, setProfile] = useState(null)
   const [reviews, setReviews] = useState([])
@@ -23,6 +24,9 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showEditForm, setShowEditForm] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [clientMessages, setClientMessages] = useState([])
+  const [clientReviewsLeft, setClientReviewsLeft] = useState([])
+  const [topFreelancers, setTopFreelancers] = useState([])
 
   // Edit form state
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -64,30 +68,43 @@ export default function Dashboard() {
         return
       }
       setUser(user)
+      const userRole = user.user_metadata?.role || 'freelancer'
+      setRole(userRole)
 
-      const { data: p } = await supabase
-        .from('freelancers')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-
-      if (p) {
-        setProfile(p)
-        setBio(p.bio || '')
-        setHourlyRate(p.hourly_rate || '')
-        setAvailable(p.available || false)
-        setSkillsInput((p.skills || []).join(', '))
-        setAvatarUrl(p.avatar_url || '')
-
-        const { data: r } = await supabase
-          .from('reviews')
+      if (userRole === 'client') {
+        const [{ data: msgs }, { data: rLeft }, { data: topF }] = await Promise.all([
+          supabase.from('messages').select('*, freelancers(name)').eq('sender_email', user.email).order('created_at', { ascending: false }),
+          supabase.from('reviews').select('*').eq('author_email', user.email).order('date', { ascending: false }),
+          supabase.from('freelancers').select('id, name, trade, avatar_url, rating, hourly_rate').order('rating', { ascending: false }).limit(3),
+        ])
+        setClientMessages(msgs || [])
+        setClientReviewsLeft(rLeft || [])
+        setTopFreelancers(topF || [])
+      } else {
+        const { data: p } = await supabase
+          .from('freelancers')
           .select('*')
-          .eq('freelancer_id', p.id)
-          .order('date', { ascending: false })
-        setReviews(r || [])
+          .eq('user_id', user.id)
+          .single()
 
-        const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false)
-        setUnreadCount(count || 0)
+        if (p) {
+          setProfile(p)
+          setBio(p.bio || '')
+          setHourlyRate(p.hourly_rate || '')
+          setAvailable(p.available || false)
+          setSkillsInput((p.skills || []).join(', '))
+          setAvatarUrl(p.avatar_url || '')
+
+          const { data: r } = await supabase
+            .from('reviews')
+            .select('*')
+            .eq('freelancer_id', p.id)
+            .order('date', { ascending: false })
+          setReviews(r || [])
+
+          const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false)
+          setUnreadCount(count || 0)
+        }
       }
 
       setLoading(false)
@@ -233,7 +250,11 @@ export default function Dashboard() {
         <div className="flex items-center justify-between px-8 py-5">
           <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
           <div className="hidden sm:flex gap-4 items-center">
-            {profile ? (
+            {role === 'client' ? (
+              <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">
+                {user?.user_metadata?.full_name || user?.email}
+              </a>
+            ) : profile ? (
               <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                   {profile.avatar_url
@@ -245,7 +266,7 @@ export default function Dashboard() {
             ) : (
               <span className="text-gray-600 text-sm font-medium">{user?.email}</span>
             )}
-            {profile && (
+            {role !== 'client' && profile && (
               <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -273,7 +294,11 @@ export default function Dashboard() {
         </div>
         {menuOpen && (
           <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
-            {profile ? (
+            {role === 'client' ? (
+              <a href="/dashboard" className="text-gray-600 text-sm font-medium">
+                {user?.user_metadata?.full_name || user?.email}
+              </a>
+            ) : profile ? (
               <a href="/dashboard" className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                   {profile.avatar_url
@@ -285,7 +310,7 @@ export default function Dashboard() {
             ) : (
               <span className="text-gray-600 text-sm font-medium">{user?.email}</span>
             )}
-            {profile && (
+            {role !== 'client' && profile && (
               <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
                 Inbox
                 {unreadCount > 0 && (
@@ -307,7 +332,132 @@ export default function Dashboard() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
 
-        {profile ? (
+        {role === 'client' ? (
+          <div className="flex flex-col gap-6">
+
+            {/* Welcome card */}
+            <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">
+                    Welcome back{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name.split(' ')[0]}` : ''}!
+                  </h1>
+                  <p className="text-gray-500 text-sm mt-1">{user?.email}</p>
+                </div>
+                <a
+                  href="/search"
+                  className="flex-shrink-0 text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-opacity text-center"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  Find a freelancer
+                </a>
+              </div>
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl p-5 border border-gray-100 text-center">
+                <p className="text-3xl font-bold text-gray-900">{clientReviewsLeft.length}</p>
+                <p className="text-sm text-gray-500 mt-1">Reviews left</p>
+              </div>
+              <div className="bg-white rounded-2xl p-5 border border-gray-100 text-center">
+                <p className="text-3xl font-bold text-gray-900">{clientMessages.length}</p>
+                <p className="text-sm text-gray-500 mt-1">Freelancers contacted</p>
+              </div>
+            </div>
+
+            {/* Top rated freelancers */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="font-semibold text-gray-900">Top rated freelancers</h2>
+                <a href="/search" className="text-sm font-medium hover:opacity-80" style={{ color: '#00267F' }}>See all →</a>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {topFreelancers.map(f => (
+                  <div key={f.id} className="px-6 sm:px-8 py-5 flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+                      {f.avatar_url
+                        ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
+                        : f.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm">{f.name}</p>
+                      <p className="text-xs text-gray-500">{f.trade}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <StarRating rating={f.rating} />
+                        <span className="text-xs text-gray-500">{f.rating}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-sm font-medium text-gray-700">${f.hourly_rate}<span className="text-xs text-gray-400 font-normal">/hr</span></span>
+                      <a
+                        href={`/freelancers/${f.id}`}
+                        className="text-white px-4 py-2 rounded-full text-xs font-medium hover:opacity-90 transition-opacity"
+                        style={{ backgroundColor: '#00267F' }}
+                      >
+                        View profile
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Reviews left */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
+                <h2 className="font-semibold text-gray-900">Reviews I've left <span className="text-gray-400 font-normal text-sm">({clientReviewsLeft.length})</span></h2>
+              </div>
+              <div className="p-6 sm:p-8">
+                {clientReviewsLeft.length === 0 ? (
+                  <p className="text-sm text-gray-400">No reviews left yet. Visit a freelancer's profile to leave one.</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {clientReviewsLeft.map((review, i) => (
+                      <div key={i} className="border border-gray-100 rounded-xl p-5">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium text-gray-900 text-sm">{review.freelancer_name || 'Freelancer'}</p>
+                          <StarRating rating={review.rating} />
+                        </div>
+                        <p className="text-gray-600 text-sm">{review.comment}</p>
+                        <p className="text-xs text-gray-400 mt-2">{review.date}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Messages sent */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
+                <h2 className="font-semibold text-gray-900">Messages sent <span className="text-gray-400 font-normal text-sm">({clientMessages.length})</span></h2>
+              </div>
+              <div className="p-6 sm:p-8">
+                {clientMessages.length === 0 ? (
+                  <p className="text-sm text-gray-400">No messages sent yet. <a href="/search" style={{ color: '#00267F' }} className="font-medium hover:opacity-80">Browse freelancers →</a></p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {clientMessages.map((msg, i) => (
+                      <div key={i} className="border border-gray-100 rounded-xl p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 text-sm">{msg.freelancers?.name || 'Freelancer'}</p>
+                            <p className="text-sm text-gray-600 mt-0.5">{msg.subject}</p>
+                          </div>
+                          <span className="text-xs text-gray-400 flex-shrink-0">
+                            {new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        ) : profile ? (
           <>
             {/* Profile card */}
             <div className="bg-white rounded-2xl p-6 sm:p-8 mb-6 border border-gray-100">

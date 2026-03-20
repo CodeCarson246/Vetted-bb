@@ -1,9 +1,10 @@
-// updated
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function SignUp() {
+  const router = useRouter()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,7 +18,7 @@ export default function SignUp() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -27,6 +28,8 @@ export default function SignUp() {
 
     if (error) {
       setError(error.message)
+    } else if (data.session) {
+      router.push('/dashboard')
     } else {
       setSuccess(true)
     }
@@ -36,10 +39,10 @@ export default function SignUp() {
   return (
     <main className="min-h-screen bg-gray-50">
       <nav className="flex items-center justify-between px-8 py-5 bg-white border-b border-gray-100">
-        <a href="/" className="text-2xl font-bold text-blue-600">Vetted.bb</a>
+        <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
         <div className="flex gap-4">
           <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
-          <a href="/signup" className="bg-blue-600 text-white px-5 py-2 rounded-full font-medium hover:bg-blue-700">Sign up</a>
+          <a href="/signup" className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Sign up</a>
         </div>
       </nav>
 
@@ -64,7 +67,7 @@ export default function SignUp() {
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
                   placeholder="Jane Smith"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                 />
               </div>
 
@@ -76,7 +79,7 @@ export default function SignUp() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="jane@example.com"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                 />
               </div>
 
@@ -88,7 +91,7 @@ export default function SignUp() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="At least 6 characters"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-blue-400 bg-white"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                 />
               </div>
 
@@ -98,14 +101,14 @@ export default function SignUp() {
                   <button
                     type="button"
                     onClick={() => setRole('client')}
-                    className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${role === 'client' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                    className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${role === 'client' ? 'border-gray-900 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
                   >
                     Client
                   </button>
                   <button
                     type="button"
                     onClick={() => setRole('freelancer')}
-                    className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${role === 'freelancer' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                    className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${role === 'freelancer' ? 'border-gray-900 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
                   >
                     Freelancer
                   </button>
@@ -119,14 +122,15 @@ export default function SignUp() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                className="w-full text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                style={{ backgroundColor: '#00267F' }}
               >
                 {loading ? 'Creating account...' : 'Create account'}
               </button>
 
               <p className="text-center text-sm text-gray-500">
                 Already have an account?{' '}
-                <a href="/login" className="text-blue-600 font-medium hover:underline">Log in</a>
+                <a href="/login" className="font-medium hover:underline" style={{ color: '#00267F' }}>Log in</a>
               </p>
             </form>
           )}
