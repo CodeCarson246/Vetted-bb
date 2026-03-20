@@ -28,6 +28,18 @@ export default function Dashboard() {
   const [clientReviewsLeft, setClientReviewsLeft] = useState([])
   const [topFreelancers, setTopFreelancers] = useState([])
 
+  // Account settings state
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [emailSuccess, setEmailSuccess] = useState(false)
+  const [emailError, setEmailError] = useState(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+  const [passwordError, setPasswordError] = useState(null)
+
   // Edit form state
   const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -68,6 +80,7 @@ export default function Dashboard() {
         return
       }
       setUser(user)
+      setNewEmail(user.email || '')
       const userRole = user.user_metadata?.role || 'freelancer'
       setRole(userRole)
 
@@ -230,6 +243,41 @@ export default function Dashboard() {
       setTimeout(() => setClientReviewSuccess(false), 3000)
     }
     setClientReviewSubmitting(false)
+  }
+
+  async function handleEmailUpdate(e) {
+    e.preventDefault()
+    setEmailSaving(true)
+    setEmailError(null)
+    setEmailSuccess(false)
+    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    if (error) {
+      setEmailError(error.message)
+    } else {
+      setEmailSuccess(true)
+    }
+    setEmailSaving(false)
+  }
+
+  async function handlePasswordUpdate(e) {
+    e.preventDefault()
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.')
+      return
+    }
+    setPasswordSaving(true)
+    setPasswordError(null)
+    setPasswordSuccess(false)
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) {
+      setPasswordError(error.message)
+    } else {
+      setPasswordSuccess(true)
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => setPasswordSuccess(false), 4000)
+    }
+    setPasswordSaving(false)
   }
 
   if (loading) {
@@ -837,6 +885,91 @@ export default function Dashboard() {
             )}
           </div>
         )}
+
+        {/* Account settings — shown for all roles */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mt-6">
+          <button
+            onClick={() => setSettingsOpen(v => !v)}
+            className="w-full flex items-center justify-between px-6 sm:px-8 py-5 text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="font-semibold text-gray-900">Account settings</span>
+            <svg
+              className="w-5 h-5 text-gray-400 transition-transform"
+              style={{ transform: settingsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {settingsOpen && (
+            <div className="px-6 sm:px-8 pb-8 pt-2 flex flex-col gap-8 border-t border-gray-100">
+
+              {/* Change email */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-1 mt-6">Change email</h3>
+                <p className="text-sm text-gray-500 mb-4">We'll send a confirmation link to your new address.</p>
+                <form onSubmit={handleEmailUpdate} className="flex flex-col gap-3">
+                  <input
+                    type="email"
+                    required
+                    value={newEmail}
+                    onChange={e => { setNewEmail(e.target.value); setEmailSuccess(false); setEmailError(null) }}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                  />
+                  {emailError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{emailError}</p>}
+                  {emailSuccess && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">Check your new email address for a confirmation link.</p>}
+                  <button
+                    type="submit"
+                    disabled={emailSaving}
+                    className="w-full sm:w-auto sm:self-start text-white px-6 py-2.5 rounded-full text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#00267F' }}
+                  >
+                    {emailSaving ? 'Updating...' : 'Update email'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="border-t border-gray-100" />
+
+              {/* Change password */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-1">Change password</h3>
+                <p className="text-sm text-gray-500 mb-4">Choose a new password for your account.</p>
+                <form onSubmit={handlePasswordUpdate} className="flex flex-col gap-3">
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={e => { setNewPassword(e.target.value); setPasswordSuccess(false); setPasswordError(null) }}
+                    placeholder="New password"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                  />
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={e => { setConfirmPassword(e.target.value); setPasswordSuccess(false); setPasswordError(null) }}
+                    placeholder="Confirm new password"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                  />
+                  {passwordError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{passwordError}</p>}
+                  {passwordSuccess && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">Password updated successfully.</p>}
+                  <button
+                    type="submit"
+                    disabled={passwordSaving}
+                    className="w-full sm:w-auto sm:self-start text-white px-6 py-2.5 rounded-full text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#00267F' }}
+                  >
+                    {passwordSaving ? 'Updating...' : 'Update password'}
+                  </button>
+                </form>
+              </div>
+
+            </div>
+          )}
+        </div>
+
       </div>
 
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-12">
