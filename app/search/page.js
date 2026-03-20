@@ -53,18 +53,46 @@ function SearchPage() {
   }, [])
 
   const [sortBy, setSortBy] = useState('rating')
+  const [availability, setAvailability] = useState('all')
+  const [minPrice, setMinPrice] = useState('')
+  const [maxPrice, setMaxPrice] = useState('')
+  const [location, setLocation] = useState('')
+
+  const locations = [...new Set(freelancers.map(f => f.location).filter(Boolean))].sort()
+
+  const activeFilterCount = [
+    availability !== 'all',
+    minPrice !== '',
+    maxPrice !== '',
+    location !== '',
+  ].filter(Boolean).length
+
+  function clearFilters() {
+    setQuery('')
+    setAvailability('all')
+    setMinPrice('')
+    setMaxPrice('')
+    setLocation('')
+  }
 
   const filtered = freelancers
-    .filter(f =>
-      query === '' ||
-      f.name.toLowerCase().includes(query.toLowerCase()) ||
-      f.trade.toLowerCase().includes(query.toLowerCase()) ||
-      f.skills.some(s => s.toLowerCase().includes(query.toLowerCase()))
-    )
+    .filter(f => {
+      if (query && !(
+        f.name.toLowerCase().includes(query.toLowerCase()) ||
+        f.trade.toLowerCase().includes(query.toLowerCase()) ||
+        f.skills.some(s => s.toLowerCase().includes(query.toLowerCase()))
+      )) return false
+      if (availability === 'available' && !f.available) return false
+      const rate = parseFloat(f.hourly_rate)
+      if (minPrice !== '' && rate < parseFloat(minPrice)) return false
+      if (maxPrice !== '' && rate > parseFloat(maxPrice)) return false
+      if (location && f.location !== location) return false
+      return true
+    })
     .sort((a, b) => {
       if (sortBy === 'rating') return b.rating - a.rating
-      if (sortBy === 'price_low') return parseInt(a.hourly_rate.slice(1)) - parseInt(b.hourly_rate.slice(1))
-      if (sortBy === 'price_high') return parseInt(b.hourly_rate.slice(1)) - parseInt(a.hourly_rate.slice(1))
+      if (sortBy === 'price_low') return parseFloat(a.hourly_rate) - parseFloat(b.hourly_rate)
+      if (sortBy === 'price_high') return parseFloat(b.hourly_rate) - parseFloat(a.hourly_rate)
       if (sortBy === 'reviews') return b.review_count - a.review_count
       return 0
     })
@@ -167,7 +195,9 @@ function SearchPage() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
-        <div className="flex flex-col sm:flex-row gap-3 mb-8">
+
+        {/* Search + sort row */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <input
             type="text"
             value={query}
@@ -187,6 +217,91 @@ function SearchPage() {
           </select>
         </div>
 
+        {/* Filter bar */}
+        <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 mb-6 flex flex-wrap gap-4 items-center">
+
+          {/* Availability */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setAvailability('all')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${availability === 'all' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              style={availability === 'all' ? { backgroundColor: '#00267F' } : {}}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setAvailability('available')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${availability === 'available' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              style={availability === 'available' ? { backgroundColor: '#00267F' } : {}}
+            >
+              Available only
+            </button>
+          </div>
+
+          <div className="w-px h-5 bg-gray-200 hidden sm:block" />
+
+          {/* Price range */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500 font-medium">Price</span>
+            <div className="flex items-center gap-1.5">
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={minPrice}
+                  onChange={e => setMinPrice(e.target.value)}
+                  placeholder="Min"
+                  className="w-20 pl-6 pr-2 py-1.5 border border-gray-200 rounded-full text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
+                />
+              </div>
+              <span className="text-gray-400 text-sm">–</span>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={maxPrice}
+                  onChange={e => setMaxPrice(e.target.value)}
+                  placeholder="Max"
+                  className="w-20 pl-6 pr-2 py-1.5 border border-gray-200 rounded-full text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="w-px h-5 bg-gray-200 hidden sm:block" />
+
+          {/* Location */}
+          <select
+            value={location}
+            onChange={e => setLocation(e.target.value)}
+            className="px-4 py-1.5 border border-gray-200 rounded-full text-sm text-gray-700 outline-none focus:border-gray-400 bg-white"
+          >
+            <option value="">All locations</option>
+            {locations.map(loc => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
+          </select>
+
+          {/* Active count + clear */}
+          {(activeFilterCount > 0 || query) && (
+            <div className="flex items-center gap-2 ml-auto">
+              {activeFilterCount > 0 && (
+                <span className="text-xs font-semibold text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: '#00267F' }}>
+                  {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
+                </span>
+              )}
+              <button
+                onClick={clearFilters}
+                className="text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </div>
+
         {loading ? (
           <div className="text-center py-20 text-gray-400">
             <p className="text-sm">Loading freelancers...</p>
@@ -199,8 +314,8 @@ function SearchPage() {
               {filtered.length === 0 ? (
                 <div className="text-center py-20 text-gray-400">
                   <p className="text-4xl mb-4">🔍</p>
-                  <p className="font-medium">No freelancers found for "{query}"</p>
-                  <p className="text-sm mt-2">Try a different search term</p>
+                  <p className="font-medium">No freelancers match your filters</p>
+                  <p className="text-sm mt-2">Try adjusting your search or filters</p>
                 </div>
               ) : (
                 filtered.map(f => (
