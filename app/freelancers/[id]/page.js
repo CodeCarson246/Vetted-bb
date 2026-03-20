@@ -155,8 +155,10 @@ export default function FreelancerProfile() {
 
         <div className="bg-white rounded-2xl p-6 sm:p-8 mb-6 border border-gray-100">
           <div className="flex flex-col sm:flex-row gap-6 items-start">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-blue-100 flex items-center justify-center text-3xl font-bold text-blue-600 flex-shrink-0">
-              {freelancer.name.split(" ").map(n => n[0]).join("")}
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-blue-100 flex items-center justify-center text-3xl font-bold text-blue-600 flex-shrink-0 overflow-hidden">
+              {freelancer.avatar_url
+                ? <img src={freelancer.avatar_url} alt={freelancer.name} className="w-full h-full object-cover" />
+                : freelancer.name.split(" ").map(n => n[0]).join("")}
             </div>
             <div className="flex-1 w-full">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">

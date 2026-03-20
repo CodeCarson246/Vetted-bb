@@ -11,6 +11,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   // Edit form state
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
   const [bio, setBio] = useState('')
   const [hourlyRate, setHourlyRate] = useState('')
   const [available, setAvailable] = useState(false)
@@ -61,6 +63,7 @@ export default function Dashboard() {
         setHourlyRate(profile.hourly_rate || '')
         setAvailable(profile.available || false)
         setSkillsInput((profile.skills || []).join(', '))
+        setAvatarUrl(profile.avatar_url || '')
       }
 
       setLoading(false)
@@ -128,6 +131,32 @@ export default function Dashboard() {
       setShowCreateForm(false)
     }
     setCreating(false)
+  }
+
+  async function handleAvatarUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true })
+
+    if (uploadError) {
+      setSaveError(uploadError.message)
+      setAvatarUploading(false)
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+
+    await supabase.from('freelancers').update({ avatar_url: publicUrl }).eq('user_id', user.id)
+    setAvatarUrl(publicUrl)
+    setProfile(prev => ({ ...prev, avatar_url: publicUrl }))
+    setAvatarUploading(false)
   }
 
   async function submitClientReview(e) {
@@ -205,8 +234,10 @@ export default function Dashboard() {
             {/* Current profile summary */}
             <div className="bg-white rounded-2xl p-6 sm:p-8 mb-6 border border-gray-100">
               <div className="flex flex-col sm:flex-row gap-6 items-start">
-                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 flex-shrink-0">
-                  {profile.name.split(' ').map(n => n[0]).join('')}
+                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 flex-shrink-0 overflow-hidden">
+                  {profile.avatar_url
+                    ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
+                    : profile.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div className="flex-1 w-full">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -238,6 +269,27 @@ export default function Dashboard() {
             <div className="bg-white rounded-2xl p-8 border border-gray-100">
               <h2 className="text-lg font-bold text-gray-900 mb-6">Edit your profile</h2>
               <form onSubmit={handleSave} className="flex flex-col gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Profile photo</label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600 flex-shrink-0 overflow-hidden">
+                      {avatarUrl
+                        ? <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                        : profile.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <label className={`cursor-pointer px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors ${avatarUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      {avatarUploading ? 'Uploading...' : 'Change photo'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        className="hidden"
+                        disabled={avatarUploading}
+                        onChange={handleAvatarUpload}
+                      />
+                    </label>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
                   <textarea
