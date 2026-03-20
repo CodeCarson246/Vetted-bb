@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { getPriceIndicator } from '@/lib/priceIndicator'
 
 function StarRating({ rating }) {
   return (
@@ -40,6 +41,7 @@ export default function FreelancerProfile() {
   const [contactSuccess, setContactSuccess] = useState(false)
 
   const [unreadCount, setUnreadCount] = useState(0)
+  const [services, setServices] = useState([])
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -71,13 +73,13 @@ export default function FreelancerProfile() {
         .single()
 
       if (f) {
-        const { data: r } = await supabase
-          .from('reviews')
-          .select('*')
-          .eq('freelancer_id', f.id)
-
+        const [{ data: r }, { data: s }] = await Promise.all([
+          supabase.from('reviews').select('*').eq('freelancer_id', f.id),
+          supabase.from('services').select('*').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
+        ])
         setFreelancer(f)
         setReviews(r || [])
+        setServices(s || [])
       }
 
       setLoading(false)
@@ -281,7 +283,9 @@ export default function FreelancerProfile() {
                   <p className="text-gray-500 text-sm mt-1">{freelancer.location}</p>
                 </div>
                 <div className="sm:text-right">
-                  <p className="text-2xl font-bold text-gray-900">${freelancer.hourly_rate}<span className="text-sm text-gray-500 font-normal">/hr</span></p>
+                  {getPriceIndicator(freelancer.hourly_rate) && (
+                    <p className="text-2xl font-bold" style={{ color: '#00267F' }}>{getPriceIndicator(freelancer.hourly_rate)}</p>
+                  )}
                   <button
                     onClick={() => setContactOpen(true)}
                     className="mt-2 text-white px-6 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
@@ -323,6 +327,24 @@ export default function FreelancerProfile() {
             ))}
           </div>
         </div>
+
+        {services.length > 0 && (
+          <div className="bg-white rounded-2xl p-8 mb-6 border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 mb-5">Services</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {services.map(s => (
+                <div key={s.id} className="border border-gray-100 rounded-xl p-5 flex flex-col gap-2">
+                  <p className="font-semibold text-gray-900">{s.name}</p>
+                  {s.description && <p className="text-sm text-gray-500 leading-relaxed">{s.description}</p>}
+                  <div className="flex items-center gap-3 mt-auto pt-2">
+                    <span className="text-sm font-bold" style={{ color: '#00267F' }}>{s.price}</span>
+                    {s.duration && <span className="text-sm text-gray-400">{s.duration}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl p-8 border border-gray-100">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Reviews</h2>

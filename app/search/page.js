@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { getPriceIndicator } from '@/lib/priceIndicator'
 
 function StarRating({ rating }) {
   return (
@@ -54,24 +55,21 @@ function SearchPage() {
 
   const [sortBy, setSortBy] = useState('rating')
   const [availability, setAvailability] = useState('all')
-  const [minPrice, setMinPrice] = useState('')
-  const [maxPrice, setMaxPrice] = useState('')
+  const [priceRange, setPriceRange] = useState('all')
   const [location, setLocation] = useState('')
 
   const locations = [...new Set(freelancers.map(f => f.location).filter(Boolean))].sort()
 
   const activeFilterCount = [
     availability !== 'all',
-    minPrice !== '',
-    maxPrice !== '',
+    priceRange !== 'all',
     location !== '',
   ].filter(Boolean).length
 
   function clearFilters() {
     setQuery('')
     setAvailability('all')
-    setMinPrice('')
-    setMaxPrice('')
+    setPriceRange('all')
     setLocation('')
   }
 
@@ -83,9 +81,13 @@ function SearchPage() {
         f.skills.some(s => s.toLowerCase().includes(query.toLowerCase()))
       )) return false
       if (availability === 'available' && !f.available) return false
-      const rate = parseFloat(f.hourly_rate)
-      if (minPrice !== '' && rate < parseFloat(minPrice)) return false
-      if (maxPrice !== '' && rate > parseFloat(maxPrice)) return false
+      if (priceRange !== 'all') {
+        const rate = parseFloat(f.hourly_rate)
+        if (priceRange === '$' && rate >= 30) return false
+        if (priceRange === '$$' && (rate < 30 || rate >= 60)) return false
+        if (priceRange === '$$$' && (rate < 60 || rate >= 100)) return false
+        if (priceRange === '$$$$' && rate < 100) return false
+      }
       if (location && f.location !== location) return false
       return true
     })
@@ -241,34 +243,17 @@ function SearchPage() {
           <div className="w-px h-5 bg-gray-200 hidden sm:block" />
 
           {/* Price range */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500 font-medium">Price</span>
-            <div className="flex items-center gap-1.5">
-              <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={minPrice}
-                  onChange={e => setMinPrice(e.target.value)}
-                  placeholder="Min"
-                  className="w-20 pl-6 pr-2 py-1.5 border border-gray-200 rounded-full text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
-                />
-              </div>
-              <span className="text-gray-400 text-sm">–</span>
-              <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={maxPrice}
-                  onChange={e => setMaxPrice(e.target.value)}
-                  placeholder="Max"
-                  className="w-20 pl-6 pr-2 py-1.5 border border-gray-200 rounded-full text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
-                />
-              </div>
-            </div>
-          </div>
+          <select
+            value={priceRange}
+            onChange={e => setPriceRange(e.target.value)}
+            className="px-4 py-1.5 border border-gray-200 rounded-full text-sm text-gray-700 outline-none focus:border-gray-400 bg-white"
+          >
+            <option value="all">All prices</option>
+            <option value="$">$ Budget (under $30)</option>
+            <option value="$$">$$ Moderate ($30–$60)</option>
+            <option value="$$$">$$$ Premium ($60–$100)</option>
+            <option value="$$$$">$$$$ High end ($100+)</option>
+          </select>
 
           <div className="w-px h-5 bg-gray-200 hidden sm:block" />
 
@@ -339,7 +324,9 @@ function SearchPage() {
                             </div>
                             <p className="text-sm font-medium" style={{ color: '#00267F' }}>{f.trade} · {f.location}</p>
                           </div>
-                          <p className="font-bold text-gray-900 sm:text-right">${f.hourly_rate}<span className="text-sm text-gray-400 font-normal">/hr</span></p>
+                          {getPriceIndicator(f.hourly_rate) && (
+                            <p className="font-bold sm:text-right" style={{ color: '#00267F' }}>{getPriceIndicator(f.hourly_rate)}</p>
+                          )}
                         </div>
                         <div className="flex gap-4 mt-2">
                           <div className="flex items-center gap-1">

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { getPriceIndicator } from '@/lib/priceIndicator'
 
 function StarRating({ rating }) {
   return (
@@ -27,6 +28,17 @@ export default function Dashboard() {
   const [clientMessages, setClientMessages] = useState([])
   const [clientReviewsLeft, setClientReviewsLeft] = useState([])
   const [topFreelancers, setTopFreelancers] = useState([])
+
+  // Services state
+  const [services, setServices] = useState([])
+  const [showServiceForm, setShowServiceForm] = useState(false)
+  const [editingService, setEditingService] = useState(null)
+  const [serviceName, setServiceName] = useState('')
+  const [servicePrice, setServicePrice] = useState('')
+  const [serviceDescription, setServiceDescription] = useState('')
+  const [serviceDuration, setServiceDuration] = useState('')
+  const [serviceSaving, setServiceSaving] = useState(false)
+  const [serviceError, setServiceError] = useState(null)
 
   // Account settings state
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -63,12 +75,19 @@ export default function Dashboard() {
   // Create form state
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [createName, setCreateName] = useState('')
+  const [createCompanyName, setCreateCompanyName] = useState('')
   const [createTrade, setCreateTrade] = useState('')
   const [createLocation, setCreateLocation] = useState('')
   const [createBio, setCreateBio] = useState('')
   const [createRate, setCreateRate] = useState('')
   const [createSkills, setCreateSkills] = useState('')
   const [createAvailable, setCreateAvailable] = useState(true)
+  const [createServices, setCreateServices] = useState([])
+  const [showCreateSvcForm, setShowCreateSvcForm] = useState(false)
+  const [createSvcName, setCreateSvcName] = useState('')
+  const [createSvcPrice, setCreateSvcPrice] = useState('')
+  const [createSvcDescription, setCreateSvcDescription] = useState('')
+  const [createSvcDuration, setCreateSvcDuration] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState(null)
 
@@ -80,6 +99,7 @@ export default function Dashboard() {
         return
       }
       setUser(user)
+      setCreateName(user.user_metadata?.full_name || '')
       setNewEmail(user.email || '')
       const userRole = user.user_metadata?.role || 'freelancer'
       setRole(userRole)
@@ -115,8 +135,12 @@ export default function Dashboard() {
             .order('date', { ascending: false })
           setReviews(r || [])
 
-          const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false)
+          const [{ count }, { data: svc }] = await Promise.all([
+            supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false),
+            supabase.from('services').select('*').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
+          ])
           setUnreadCount(count || 0)
+          setServices(svc || [])
         }
       }
 
@@ -159,6 +183,7 @@ export default function Dashboard() {
       .from('freelancers')
       .insert({
         name: createName,
+        company_name: createCompanyName || null,
         trade: createTrade,
         location: createLocation,
         bio: createBio,
@@ -177,6 +202,17 @@ export default function Dashboard() {
     if (error) {
       setCreateError(error.message)
     } else {
+      if (createServices.length > 0) {
+        await supabase.from('services').insert(
+          createServices.map(svc => ({
+            freelancer_id: data.id,
+            name: svc.name,
+            price: svc.price,
+            description: svc.description || null,
+            duration: svc.duration || null,
+          }))
+        )
+      }
       setProfile(data)
       setBio(data.bio || '')
       setHourlyRate(data.hourly_rate || '')
@@ -185,6 +221,21 @@ export default function Dashboard() {
       setShowCreateForm(false)
     }
     setCreating(false)
+  }
+
+  function addCreateService() {
+    if (!createSvcName.trim() || !createSvcPrice.trim()) return
+    setCreateServices(prev => [...prev, {
+      name: createSvcName.trim(),
+      price: createSvcPrice.trim(),
+      description: createSvcDescription.trim(),
+      duration: createSvcDuration.trim(),
+    }])
+    setCreateSvcName('')
+    setCreateSvcPrice('')
+    setCreateSvcDescription('')
+    setCreateSvcDuration('')
+    setShowCreateSvcForm(false)
   }
 
   async function handleAvatarUpload(e) {
@@ -243,6 +294,67 @@ export default function Dashboard() {
       setTimeout(() => setClientReviewSuccess(false), 3000)
     }
     setClientReviewSubmitting(false)
+  }
+
+  function openServiceForm(svc = null) {
+    setEditingService(svc)
+    setServiceName(svc?.name || '')
+    setServicePrice(svc?.price || '')
+    setServiceDescription(svc?.description || '')
+    setServiceDuration(svc?.duration || '')
+    setServiceError(null)
+    setShowServiceForm(true)
+  }
+
+  function closeServiceForm() {
+    setShowServiceForm(false)
+    setEditingService(null)
+    setServiceName('')
+    setServicePrice('')
+    setServiceDescription('')
+    setServiceDuration('')
+    setServiceError(null)
+  }
+
+  async function handleServiceSubmit(e) {
+    e.preventDefault()
+    setServiceSaving(true)
+    setServiceError(null)
+
+    const payload = {
+      name: serviceName,
+      price: servicePrice,
+      description: serviceDescription,
+      duration: serviceDuration || null,
+    }
+
+    let error
+    if (editingService) {
+      ;({ error } = await supabase.from('services').update(payload).eq('id', editingService.id))
+      if (!error) {
+        setServices(prev => prev.map(s => s.id === editingService.id ? { ...s, ...payload } : s))
+      }
+    } else {
+      const { data, error: insertError } = await supabase
+        .from('services')
+        .insert({ ...payload, freelancer_id: profile.id })
+        .select()
+        .single()
+      error = insertError
+      if (!error) setServices(prev => [...prev, data])
+    }
+
+    if (error) {
+      setServiceError(error.message)
+    } else {
+      closeServiceForm()
+    }
+    setServiceSaving(false)
+  }
+
+  async function handleServiceDelete(id) {
+    await supabase.from('services').delete().eq('id', id)
+    setServices(prev => prev.filter(s => s.id !== id))
   }
 
   async function handleEmailUpdate(e) {
@@ -437,7 +549,9 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-sm font-medium text-gray-700">${f.hourly_rate}<span className="text-xs text-gray-400 font-normal">/hr</span></span>
+                      {getPriceIndicator(f.hourly_rate) && (
+                        <span className="text-sm font-bold" style={{ color: '#00267F' }}>{getPriceIndicator(f.hourly_rate)}</span>
+                      )}
                       <a
                         href={`/freelancers/${f.id}`}
                         className="text-white px-4 py-2 rounded-full text-xs font-medium hover:opacity-90 transition-opacity"
@@ -579,7 +693,8 @@ export default function Dashboard() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Hourly rate</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rate (used to show price range)</label>
+                    <p className="text-xs text-gray-400 mb-2">This number is never shown publicly — it's used to display a price range indicator ($, $$, $$$, $$$$) on your profile.</p>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
                       <input
@@ -623,6 +738,127 @@ export default function Dashboard() {
                     {saving ? 'Saving...' : 'Save changes'}
                   </button>
                 </form>
+              )}
+            </div>
+
+            {/* My services */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
+              <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="font-semibold text-gray-900">My services</h2>
+                {!showServiceForm && (
+                  <button
+                    onClick={() => openServiceForm()}
+                    className="text-white px-4 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#00267F' }}
+                  >
+                    + Add service
+                  </button>
+                )}
+              </div>
+
+              {showServiceForm && (
+                <div className="px-6 sm:px-8 py-6 border-b border-gray-100 bg-gray-50">
+                  <h3 className="font-semibold text-gray-900 mb-4">{editingService ? 'Edit service' : 'New service'}</h3>
+                  <form onSubmit={handleServiceSubmit} className="flex flex-col gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Service name</label>
+                        <input
+                          type="text"
+                          required
+                          value={serviceName}
+                          onChange={e => setServiceName(e.target.value)}
+                          placeholder="e.g. Full house rewire"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                        <input
+                          type="text"
+                          required
+                          value={servicePrice}
+                          onChange={e => setServicePrice(e.target.value)}
+                          placeholder='e.g. $150, From $80, Price on request'
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <textarea
+                        value={serviceDescription}
+                        onChange={e => setServiceDescription(e.target.value)}
+                        rows={3}
+                        placeholder="Describe what's included in this service..."
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Duration <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <input
+                        type="text"
+                        value={serviceDuration}
+                        onChange={e => setServiceDuration(e.target.value)}
+                        placeholder="e.g. 2–4 hours, 1 day"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      />
+                    </div>
+                    {serviceError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{serviceError}</p>}
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={closeServiceForm}
+                        className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-medium hover:border-gray-300 transition-colors bg-white"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={serviceSaving}
+                        className="flex-1 text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: '#00267F' }}
+                      >
+                        {serviceSaving ? 'Saving...' : editingService ? 'Save changes' : 'Add service'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {services.length === 0 && !showServiceForm ? (
+                <div className="px-6 sm:px-8 py-8 text-center">
+                  <p className="text-sm text-gray-400">No services yet. Add one to show clients what you offer.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {services.map(svc => (
+                    <div key={svc.id} className="px-6 sm:px-8 py-5 flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900">{svc.name}</p>
+                        {svc.description && <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{svc.description}</p>}
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-sm font-bold" style={{ color: '#00267F' }}>{svc.price}</span>
+                          {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => openServiceForm(svc)}
+                          className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleServiceDelete(svc.id)}
+                          className="px-3 py-1.5 rounded-lg border border-red-100 text-sm font-medium text-red-500 hover:border-red-300 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -825,15 +1061,19 @@ export default function Dashboard() {
               <>
                 <h2 className="text-lg font-bold text-gray-900 mb-6">Create your freelancer profile</h2>
                 <form onSubmit={handleCreate} className="flex flex-col gap-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
-                      <input type="text" required value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Jane Smith" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Trade / profession</label>
-                      <input type="text" required value={createTrade} onChange={e => setCreateTrade(e.target.value)} placeholder="e.g. Plumber, Graphic Designer" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+                    <input type="text" required value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Jane Smith" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Company name <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <input type="text" value={createCompanyName} onChange={e => setCreateCompanyName(e.target.value)} placeholder="e.g. Santana's Plumbing (optional)" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Trade / profession</label>
+                    <input type="text" required value={createTrade} onChange={e => setCreateTrade(e.target.value)} placeholder="e.g. Plumber, Graphic Designer" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
                   </div>
 
                   <div>
@@ -847,7 +1087,8 @@ export default function Dashboard() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Hourly rate</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rate (used to show price range)</label>
+                    <p className="text-xs text-gray-400 mb-2">This number is never shown publicly — it's used to display a price range indicator ($, $$, $$$, $$$$) on your profile.</p>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
                       <input type="text" required value={createRate} onChange={e => setCreateRate(e.target.value)} placeholder="60" className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
@@ -865,6 +1106,115 @@ export default function Dashboard() {
                       <button type="button" onClick={() => setCreateAvailable(true)} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${createAvailable ? 'border-green-500 bg-green-50 text-green-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>Available</button>
                       <button type="button" onClick={() => setCreateAvailable(false)} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${!createAvailable ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>Unavailable</button>
                     </div>
+                  </div>
+
+                  {/* Services section */}
+                  <div className="border border-gray-100 rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="font-semibold text-gray-900 text-sm">Your services <span className="text-gray-400 font-normal">(optional)</span></h3>
+                      {!showCreateSvcForm && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCreateSvcForm(true)}
+                          className="text-sm font-medium hover:opacity-80 transition-opacity"
+                          style={{ color: '#00267F' }}
+                        >
+                          + Add a service
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mb-4">You can add these later from your dashboard.</p>
+
+                    {/* Added service cards */}
+                    {createServices.length > 0 && (
+                      <div className="flex flex-col gap-2 mb-4">
+                        {createServices.map((svc, i) => (
+                          <div key={i} className="flex items-start justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 text-sm">{svc.name}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-sm font-semibold" style={{ color: '#00267F' }}>{svc.price}</span>
+                                {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
+                              </div>
+                              {svc.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{svc.description}</p>}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setCreateServices(prev => prev.filter((_, idx) => idx !== i))}
+                              className="flex-shrink-0 text-xs text-red-400 hover:text-red-600 font-medium transition-colors mt-0.5"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Inline add-service form */}
+                    {showCreateSvcForm && (
+                      <div className="flex flex-col gap-3 pt-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Service name</label>
+                            <input
+                              type="text"
+                              value={createSvcName}
+                              onChange={e => setCreateSvcName(e.target.value)}
+                              placeholder="e.g. Full house rewire"
+                              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 text-sm outline-none focus:border-gray-400 bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Price</label>
+                            <input
+                              type="text"
+                              value={createSvcPrice}
+                              onChange={e => setCreateSvcPrice(e.target.value)}
+                              placeholder="e.g. $150, From $80"
+                              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 text-sm outline-none focus:border-gray-400 bg-white"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+                          <textarea
+                            value={createSvcDescription}
+                            onChange={e => setCreateSvcDescription(e.target.value)}
+                            rows={2}
+                            placeholder="Describe what's included..."
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 text-sm outline-none focus:border-gray-400 bg-white resize-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Duration <span className="text-gray-400 font-normal">(optional)</span></label>
+                          <input
+                            type="text"
+                            value={createSvcDuration}
+                            onChange={e => setCreateSvcDuration(e.target.value)}
+                            placeholder="e.g. 2–4 hours, 1 day"
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 text-sm outline-none focus:border-gray-400 bg-white"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setShowCreateSvcForm(false); setCreateSvcName(''); setCreateSvcPrice(''); setCreateSvcDescription(''); setCreateSvcDuration('') }}
+                            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-300 transition-colors bg-white"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={addCreateService}
+                            disabled={!createSvcName.trim() || !createSvcPrice.trim()}
+                            className="flex-1 text-white py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{ backgroundColor: '#00267F' }}
+                          >
+                            Add service
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {createError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{createError}</p>}
