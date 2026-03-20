@@ -4,6 +4,11 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
 
+function displayName(author) {
+  if (!author) return ''
+  return author.includes('@') ? author.split('@')[0] : author
+}
+
 function StarRating({ rating }) {
   return (
     <div className="flex gap-0.5">
@@ -930,10 +935,10 @@ export default function Dashboard() {
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600">
-                                    {review.author[0]}
+                                    {displayName(review.author)[0]}
                                   </div>
                                   <div>
-                                    <p className="font-medium text-gray-900 text-sm">{review.author}</p>
+                                    <p className="font-medium text-gray-900 text-sm">{displayName(review.author)}</p>
                                     <p className="text-xs text-gray-400">{review.date}</p>
                                   </div>
                                 </div>
@@ -957,10 +962,10 @@ export default function Dashboard() {
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-sm font-semibold" style={{ color: '#00267F' }}>
-                                    {review.author[0]}
+                                    {displayName(review.author)[0]}
                                   </div>
                                   <div>
-                                    <p className="font-medium text-gray-900 text-sm">{review.author}</p>
+                                    <p className="font-medium text-gray-900 text-sm">{displayName(review.author)}</p>
                                     <p className="text-xs text-gray-400">{review.date}</p>
                                   </div>
                                 </div>

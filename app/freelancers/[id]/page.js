@@ -52,13 +52,13 @@ export default function FreelancerProfile() {
         if (u.user_metadata?.role !== 'client') {
           const { data: fp } = await supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single()
           setFreelancerProfile(fp || null)
-          setSenderName(fp?.name || u.user_metadata?.full_name || u.email)
+          setSenderName(fp?.name || u.user_metadata?.full_name || u.email.split('@')[0])
           if (fp) {
             const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', fp.id).eq('read', false)
             setUnreadCount(count || 0)
           }
         } else {
-          setSenderName(u.user_metadata?.full_name || u.email)
+          setSenderName(u.user_metadata?.full_name || u.email.split('@')[0])
         }
       }
     })
@@ -121,9 +121,16 @@ export default function FreelancerProfile() {
     setReviewSubmitting(true)
     setReviewError(null)
 
+    let reviewerName = freelancerProfile?.name
+    if (!reviewerName) {
+      const { data: fp } = await supabase.from('freelancers').select('name').eq('user_id', user.id).single()
+      reviewerName = fp?.name
+    }
+    if (!reviewerName) reviewerName = user.user_metadata?.full_name || user.email.split('@')[0]
+
     const { error } = await supabase.from('reviews').insert({
       freelancer_id: freelancer.id,
-      author: user.email,
+      author: reviewerName,
       rating: reviewRating,
       comment: reviewComment,
       type: 'client',
