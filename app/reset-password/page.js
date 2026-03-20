@@ -1,8 +1,10 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function ResetPassword() {
+  const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -24,6 +26,7 @@ export default function ResetPassword() {
       setError(error.message)
     } else {
       setSuccess(true)
+      setTimeout(() => router.push('/dashboard'), 2000)
     }
     setLoading(false)
   }
@@ -36,62 +39,70 @@ export default function ResetPassword() {
 
       <div className="max-w-md mx-auto px-8 py-16">
         <div className="bg-white rounded-2xl p-8 border border-gray-100">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Set new password</h1>
-          <p className="text-gray-500 text-sm mb-8">Choose a new password for your account.</p>
 
           {success ? (
-            <div className="text-center py-4">
-              <p className="text-4xl mb-4">✅</p>
-              <p className="font-semibold text-gray-900 mb-1">Password updated successfully</p>
-              <p className="text-gray-500 text-sm mb-6">You can now log in with your new password.</p>
-              <a
-                href="/login"
-                className="inline-block text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#00267F' }}
-              >
-                Go to login
-              </a>
+            <div className="flex flex-col items-center text-center py-4">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: '#00267F' }}>
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Password updated</h1>
+              <p className="text-gray-500 text-sm mb-6">Redirecting you to your dashboard...</p>
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Just a moment
+              </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
-                />
-              </div>
+            <>
+              <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">Set new password</h1>
+              <p className="text-gray-500 text-sm text-center mb-8">Choose a new password for your account.</p>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
-                <input
-                  type="password"
-                  required
-                  value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
-                  placeholder="Repeat your new password"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
-                />
-              </div>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                  />
+                </div>
 
-              {error && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>
-              )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+                  <input
+                    type="password"
+                    required
+                    value={confirm}
+                    onChange={e => setConfirm(e.target.value)}
+                    placeholder="Repeat your new password"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                  />
+                </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                style={{ backgroundColor: '#00267F' }}
-              >
-                {loading ? 'Updating...' : 'Update password'}
-              </button>
-            </form>
+                {error && (
+                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  {loading ? 'Updating...' : 'Update password'}
+                </button>
+              </form>
+            </>
           )}
+
         </div>
       </div>
 
