@@ -284,7 +284,12 @@ export default function FreelancerProfile() {
                 </div>
                 <div className="sm:text-right">
                   {getPriceIndicator(freelancer.hourly_rate) && (
-                    <p className="text-2xl font-bold" style={{ color: '#00267F' }}>{getPriceIndicator(freelancer.hourly_rate)}</p>
+                    <>
+                      <p className="text-2xl font-bold" style={{ color: '#00267F' }}>{getPriceIndicator(freelancer.hourly_rate)}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        <span className="font-medium" style={{ color: '#00267F' }}>$</span> = Under $30&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$</span> = $30–$60&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$</span> = $60–$100&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$$</span> = $100+
+                      </p>
+                    </>
                   )}
                   <button
                     onClick={() => setContactOpen(true)}

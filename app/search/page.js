@@ -287,6 +287,10 @@ function SearchPage() {
           )}
         </div>
 
+        <p className="text-xs text-gray-400 mt-2 mb-6">
+          <span className="font-medium" style={{ color: '#00267F' }}>$</span> = Under $30&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$</span> = $30–$60&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$</span> = $60–$100&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$$</span> = $100+
+        </p>
+
         {loading ? (
           <div className="text-center py-20 text-gray-400">
             <p className="text-sm">Loading freelancers...</p>
