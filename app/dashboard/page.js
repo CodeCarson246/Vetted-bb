@@ -500,19 +500,20 @@ export default function Dashboard() {
         {role === 'client' ? (
           <div className="flex flex-col gap-6">
 
-            {/* Welcome card */}
-            <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Welcome card - navy hero */}
+            <div className="rounded-2xl overflow-hidden shadow-sm">
+              <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5" style={{ backgroundColor: '#00267F' }}>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">
-                    Welcome back{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name.split(' ')[0]}` : ''}!
+                  <p className="text-sm font-medium mb-1" style={{ color: '#93b8ff' }}>Welcome back</p>
+                  <h1 className="text-2xl font-bold text-white leading-tight">
+                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there'}
                   </h1>
-                  <p className="text-gray-500 text-sm mt-1">{user?.email}</p>
+                  <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>{user?.email}</p>
                 </div>
                 <a
                   href="/search"
-                  className="flex-shrink-0 text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-opacity text-center"
-                  style={{ backgroundColor: '#00267F' }}
+                  className="flex-shrink-0 px-6 py-3 rounded-full font-semibold hover:opacity-90 transition-opacity text-center"
+                  style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                 >
                   Find a freelancer
                 </a>
@@ -521,11 +522,13 @@ export default function Dashboard() {
 
             {/* Stats row */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-2xl p-5 border border-gray-100 text-center">
+              <div className="bg-white rounded-2xl p-5 border border-gray-100 text-center" style={{ borderTop: '3px solid #00267F' }}>
+                <svg className="w-5 h-5 mx-auto mb-2 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                 <p className="text-3xl font-bold text-gray-900">{clientReviewsLeft.length}</p>
                 <p className="text-sm text-gray-500 mt-1">Reviews left</p>
               </div>
-              <div className="bg-white rounded-2xl p-5 border border-gray-100 text-center">
+              <div className="bg-white rounded-2xl p-5 border border-gray-100 text-center" style={{ borderTop: '3px solid #00267F' }}>
+                <svg className="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#00267F' }}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 <p className="text-3xl font-bold text-gray-900">{clientMessages.length}</p>
                 <p className="text-sm text-gray-500 mt-1">Freelancers contacted</p>
               </div>
@@ -626,51 +629,55 @@ export default function Dashboard() {
           </div>
         ) : profile ? (
           <>
-            {/* Profile card */}
-            <div className="bg-white rounded-2xl p-6 sm:p-8 mb-6 border border-gray-100">
-              <div className="flex flex-col sm:flex-row gap-6 items-start">
-                <div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+            {/* Profile card - navy hero */}
+            <div className="rounded-2xl mb-6 overflow-hidden shadow-sm">
+              <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start" style={{ backgroundColor: '#00267F' }}>
+                {/* Avatar */}
+                <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 overflow-hidden" style={{ boxShadow: '0 0 0 4px rgba(255,255,255,0.2)' }}>
                   {profile.avatar_url
                     ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                     : profile.name.split(' ').map(n => n[0]).join('')}
                 </div>
-                <div className="flex-1">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div>
-                      <h1 className="text-xl font-bold text-gray-900">{profile.name}</h1>
-                      <p className="font-medium" style={{ color: '#00267F' }}>{profile.trade}</p>
-                      <p className="text-gray-500 text-sm">{profile.location}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <StarRating rating={profile.rating} />
-                        <span className="text-sm font-medium text-gray-700">{profile.rating}</span>
-                        <span className="text-xs text-gray-400">({profile.review_count} reviews)</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${profile.available ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                          {profile.available ? 'Available' : 'Unavailable'}
-                        </span>
-                      </div>
+                {/* Info */}
+                <div className="flex-1 min-w-0 text-center sm:text-left">
+                  <h1 className="text-2xl font-bold text-white leading-tight">{profile.name}</h1>
+                  <p className="font-semibold mt-0.5 capitalize" style={{ color: '#F9C000' }}>{profile.trade}</p>
+                  {profile.location && <p className="text-sm mt-1 capitalize" style={{ color: '#93b8ff' }}>📍 {profile.location}</p>}
+                  <div className="flex items-center gap-2 mt-2.5 justify-center sm:justify-start flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <StarRating rating={profile.rating} />
+                      <span className="text-sm font-medium text-white ml-0.5">{profile.rating}</span>
+                      <span className="text-xs" style={{ color: '#93b8ff' }}>({profile.review_count} reviews)</span>
                     </div>
-                    <div className="flex gap-2 flex-wrap sm:flex-col sm:items-end">
-                      <a
-                        href={`/freelancers/${profile.id}`}
-                        className="px-4 py-2 border border-gray-200 rounded-full text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
-                      >
-                        View public profile
-                      </a>
-                      <button
-                        onClick={() => setShowEditForm(v => !v)}
-                        className="px-4 py-2 text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
-                        style={{ backgroundColor: '#00267F' }}
-                      >
-                        {showEditForm ? 'Cancel' : 'Edit profile'}
-                      </button>
-                    </div>
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${profile.available ? 'text-green-300' : 'text-white/50'}`} style={{ backgroundColor: profile.available ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.1)' }}>
+                      ● {profile.available ? 'Available' : 'Unavailable'}
+                    </span>
                   </div>
+                </div>
+                {/* Buttons */}
+                <div className="flex sm:flex-col gap-2 flex-shrink-0">
+                  <a
+                    href={`/freelancers/${profile.id}`}
+                    className="px-4 py-2 rounded-full text-sm font-medium text-white transition-colors text-center"
+                    style={{ border: '1.5px solid rgba(255,255,255,0.4)' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    View public profile
+                  </a>
+                  <button
+                    onClick={() => setShowEditForm(v => !v)}
+                    className="px-4 py-2 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                  >
+                    {showEditForm ? 'Cancel' : 'Edit profile'}
+                  </button>
                 </div>
               </div>
 
               {/* Edit form */}
               {showEditForm && (
-                <form onSubmit={handleSave} className="mt-6 pt-6 border-t border-gray-100 flex flex-col gap-5">
+                <form onSubmit={handleSave} className="bg-white px-6 sm:px-10 pt-6 pb-8 flex flex-col gap-5">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Profile photo</label>
                     <div className="flex items-center gap-4">
@@ -869,15 +876,18 @@ export default function Dashboard() {
 
             {/* Tabs */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-              <div className="flex border-b border-gray-100">
+              <div className="flex border-b border-gray-100 px-2">
                 {['overview', 'reviews', 'leave-a-review'].map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-5 py-4 text-sm font-medium transition-colors ${activeTab === tab ? 'border-b-2 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
-                    style={activeTab === tab ? { color: '#00267F', borderColor: '#00267F' } : {}}
+                    className={`px-6 py-4 text-sm font-semibold transition-colors relative ${activeTab === tab ? '' : 'text-gray-400 hover:text-gray-600'}`}
+                    style={activeTab === tab ? { color: '#00267F' } : {}}
                   >
                     {tab === 'overview' ? 'Overview' : tab === 'reviews' ? 'Reviews' : 'Leave a review'}
+                    {activeTab === tab && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full" style={{ backgroundColor: '#00267F' }} />
+                    )}
                   </button>
                 ))}
               </div>
@@ -888,20 +898,23 @@ export default function Dashboard() {
                 {activeTab === 'overview' && (
                   <div className="flex flex-col gap-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="bg-gray-50 rounded-xl p-5 text-center">
+                      <div className="bg-white rounded-xl p-5 text-center border border-gray-100" style={{ borderTop: '3px solid #00267F' }}>
+                        <svg className="w-5 h-5 mx-auto mb-2 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                         <p className="text-3xl font-bold text-gray-900">{profile.rating}</p>
                         <div className="flex justify-center mt-1 mb-1">
                           <StarRating rating={profile.rating} />
                         </div>
                         <p className="text-sm text-gray-500">Average rating</p>
                       </div>
-                      <div className="bg-gray-50 rounded-xl p-5 text-center">
+                      <div className="bg-white rounded-xl p-5 text-center border border-gray-100" style={{ borderTop: '3px solid #00267F' }}>
+                        <svg className="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#00267F' }}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                         <p className="text-3xl font-bold text-gray-900">{profile.review_count}</p>
                         <p className="text-sm text-gray-500 mt-2">Total reviews</p>
                       </div>
-                      <div className="bg-gray-50 rounded-xl p-5 text-center">
+                      <div className="bg-white rounded-xl p-5 text-center border border-gray-100" style={{ borderTop: '3px solid #00267F' }}>
+                        <svg className="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#00267F' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <p className="text-3xl font-bold text-gray-900">${profile.hourly_rate}</p>
-                        <p className="text-sm text-gray-500 mt-2">Per hour</p>
+                        <p className="text-sm text-gray-500 mt-2">Hourly rate</p>
                       </div>
                     </div>
 
@@ -931,20 +944,20 @@ export default function Dashboard() {
                       ) : (
                         <div className="flex flex-col gap-3">
                           {clientReviews.map((review, i) => (
-                            <div key={i} className="border border-gray-100 rounded-xl p-5">
-                              <div className="flex items-center justify-between mb-2">
+                            <div key={i} className="rounded-xl p-5 border border-gray-100" style={{ borderLeft: '3px solid #00267F' }}>
+                              <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600">
-                                    {displayName(review.author)[0]}
+                                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
+                                    {displayName(review.author)[0]?.toUpperCase()}
                                   </div>
                                   <div>
-                                    <p className="font-medium text-gray-900 text-sm">{displayName(review.author)}</p>
+                                    <p className="font-semibold text-gray-900 text-sm">{displayName(review.author)}</p>
                                     <p className="text-xs text-gray-400">{review.date}</p>
                                   </div>
                                 </div>
                                 <StarRating rating={review.rating} />
                               </div>
-                              <p className="text-gray-600 text-sm">{review.comment}</p>
+                              <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
                             </div>
                           ))}
                         </div>
@@ -958,20 +971,20 @@ export default function Dashboard() {
                       ) : (
                         <div className="flex flex-col gap-3">
                           {freelancerReviews.map((review, i) => (
-                            <div key={i} className="border border-gray-100 rounded-xl p-5">
-                              <div className="flex items-center justify-between mb-2">
+                            <div key={i} className="rounded-xl p-5 border border-gray-100" style={{ borderLeft: '3px solid #F9C000' }}>
+                              <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-sm font-semibold" style={{ color: '#00267F' }}>
-                                    {displayName(review.author)[0]}
+                                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#FEF9E7', color: '#00267F' }}>
+                                    {displayName(review.author)[0]?.toUpperCase()}
                                   </div>
                                   <div>
-                                    <p className="font-medium text-gray-900 text-sm">{displayName(review.author)}</p>
+                                    <p className="font-semibold text-gray-900 text-sm">{displayName(review.author)}</p>
                                     <p className="text-xs text-gray-400">{review.date}</p>
                                   </div>
                                 </div>
                                 <StarRating rating={review.rating} />
                               </div>
-                              <p className="text-gray-600 text-sm">{review.comment}</p>
+                              <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
                             </div>
                           ))}
                         </div>
@@ -1247,7 +1260,13 @@ export default function Dashboard() {
             onClick={() => setSettingsOpen(v => !v)}
             className="w-full flex items-center justify-between px-6 sm:px-8 py-5 text-left hover:bg-gray-50 transition-colors"
           >
-            <span className="font-semibold text-gray-900">Account settings</span>
+            <div className="flex items-center gap-2.5">
+              <svg className="w-4.5 h-4.5 w-5 h-5 flex-shrink-0" style={{ color: '#00267F' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="font-semibold text-gray-900">Account settings</span>
+            </div>
             <svg
               className="w-5 h-5 text-gray-400 transition-transform"
               style={{ transform: settingsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}

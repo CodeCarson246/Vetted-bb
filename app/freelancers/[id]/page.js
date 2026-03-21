@@ -4,11 +4,11 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
 
-function StarRating({ rating }) {
+function StarRating({ rating, light = false }) {
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-0.5">
       {[1,2,3,4,5].map(star => (
-        <span key={star} className={star <= Math.round(rating) ? "text-yellow-400" : "text-gray-200"}>★</span>
+        <span key={star} className={`text-sm ${star <= Math.round(rating) ? 'text-yellow-400' : light ? 'text-white/30' : 'text-gray-200'}`}>★</span>
       ))}
     </div>
   )
@@ -176,8 +176,14 @@ export default function FreelancerProfile() {
     )
   }
 
+  const clientReviewsList = reviews.filter(r => r.type === 'client')
+  const freelancerReviewsList = reviews.filter(r => r.type === 'freelancer')
+  const priceIndicator = getPriceIndicator(freelancer.hourly_rate)
+
   return (
     <main className="min-h-screen bg-gray-50">
+
+      {/* Navbar */}
       <nav className="relative bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
           <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
@@ -219,13 +225,7 @@ export default function FreelancerProfile() {
             ) : (
               <>
                 <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
-                <a
-                  href="/signup"
-                  className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: '#00267F' }}
-                >
-                  Sign up
-                </a>
+                <a href="/signup" className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Sign up</a>
               </>
             )}
           </div>
@@ -273,84 +273,110 @@ export default function FreelancerProfile() {
         )}
       </nav>
 
-      <div className="max-w-4xl mx-auto px-8 py-12">
+      {/* ── Hero banner ── */}
+      <div className="w-full" style={{ backgroundColor: '#00267F' }}>
+        <div className="max-w-4xl mx-auto px-6 sm:px-8 py-10">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
 
-        <div className="bg-white rounded-2xl p-6 sm:p-8 mb-6 border border-gray-100">
-          <div className="flex flex-col sm:flex-row gap-6 items-start">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-blue-50 flex items-center justify-center text-3xl font-bold flex-shrink-0 overflow-hidden" style={{ color: '#00267F' }}>
+            {/* Avatar */}
+            <div className="w-24 h-24 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-2xl font-bold border-4 border-white/30" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }}>
               {freelancer.avatar_url
                 ? <img src={freelancer.avatar_url} alt={freelancer.name} className="w-full h-full object-cover" />
-                : freelancer.name.split(" ").map(n => n[0]).join("")}
+                : freelancer.name.split(' ').map(n => n[0]).join('')}
             </div>
-            <div className="flex-1 w-full">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{freelancer.name}</h1>
-                  <p className="font-medium" style={{ color: '#00267F' }}>{freelancer.trade}</p>
-                  <p className="text-gray-500 text-sm mt-1">{freelancer.location}</p>
+                  <h1 className="text-2xl font-bold text-white capitalize">{freelancer.name}</h1>
+                  <p className="font-semibold mt-0.5 capitalize" style={{ color: '#F9C000' }}>{freelancer.trade}</p>
+                  {freelancer.location && (
+                    <p className="text-sm mt-0.5 capitalize" style={{ color: '#93b8ff' }}>📍 {freelancer.location}</p>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 mt-3">
+                    <div>
+                      <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Freelancer rating</p>
+                      <div className="flex items-center gap-1.5">
+                        <StarRating rating={freelancer.rating} light />
+                        <span className="text-white text-sm font-semibold">{freelancer.rating}</span>
+                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>({freelancer.review_count})</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Client rating</p>
+                      <div className="flex items-center gap-1.5">
+                        <StarRating rating={freelancer.client_rating} light />
+                        <span className="text-white text-sm font-semibold">{freelancer.client_rating}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="sm:text-right">
-                  {getPriceIndicator(freelancer.hourly_rate) && (
-                    <>
-                      <p className="text-2xl font-bold" style={{ color: '#00267F' }}>{getPriceIndicator(freelancer.hourly_rate)}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        <span className="font-medium" style={{ color: '#00267F' }}>$</span> = Under $30&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$</span> = $30–$60&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$</span> = $60–$100&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$$</span> = $100+
-                      </p>
-                    </>
+
+                {/* Right: price + contact */}
+                <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-3 flex-shrink-0">
+                  {priceIndicator && (
+                    <span className="text-sm font-bold px-3 py-1 rounded-full border-2" style={{ color: '#F9C000', borderColor: '#F9C000' }}>
+                      {priceIndicator}
+                    </span>
                   )}
                   <button
                     onClick={() => setContactOpen(true)}
-                    className="mt-2 text-white px-6 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
-                    style={{ backgroundColor: '#00267F' }}
+                    className="font-semibold px-6 py-2.5 rounded-full hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                   >
                     Contact
                   </button>
                 </div>
               </div>
-
-              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mt-4">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Freelancer rating</p>
-                  <div className="flex items-center gap-2">
-                    <StarRating rating={freelancer.rating} />
-                    <span className="font-semibold text-gray-900">{freelancer.rating}</span>
-                    <span className="text-gray-400 text-sm">({freelancer.review_count} reviews)</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Client rating</p>
-                  <div className="flex items-center gap-2">
-                    <StarRating rating={freelancer.client_rating} />
-                    <span className="font-semibold text-gray-900">{freelancer.client_rating}</span>
-                    <span className="text-gray-400 text-sm">(rated by freelancers)</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
+        {/* Gold accent stripe */}
+        <div className="h-1" style={{ backgroundColor: '#F9C000' }} />
+      </div>
 
-        <div className="bg-white rounded-2xl p-8 mb-6 border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">About</h2>
-          <p className="text-gray-600 leading-relaxed">{freelancer.bio}</p>
-          <div className="flex flex-wrap gap-2 mt-4">
-            {(freelancer.skills || []).map(skill => (
-              <span key={skill} className="bg-blue-50 px-3 py-1 rounded-full text-sm font-medium" style={{ color: '#00267F' }}>{skill}</span>
-            ))}
+      {/* ── Content ── */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
+
+        {/* About */}
+        <div className="bg-white rounded-xl border border-gray-100 border-l-4 overflow-hidden" style={{ borderLeftColor: '#00267F' }}>
+          <div className="px-7 py-6">
+            <h2 className="text-base font-bold text-gray-900 mb-3">About</h2>
+            <p className="text-gray-600 leading-relaxed text-sm">{freelancer.bio}</p>
+            {(freelancer.skills || []).length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-5">
+                {(freelancer.skills || []).map(skill => (
+                  <span key={skill} className="text-xs px-3 py-1 rounded-full border font-medium" style={{ color: '#00267F', borderColor: '#00267F' }}>{skill}</span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Services */}
         {services.length > 0 && (
-          <div className="bg-white rounded-2xl p-8 mb-6 border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-5">Services</h2>
+          <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
+            <h2 className="text-base font-bold text-gray-900 mb-5">Services</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {services.map(s => (
-                <div key={s.id} className="border border-gray-100 rounded-xl p-5 flex flex-col gap-2">
-                  <p className="font-semibold text-gray-900">{s.name}</p>
-                  {s.description && <p className="text-sm text-gray-500 leading-relaxed">{s.description}</p>}
-                  <div className="flex items-center gap-3 mt-auto pt-2">
-                    <span className="text-sm font-bold" style={{ color: '#00267F' }}>{s.price}</span>
-                    {s.duration && <span className="text-sm text-gray-400">{s.duration}</span>}
+                <div
+                  key={s.id}
+                  className="border border-gray-100 rounded-xl p-5 flex flex-col gap-2 hover:border-gray-300 transition-colors"
+                  style={{ '--hover-border': '#00267F' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = ''}
+                >
+                  <p className="font-bold text-gray-900 text-sm">{s.name}</p>
+                  {s.description && (
+                    <p className="text-xs text-gray-500 leading-relaxed flex-1">{s.description}</p>
+                  )}
+                  <div className="flex items-center justify-between mt-auto pt-3">
+                    <span className="text-lg font-bold" style={{ color: '#00267F' }}>{s.price}</span>
+                    {s.duration && (
+                      <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">{s.duration}</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -358,54 +384,63 @@ export default function FreelancerProfile() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl p-8 border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Reviews</h2>
-          <div className="flex gap-1 mb-6 border-b border-gray-100">
-            <button
-              onClick={() => setActiveTab('client')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'client' ? 'border-b-2 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
-              style={activeTab === 'client' ? { color: '#00267F', borderColor: '#00267F' } : {}}
-            >
-              Reviews about me
-            </button>
-            <button
-              onClick={() => setActiveTab('freelancer')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'freelancer' ? 'border-b-2 -mb-px' : 'text-gray-500 hover:text-gray-700'}`}
-              style={activeTab === 'freelancer' ? { color: '#00267F', borderColor: '#00267F' } : {}}
-            >
-              Their client reviews
-            </button>
+        {/* Reviews */}
+        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="px-7 pt-6 pb-0">
+            <h2 className="text-base font-bold text-gray-900 mb-4">Reviews</h2>
+            <div className="flex gap-2">
+              {[
+                { key: 'client', label: 'About this freelancer', count: clientReviewsList.length },
+                { key: 'freelancer', label: 'Their client reviews', count: freelancerReviewsList.length },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${activeTab === tab.key ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                  style={activeTab === tab.key ? { backgroundColor: '#00267F' } : {}}
+                >
+                  {tab.label} <span className="ml-1 opacity-70">({tab.count})</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-col gap-4">
-            {reviews.filter(r => r.type === activeTab).map((review, i) => (
-              <div key={i} className="border border-gray-100 rounded-xl p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600">
-                      {review.author[0]}
+
+          <div className="px-7 py-6">
+            {reviews.filter(r => r.type === activeTab).length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">No reviews yet.</p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {reviews.filter(r => r.type === activeTab).map((review, i) => (
+                  <div key={i} className="border border-gray-100 rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                          {review.author[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">{review.author}</p>
+                          <p className="text-xs text-gray-400">{review.date}</p>
+                        </div>
+                      </div>
+                      <StarRating rating={review.rating} />
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{review.author}</p>
-                      <p className="text-xs text-gray-400">{review.date}</p>
-                    </div>
+                    <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
                   </div>
-                  <StarRating rating={review.rating} />
-                </div>
-                <p className="text-gray-600 text-sm">{review.comment}</p>
+                ))}
               </div>
-            ))}
-            {reviews.filter(r => r.type === activeTab).length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-6">No reviews yet.</p>
             )}
           </div>
         </div>
 
+        {/* Leave a review */}
         {user && (
-          <div className="bg-white rounded-2xl p-8 border border-gray-100 mt-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-6">Leave a review</h2>
-            <form onSubmit={submitReview} className="flex flex-col gap-4">
+          <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
+            <h2 className="text-base font-bold text-gray-900 mb-1">Leave a review</h2>
+            <p className="text-sm text-gray-500 mb-6">Share your experience working with <span className="capitalize">{freelancer.name.split(' ')[0]}</span>.</p>
+
+            <form onSubmit={submitReview} className="flex flex-col gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Your rating</label>
                 <div className="flex gap-1">
                   {[1,2,3,4,5].map(star => (
                     <button
@@ -414,7 +449,7 @@ export default function FreelancerProfile() {
                       onClick={() => setReviewRating(star)}
                       onMouseEnter={() => setReviewHover(star)}
                       onMouseLeave={() => setReviewHover(0)}
-                      className="text-3xl leading-none transition-colors"
+                      className="text-4xl leading-none transition-colors focus:outline-none"
                     >
                       <span className={(reviewHover || reviewRating) >= star ? 'text-yellow-400' : 'text-gray-200'}>★</span>
                     </button>
@@ -423,28 +458,28 @@ export default function FreelancerProfile() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Comment</label>
                 <textarea
                   required
                   value={reviewComment}
                   onChange={e => setReviewComment(e.target.value)}
                   rows={3}
                   placeholder="Share your experience working with this freelancer..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-400 bg-white resize-none text-sm"
                 />
               </div>
 
               {reviewError && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{reviewError}</p>
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{reviewError}</p>
               )}
               {reviewSuccess && (
-                <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-3">Review submitted — thank you!</p>
+                <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg px-4 py-3">Review submitted — thank you!</p>
               )}
 
               <button
                 type="submit"
                 disabled={reviewSubmitting || reviewRating === 0}
-                className="w-full text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ backgroundColor: '#00267F' }}
               >
                 {reviewSubmitting ? 'Submitting...' : 'Submit review'}
@@ -455,7 +490,7 @@ export default function FreelancerProfile() {
 
       </div>
 
-      <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-12">
+      <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-4">
         <p>© 2026 Vetted.bb · Connecting Barbados</p>
         <p className="mt-1.5 text-xs">
           <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>

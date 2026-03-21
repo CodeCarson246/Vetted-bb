@@ -358,9 +358,9 @@ function SearchPage() {
                               />
                             </div>
                             {/* Trade + location */}
-                            <p className="text-sm font-medium mt-0.5" style={{ color: '#00267F' }}>
+                            <p className="text-sm font-medium mt-0.5 capitalize" style={{ color: '#00267F' }}>
                               {f.trade}
-                              {f.location && <span className="text-gray-400 font-normal"> · 📍 {f.location}</span>}
+                              {f.location && <span className="text-gray-400 font-normal capitalize"> · 📍 {f.location}</span>}
                             </p>
                           </div>
 
