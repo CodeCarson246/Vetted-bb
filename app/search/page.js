@@ -107,18 +107,16 @@ function SearchPage() {
           <div className="hidden sm:flex gap-4 items-center">
             {user ? (
               <>
-                {freelancerProfile ? (
-                  <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                      {freelancerProfile.avatar_url
-                        ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
-                        : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
-                  </a>
-                ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user?.user_metadata?.full_name || user.email}</a>
-                )}
+                <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+                    {freelancerProfile?.avatar_url
+                      ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
+                      : (freelancerProfile?.name || user.user_metadata?.full_name || user.email.split('@')[0]).split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="text-gray-600 text-sm font-medium">
+                    {freelancerProfile?.name || user.user_metadata?.full_name || user.email.split('@')[0]}
+                  </span>
+                </a>
                 {freelancerProfile && (
                   <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -162,18 +160,16 @@ function SearchPage() {
           <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
             {user ? (
               <>
-                {freelancerProfile ? (
-                  <a href="/dashboard" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                      {freelancerProfile.avatar_url
-                        ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
-                        : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
-                  </a>
-                ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name || user.email}</a>
-                )}
+                <a href="/dashboard" className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+                    {freelancerProfile?.avatar_url
+                      ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
+                      : (freelancerProfile?.name || user.user_metadata?.full_name || user.email.split('@')[0]).split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="text-gray-600 text-sm font-medium">
+                    {freelancerProfile?.name || user.user_metadata?.full_name || user.email.split('@')[0]}
+                  </span>
+                </a>
                 {freelancerProfile && (
                   <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
                     Inbox
@@ -196,164 +192,215 @@ function SearchPage() {
         )}
       </nav>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
-
-        {/* Search + sort row */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search by name, trade or skill..."
-            className="flex-1 px-5 py-3 border border-gray-200 rounded-full text-gray-900 outline-none focus:border-gray-400 bg-white"
-          />
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-            className="px-5 py-3 border border-gray-200 rounded-full text-gray-700 outline-none focus:border-gray-400 bg-white"
-          >
-            <option value="rating">Top rated</option>
-            <option value="reviews">Most reviewed</option>
-            <option value="price_low">Price: low to high</option>
-            <option value="price_high">Price: high to low</option>
-          </select>
+      {/* Page header */}
+      <div className="w-full py-8 px-4 sm:px-8" style={{ backgroundColor: '#00267F' }}>
+        <div className="max-w-5xl mx-auto">
+          <h1 className="text-2xl font-bold text-white">Find a freelancer</h1>
+          <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Browse trusted professionals across Barbados</p>
         </div>
+      </div>
 
-        {/* Filter bar */}
-        <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 mb-6 flex flex-wrap gap-4 items-center">
+      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8">
 
-          {/* Availability */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setAvailability('all')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${availability === 'all' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-              style={availability === 'all' ? { backgroundColor: '#00267F' } : {}}
+        {/* Search + filter card */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-3">
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="relative flex-1">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search by name, trade or skill..."
+                className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-400 bg-white text-sm"
+              />
+            </div>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="px-4 py-3 border border-gray-200 rounded-lg text-gray-700 outline-none focus:border-gray-400 bg-white text-sm"
             >
-              All
-            </button>
-            <button
-              onClick={() => setAvailability('available')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${availability === 'available' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-              style={availability === 'available' ? { backgroundColor: '#00267F' } : {}}
-            >
-              Available only
-            </button>
+              <option value="rating">Top rated</option>
+              <option value="reviews">Most reviewed</option>
+              <option value="price_low">Price: low to high</option>
+              <option value="price_high">Price: high to low</option>
+            </select>
           </div>
 
-          <div className="w-px h-5 bg-gray-200 hidden sm:block" />
-
-          {/* Price range */}
-          <select
-            value={priceRange}
-            onChange={e => setPriceRange(e.target.value)}
-            className="px-4 py-1.5 border border-gray-200 rounded-full text-sm text-gray-700 outline-none focus:border-gray-400 bg-white"
-          >
-            <option value="all">All prices</option>
-            <option value="$">$ Budget (under $30)</option>
-            <option value="$$">$$ Moderate ($30–$60)</option>
-            <option value="$$$">$$$ Premium ($60–$100)</option>
-            <option value="$$$$">$$$$ High end ($100+)</option>
-          </select>
-
-          <div className="w-px h-5 bg-gray-200 hidden sm:block" />
-
-          {/* Location */}
-          <select
-            value={location}
-            onChange={e => setLocation(e.target.value)}
-            className="px-4 py-1.5 border border-gray-200 rounded-full text-sm text-gray-700 outline-none focus:border-gray-400 bg-white"
-          >
-            <option value="">All locations</option>
-            {locations.map(loc => (
-              <option key={loc} value={loc}>{loc}</option>
-            ))}
-          </select>
-
-          {/* Active count + clear */}
-          {(activeFilterCount > 0 || query) && (
-            <div className="flex items-center gap-2 ml-auto">
-              {activeFilterCount > 0 && (
-                <span className="text-xs font-semibold text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: '#00267F' }}>
-                  {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
-                </span>
-              )}
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Availability */}
+            <div className="flex items-center gap-1.5">
               <button
-                onClick={clearFilters}
-                className="text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors"
+                onClick={() => setAvailability('all')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${availability === 'all' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                style={availability === 'all' ? { backgroundColor: '#00267F' } : {}}
               >
-                Clear all
+                All
+              </button>
+              <button
+                onClick={() => setAvailability('available')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${availability === 'available' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                style={availability === 'available' ? { backgroundColor: '#00267F' } : {}}
+              >
+                Available only
               </button>
             </div>
-          )}
+
+            <div className="w-px h-4 bg-gray-200 hidden sm:block" />
+
+            {/* Price range */}
+            <select
+              value={priceRange}
+              onChange={e => setPriceRange(e.target.value)}
+              className="px-3 py-1.5 border border-gray-200 rounded-full text-xs text-gray-700 outline-none focus:border-gray-400 bg-white"
+            >
+              <option value="all">All prices</option>
+              <option value="$">$ Budget (under $30)</option>
+              <option value="$$">$$ Moderate ($30–$60)</option>
+              <option value="$$$">$$$ Premium ($60–$100)</option>
+              <option value="$$$$">$$$$ High end ($100+)</option>
+            </select>
+
+            <div className="w-px h-4 bg-gray-200 hidden sm:block" />
+
+            {/* Location */}
+            <select
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              className="px-3 py-1.5 border border-gray-200 rounded-full text-xs text-gray-700 outline-none focus:border-gray-400 bg-white"
+            >
+              <option value="">All locations</option>
+              {locations.map(loc => (
+                <option key={loc} value={loc}>{loc}</option>
+              ))}
+            </select>
+
+            {/* Active count + clear */}
+            {(activeFilterCount > 0 || query) && (
+              <div className="flex items-center gap-2 ml-auto">
+                {activeFilterCount > 0 && (
+                  <span className="text-xs font-semibold text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: '#00267F' }}>
+                    {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
+                  </span>
+                )}
+                <button
+                  onClick={clearFilters}
+                  className="text-xs text-gray-500 hover:text-gray-800 font-medium transition-colors"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        <p className="text-xs text-gray-400 mt-2 mb-6">
-          <span className="font-medium" style={{ color: '#00267F' }}>$</span> = Under $30&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$</span> = $30–$60&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$</span> = $60–$100&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$$</span> = $100+
+        <p className="text-xs text-gray-400 mb-6">
+          <span className="font-medium" style={{ color: '#00267F' }}>$</span> = Under $30&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$</span> = $30–$60&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$</span> = $60–$100&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$$</span> = $100+
         </p>
 
         {loading ? (
-          <div className="text-center py-20 text-gray-400">
+          <div className="text-center py-24 text-gray-400">
             <p className="text-sm">Loading freelancers...</p>
           </div>
         ) : (
           <>
-            <p className="text-sm text-gray-500 mb-6">{filtered.length} freelancer{filtered.length !== 1 ? 's' : ''} found</p>
+            <p className="text-sm text-gray-400 mb-4">{filtered.length} freelancer{filtered.length !== 1 ? 's' : ''} found</p>
 
-            <div className="flex flex-col gap-4">
-              {filtered.length === 0 ? (
-                <div className="text-center py-20 text-gray-400">
-                  <p className="text-4xl mb-4">🔍</p>
-                  <p className="font-medium">No freelancers match your filters</p>
-                  <p className="text-sm mt-2">Try adjusting your search or filters</p>
+            {filtered.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-100 text-center py-20 px-8">
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-5">
+                  <svg className="w-7 h-7 text-gray-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                  </svg>
                 </div>
-              ) : (
-                filtered.map(f => (
-                  <a href={`/freelancers/${f.id}`} key={f.id} className="bg-white rounded-2xl p-6 border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all block">
-                    <div className="flex gap-4 items-start">
-                      <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center font-bold flex-shrink-0 overflow-hidden" style={{ color: '#00267F' }}>
+                <p className="font-semibold text-gray-700 mb-1">No freelancers match your search</p>
+                <p className="text-sm text-gray-400 mb-6">Try a different keyword, or clear your filters to browse everyone.</p>
+                <button
+                  onClick={clearFilters}
+                  className="text-sm font-medium text-white px-5 py-2 rounded-full hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {filtered.map(f => (
+                  <a
+                    href={`/freelancers/${f.id}`}
+                    key={f.id}
+                    className="group bg-white rounded-xl p-6 border border-gray-100 border-l-4 hover:border-l-4 hover:shadow-md transition-all block"
+                    style={{ borderLeftColor: 'transparent' }}
+                    onMouseEnter={e => e.currentTarget.style.borderLeftColor = '#00267F'}
+                    onMouseLeave={e => e.currentTarget.style.borderLeftColor = 'transparent'}
+                  >
+                    <div className="flex gap-5 items-start">
+                      {/* Avatar */}
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
                         {f.avatar_url
                           ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
-                          : f.name.split(" ").map(n => n[0]).join("")}
+                          : f.name.split(' ').map(n => n[0]).join('')}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
-                          <div>
+
+                      {/* Body */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            {/* Name + availability dot */}
                             <div className="flex items-center gap-2">
-                              <h3 className="font-bold text-gray-900">{f.name}</h3>
-                              {f.available ? (
-                                <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">Available</span>
-                              ) : (
-                                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">Unavailable</span>
-                              )}
+                              <h3 className="text-lg font-bold text-gray-900 leading-tight capitalize">{f.name}</h3>
+                              <span
+                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: f.available ? '#22c55e' : '#d1d5db' }}
+                                title={f.available ? 'Available' : 'Unavailable'}
+                              />
                             </div>
-                            <p className="text-sm font-medium" style={{ color: '#00267F' }}>{f.trade} · {f.location}</p>
+                            {/* Trade + location */}
+                            <p className="text-sm font-medium mt-0.5" style={{ color: '#00267F' }}>
+                              {f.trade}
+                              {f.location && <span className="text-gray-400 font-normal"> · 📍 {f.location}</span>}
+                            </p>
                           </div>
+
+                          {/* Price indicator pill */}
                           {getPriceIndicator(f.hourly_rate) && (
-                            <p className="font-bold sm:text-right" style={{ color: '#00267F' }}>{getPriceIndicator(f.hourly_rate)}</p>
+                            <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border" style={{ color: '#00267F', borderColor: '#00267F' }}>
+                              {getPriceIndicator(f.hourly_rate)}
+                            </span>
                           )}
                         </div>
-                        <div className="flex gap-4 mt-2">
+
+                        {/* Rating row */}
+                        <div className="flex items-center gap-3 mt-2.5">
                           <div className="flex items-center gap-1">
                             <StarRating rating={f.rating} />
-                            <span className="text-sm font-medium text-gray-700">{f.rating}</span>
+                            <span className="text-sm font-semibold text-gray-800 ml-0.5">{f.rating}</span>
                             <span className="text-xs text-gray-400">({f.review_count})</span>
                           </div>
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <span>Client rating:</span>
-                            <span className="font-medium text-gray-700">{f.client_rating}</span>
+                          {f.client_rating > 0 && (
+                            <span className="text-xs text-gray-400">· Client rating: <span className="font-medium text-gray-600">{f.client_rating}</span></span>
+                          )}
+                        </div>
+
+                        {/* Skills — max 3 */}
+                        {f.skills?.length > 0 && (
+                          <div className="flex gap-1.5 mt-3 flex-wrap">
+                            {f.skills.slice(0, 3).map(skill => (
+                              <span key={skill} className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>{skill}</span>
+                            ))}
+                            {f.skills.length > 3 && (
+                              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-500">+{f.skills.length - 3}</span>
+                            )}
                           </div>
-                        </div>
-                        <div className="flex gap-2 mt-3 flex-wrap">
-                          {f.skills.map(skill => (
-                            <span key={skill} className="text-xs bg-blue-50 px-2 py-1 rounded-full" style={{ color: '#00267F' }}>{skill}</span>
-                          ))}
-                        </div>
+                        )}
                       </div>
                     </div>
                   </a>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
