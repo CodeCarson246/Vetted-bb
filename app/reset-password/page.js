@@ -107,7 +107,12 @@ export default function ResetPassword() {
       </div>
 
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-12">
-        © 2026 Vetted.bb · Connecting Barbados
+        <p>© 2026 Vetted.bb · Connecting Barbados</p>
+        <p className="mt-1.5 text-xs">
+          <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
+          <span className="mx-2">·</span>
+          <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
+        </p>
       </footer>
     </main>
   )
