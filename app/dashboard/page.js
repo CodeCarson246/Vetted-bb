@@ -46,6 +46,9 @@ export default function Dashboard() {
   const [serviceDuration, setServiceDuration] = useState('')
   const [serviceSaving, setServiceSaving] = useState(false)
   const [serviceError, setServiceError] = useState(null)
+  const [serviceImages, setServiceImages] = useState([])
+  const [serviceImagesUploading, setServiceImagesUploading] = useState(false)
+  const [existingServiceImages, setExistingServiceImages] = useState([])
 
   // Account settings state
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -168,7 +171,7 @@ export default function Dashboard() {
 
           const [{ count }, { data: svc }] = await Promise.all([
             supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false),
-            supabase.from('services').select('*').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
+            supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
           ])
           setUnreadCount(count || 0)
           setServices(svc || [])
@@ -348,6 +351,8 @@ export default function Dashboard() {
     setServiceDescription(svc?.description || '')
     setServiceDuration(svc?.duration || '')
     setServiceError(null)
+    setServiceImages([])
+    setExistingServiceImages([])
     if (svc?.price) {
       if (STANDARD_PRICES.includes(svc.price)) {
         setServicePriceOption(svc.price)
@@ -359,6 +364,11 @@ export default function Dashboard() {
     } else {
       setServicePriceOption('')
       setServicePrice('')
+    }
+    if (svc?.id) {
+      supabase.from('service_images').select('*').eq('service_id', svc.id).then(({ data }) => {
+        setExistingServiceImages(data || [])
+      })
     }
     setShowServiceForm(true)
   }
@@ -372,6 +382,41 @@ export default function Dashboard() {
     setServiceDescription('')
     setServiceDuration('')
     setServiceError(null)
+    setServiceImages([])
+    setExistingServiceImages([])
+  }
+
+  async function handleServiceImageUpload(e) {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    if (existingServiceImages.length + serviceImages.length + files.length > 6) {
+      setServiceError('Maximum 6 images per service.')
+      return
+    }
+    setServiceImagesUploading(true)
+    const uploaded = []
+    for (const file of files) {
+      const ext = file.name.split('.').pop()
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('service-images')
+        .upload(path, file, { upsert: false })
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage.from('service-images').getPublicUrl(path)
+        uploaded.push({ url: publicUrl, path })
+      }
+    }
+    setServiceImages(prev => [...prev, ...uploaded])
+    setServiceImagesUploading(false)
+  }
+
+  async function handleRemoveExistingImage(img) {
+    await supabase.from('service_images').delete().eq('id', img.id)
+    setExistingServiceImages(prev => prev.filter(i => i.id !== img.id))
+  }
+
+  function handleRemoveNewImage(index) {
+    setServiceImages(prev => prev.filter((_, i) => i !== index))
   }
 
   async function handleServiceSubmit(e) {
@@ -404,9 +449,34 @@ export default function Dashboard() {
 
     if (error) {
       setServiceError(error.message)
-    } else {
-      closeServiceForm()
+      setServiceSaving(false)
+      return
     }
+    let savedServiceId = editingService?.id
+    if (!savedServiceId) {
+      const { data: newest } = await supabase
+        .from('services')
+        .select('id')
+        .eq('freelancer_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      savedServiceId = newest?.id
+    }
+    if (serviceImages.length > 0 && savedServiceId) {
+      await Promise.all(
+        serviceImages.map(img =>
+          supabase.from('service_images').insert({ service_id: savedServiceId, url: img.url })
+        )
+      )
+    }
+    const { data: updatedSvc } = await supabase
+      .from('services')
+      .select('*, service_images(id, url)')
+      .eq('freelancer_id', profile.id)
+      .order('created_at', { ascending: true })
+    setServices(updatedSvc || [])
+    closeServiceForm()
     setServiceSaving(false)
   }
 
@@ -990,6 +1060,36 @@ export default function Dashboard() {
                         <option>1 week</option>
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Work photos <span className="text-gray-400 font-normal">(optional, max 6)</span>
+                      </label>
+                      {(existingServiceImages.length > 0 || serviceImages.length > 0) && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {existingServiceImages.map(img => (
+                            <div key={img.id} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
+                              <img src={img.url} alt="Work photo" className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => handleRemoveExistingImage(img)} className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none hover:bg-red-600">×</button>
+                            </div>
+                          ))}
+                          {serviceImages.map((img, i) => (
+                            <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
+                              <img src={img.url} alt="Work photo" className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => handleRemoveNewImage(i)} className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none hover:bg-red-600">×</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {existingServiceImages.length + serviceImages.length < 6 && (
+                        <label className={`flex items-center gap-2 cursor-pointer w-full px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-gray-400 transition-colors ${serviceImagesUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          {serviceImagesUploading ? 'Uploading...' : 'Add photos of your work'}
+                          <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" disabled={serviceImagesUploading} onChange={handleServiceImageUpload} />
+                        </label>
+                      )}
+                    </div>
                     {serviceError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{serviceError}</p>}
                     <div className="flex gap-3">
                       <button
@@ -1023,6 +1123,9 @@ export default function Dashboard() {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 capitalize">{svc.name}</p>
                         {svc.description && <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{svc.description}</p>}
+                        {svc.service_images?.length > 0 && (
+                          <p className="text-xs text-gray-400 mt-1">📷 {svc.service_images.length} photo{svc.service_images.length > 1 ? 's' : ''}</p>
+                        )}
                         <div className="flex items-center gap-3 mt-2">
                           <span className="text-sm font-bold" style={{ color: '#00267F' }}>{svc.price}</span>
                           {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}

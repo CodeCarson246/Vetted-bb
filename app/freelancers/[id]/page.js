@@ -81,7 +81,7 @@ export default function FreelancerProfile() {
       if (f) {
         const [{ data: r }, { data: s }] = await Promise.all([
           supabase.from('reviews').select('*').eq('freelancer_id', f.id),
-          supabase.from('services').select('*').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
+          supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
         ])
         setFreelancer(f)
         setReviews(r || [])
@@ -448,20 +448,33 @@ export default function FreelancerProfile() {
               {services.map(s => (
                 <div
                   key={s.id}
-                  className="border border-gray-100 rounded-xl p-5 flex flex-col gap-2 hover:border-gray-300 transition-colors"
-                  style={{ '--hover-border': '#00267F' }}
+                  className="border border-gray-100 rounded-xl overflow-hidden flex flex-col hover:border-gray-300 transition-colors"
                   onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
                   onMouseLeave={e => e.currentTarget.style.borderColor = ''}
                 >
-                  <p className="font-bold text-gray-900 text-sm">{s.name}</p>
-                  {s.description && (
-                    <p className="text-xs text-gray-500 leading-relaxed flex-1">{s.description}</p>
+                  {s.service_images?.length > 0 && (
+                    <div className="flex overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                      {s.service_images.map((img, i) => (
+                        <img
+                          key={img.id}
+                          src={img.url}
+                          alt={`${s.name} photo ${i + 1}`}
+                          className="h-40 w-48 object-cover flex-shrink-0"
+                        />
+                      ))}
+                    </div>
                   )}
-                  <div className="flex items-center justify-between mt-auto pt-3">
-                    <span className="text-lg font-bold" style={{ color: '#00267F' }}>{s.price}</span>
-                    {s.duration && (
-                      <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">{s.duration}</span>
+                  <div className="p-5 flex flex-col gap-2 flex-1">
+                    <p className="font-bold text-gray-900 text-sm">{s.name}</p>
+                    {s.description && (
+                      <p className="text-xs text-gray-500 leading-relaxed flex-1">{s.description}</p>
                     )}
+                    <div className="flex items-center justify-between mt-auto pt-3">
+                      <span className="text-lg font-bold" style={{ color: '#00267F' }}>{s.price}</span>
+                      {s.duration && (
+                        <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">{s.duration}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
