@@ -49,6 +49,12 @@ export default function FreelancerProfile() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [services, setServices] = useState([])
   const [lightboxService, setLightboxService] = useState(null)
+  const [lightboxSlide, setLightboxSlide] = useState(0)
+
+  function openLightbox(s) {
+    setLightboxService(s)
+    setLightboxSlide(0)
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -452,7 +458,7 @@ export default function FreelancerProfile() {
                   className={`border border-gray-100 rounded-xl overflow-hidden flex flex-col transition-colors ${s.service_images?.length > 0 ? 'cursor-pointer hover:border-gray-400' : 'hover:border-gray-300'}`}
                   onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
                   onMouseLeave={e => e.currentTarget.style.borderColor = ''}
-                  onClick={() => s.service_images?.length > 0 && setLightboxService(s)}
+                  onClick={() => s.service_images?.length > 0 && openLightbox(s)}
                 >
                   {s.service_images?.length > 0 && (
                     <div className="relative flex overflow-hidden" style={{ height: '160px' }}>
@@ -744,42 +750,80 @@ export default function FreelancerProfile() {
           </div>
         </div>
       )}
-      {lightboxService && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col"
-          style={{ backgroundColor: 'rgba(0,0,0,0.92)' }}
-          onClick={() => setLightboxService(null)}
-        >
-          <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
-            <div>
-              <h3 className="text-white font-bold text-lg">{lightboxService.name}</h3>
-              <p className="text-white/50 text-sm">{lightboxService.service_images.length} photo{lightboxService.service_images.length > 1 ? 's' : ''}</p>
-            </div>
-            <button
-              onClick={() => setLightboxService(null)}
-              className="text-white/70 hover:text-white text-3xl leading-none transition-colors"
-            >
-              ×
-            </button>
-          </div>
+      {lightboxService && (() => {
+        const imgs = lightboxService.service_images
+        return (
           <div
-            className="flex-1 overflow-y-auto px-6 pb-6"
-            onClick={e => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex flex-col"
+            style={{ backgroundColor: 'rgba(0,0,0,0.95)' }}
+            onKeyDown={e => {
+              if (e.key === 'ArrowRight') setLightboxSlide(i => (i + 1) % imgs.length)
+              if (e.key === 'ArrowLeft') setLightboxSlide(i => (i - 1 + imgs.length) % imgs.length)
+              if (e.key === 'Escape') setLightboxService(null)
+            }}
+            tabIndex={0}
+            ref={el => el && el.focus()}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl mx-auto">
-              {lightboxService.service_images.map((img, i) => (
-                <img
-                  key={img.id}
-                  src={img.url}
-                  alt={`${lightboxService.name} photo ${i + 1}`}
-                  className="w-full rounded-xl object-cover"
-                  style={{ maxHeight: '320px' }}
-                />
-              ))}
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
+              <div>
+                <h3 className="text-white font-bold text-lg">{lightboxService.name}</h3>
+                <p className="text-white/50 text-sm">{lightboxSlide + 1} / {imgs.length}</p>
+              </div>
+              <button
+                onClick={() => setLightboxService(null)}
+                className="text-white/70 hover:text-white text-3xl leading-none transition-colors"
+              >×</button>
             </div>
+
+            {/* Main image */}
+            <div className="flex-1 flex items-center justify-center px-4 relative min-h-0">
+              <img
+                src={imgs[lightboxSlide].url}
+                alt={`${lightboxService.name} photo ${lightboxSlide + 1}`}
+                className="max-h-full max-w-full rounded-xl object-contain"
+                style={{ maxHeight: 'calc(100vh - 200px)' }}
+              />
+              {imgs.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setLightboxSlide(i => (i - 1 + imgs.length) % imgs.length)}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white text-xl font-bold hover:bg-white/20 transition-colors"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                  >‹</button>
+                  <button
+                    onClick={() => setLightboxSlide(i => (i + 1) % imgs.length)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white text-xl font-bold hover:bg-white/20 transition-colors"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                  >›</button>
+                </>
+              )}
+            </div>
+
+            {/* Thumbnail strip */}
+            {imgs.length > 1 && (
+              <div className="flex-shrink-0 flex gap-2 justify-center px-6 py-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                {imgs.map((img, i) => (
+                  <button
+                    key={img.id}
+                    onClick={() => setLightboxSlide(i)}
+                    className="flex-shrink-0 rounded-lg overflow-hidden transition-all"
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      opacity: i === lightboxSlide ? 1 : 0.45,
+                      outline: i === lightboxSlide ? '2px solid #F9C000' : 'none',
+                      outlineOffset: '2px',
+                    }}
+                  >
+                    <img src={img.url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )
+      })()}
     </main>
   )
 }
