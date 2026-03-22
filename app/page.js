@@ -3,14 +3,21 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const categories = [
-  { icon: "🔧", name: "Plumbing" },
-  { icon: "⚡", name: "Electrical" },
-  { icon: "🎨", name: "Graphic Design" },
-  { icon: "🏗️", name: "Construction" },
-  { icon: "💻", name: "Web Development" },
-  { icon: "🌿", name: "Landscaping" },
-  { icon: "🚗", name: "Auto Repair" },
-  { icon: "📸", name: "Photography" },
+  { icon: "🔧", name: "Trades & Construction", searchQuery: "electrician plumber carpenter mason painter roofer welder tiler construction builder" },
+  { icon: "❄️", name: "AC & Solar", searchQuery: "ac air conditioning solar installer technician cooling heating" },
+  { icon: "🌿", name: "Landscaping & Outdoors", searchQuery: "landscaper gardener pool cleaner pest control tree garden lawn irrigation" },
+  { icon: "🚗", name: "Automotive", searchQuery: "mechanic auto car body repair detailer tow boat motorcycle vehicle engine" },
+  { icon: "🧹", name: "Cleaning & Domestic", searchQuery: "cleaner cleaning housekeeper laundry maid domestic janitor ironing" },
+  { icon: "💇", name: "Beauty & Wellness", searchQuery: "hairdresser barber nail makeup artist massage therapist personal trainer nutritionist beauty salon" },
+  { icon: "🍽️", name: "Food & Catering", searchQuery: "chef caterer baker bartender food vendor cake catering meal prep cook" },
+  { icon: "⚽", name: "Sports & Fitness", searchQuery: "football cricket swimming tennis gym trainer dance yoga coach instructor fitness" },
+  { icon: "🎨", name: "Creative & Design", searchQuery: "graphic designer photographer videographer web designer social media content creator illustrator" },
+  { icon: "💻", name: "Technology", searchQuery: "web developer app developer IT support computer repair network CCTV installer tech" },
+  { icon: "🎉", name: "Events & Entertainment", searchQuery: "DJ event planner MC host decorator sound technician lighting band musician entertainment" },
+  { icon: "📚", name: "Education & Tutoring", searchQuery: "tutor teacher maths english music driving language special needs education instructor" },
+  { icon: "💼", name: "Business & Professional", searchQuery: "accountant bookkeeper lawyer notary HR consultant marketing translator business professional" },
+  { icon: "❤️", name: "Health & Care", searchQuery: "nurse caregiver babysitter nanny elder care first aid health carer" },
+  { icon: "✨", name: "Other", searchQuery: "other" },
 ]
 
 const iconStyle = { width: '40px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }
@@ -207,18 +214,17 @@ export default function Home() {
       {/* Browse by category */}
       <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
         <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Browse by category</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {categories.map((cat) => (
             <a
               key={cat.name}
-              href={`/search?q=${cat.name}`}
-              className="flex flex-col items-center gap-3 p-7 bg-white border border-gray-100 rounded-2xl hover:shadow-sm cursor-pointer transition-all group"
-              style={{ '--hover-border': '#00267F' }}
+              href={`/search?q=${encodeURIComponent(cat.searchQuery)}`}
+              className="flex flex-col items-center gap-3 px-4 py-6 bg-white border border-gray-100 rounded-2xl hover:shadow-sm cursor-pointer transition-all group"
               onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
               onMouseLeave={e => e.currentTarget.style.borderColor = ''}
             >
               <span className="text-4xl">{cat.icon}</span>
-              <span className="font-medium text-gray-700 text-sm">{cat.name}</span>
+              <span className="font-medium text-gray-700 text-sm text-center leading-snug">{cat.name}</span>
             </a>
           ))}
         </div>

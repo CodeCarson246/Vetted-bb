@@ -75,11 +75,11 @@ function SearchPage() {
 
   const filtered = freelancers
     .filter(f => {
-      if (query && !(
-        f.name.toLowerCase().includes(query.toLowerCase()) ||
-        f.trade.toLowerCase().includes(query.toLowerCase()) ||
-        f.skills.some(s => s.toLowerCase().includes(query.toLowerCase()))
-      )) return false
+      if (query) {
+        const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+        const haystack = [f.name, f.trade, f.category || '', ...(f.skills || [])].join(' ').toLowerCase()
+        if (!words.some(w => haystack.includes(w))) return false
+      }
       if (availability === 'available' && !f.available) return false
       if (priceRange !== 'all') {
         const rate = parseFloat(f.hourly_rate)

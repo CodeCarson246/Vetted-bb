@@ -67,6 +67,7 @@ export default function Dashboard() {
   const [hourlyRate, setHourlyRate] = useState('')
   const [available, setAvailable] = useState(false)
   const [skillsInput, setSkillsInput] = useState('')
+  const [category, setCategory] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState(null)
@@ -90,6 +91,7 @@ export default function Dashboard() {
   const [createLocation, setCreateLocation] = useState('')
   const [createBio, setCreateBio] = useState('')
   const [createRate, setCreateRate] = useState('')
+  const [createCategory, setCreateCategory] = useState('')
   const [createSkills, setCreateSkills] = useState('')
   const [createAvailable, setCreateAvailable] = useState(true)
   const [createServices, setCreateServices] = useState([])
@@ -153,6 +155,7 @@ export default function Dashboard() {
           setHourlyRate(p.hourly_rate || '')
           setAvailable(p.available || false)
           setSkillsInput((p.skills || []).join(', '))
+          setCategory(p.category || '')
           setAvatarUrl(p.avatar_url || '')
 
           const { data: r } = await supabase
@@ -186,13 +189,13 @@ export default function Dashboard() {
 
     const { error } = await supabase
       .from('freelancers')
-      .update({ bio, hourly_rate: hourlyRate, available, skills })
+      .update({ bio, hourly_rate: hourlyRate, available, skills, category })
       .eq('user_id', user.id)
 
     if (error) {
       setSaveError(error.message)
     } else {
-      setProfile(prev => ({ ...prev, bio, hourly_rate: hourlyRate, available, skills }))
+      setProfile(prev => ({ ...prev, bio, hourly_rate: hourlyRate, available, skills, category }))
       setSaveSuccess(true)
       setTimeout(() => { setSaveSuccess(false); setShowEditForm(false) }, 1500)
     }
@@ -217,6 +220,7 @@ export default function Dashboard() {
         hourly_rate: createRate,
         available: createAvailable,
         skills,
+        category: createCategory || null,
         user_id: user.id,
         email: user.email,
         rating: 0,
@@ -793,6 +797,21 @@ export default function Dashboard() {
                   </div>
 
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={category}
+                      onChange={e => setCategory(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                    >
+                      <option value="">Select a category</option>
+                      {["Trades & Construction","AC & Solar","Landscaping & Outdoors","Automotive","Cleaning & Domestic","Beauty & Wellness","Food & Catering","Sports & Fitness","Creative & Design","Technology","Events & Entertainment","Education & Tutoring","Business & Professional","Health & Care","Other"].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1.5">This helps clients find you when browsing categories.</p>
+                  </div>
+
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Price tier</label>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {PRICE_TIERS.map(tier => (
@@ -1320,6 +1339,24 @@ export default function Dashboard() {
                           />
                         </div>
                         {createErrors.trade && <p className="text-xs text-red-500 mt-1">{createErrors.trade}</p>}
+                      </div>
+
+                      {/* Category */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category</label>
+                        <select
+                          value={createCategory}
+                          onChange={e => setCreateCategory(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
+                          onFocus={e => e.target.style.borderColor = '#00267F'}
+                          onBlur={e => e.target.style.borderColor = ''}
+                        >
+                          <option value="">Select a category</option>
+                          {["Trades & Construction","AC & Solar","Landscaping & Outdoors","Automotive","Cleaning & Domestic","Beauty & Wellness","Food & Catering","Sports & Fitness","Creative & Design","Technology","Events & Entertainment","Education & Tutoring","Business & Professional","Health & Care","Other"].map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1.5">This helps clients find you when browsing categories.</p>
                       </div>
 
                       {/* Location */}
