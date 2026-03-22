@@ -102,6 +102,22 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState(null)
 
+  const PRICE_TIERS = [
+    { symbol: '$',    label: 'Budget friendly', value: 20 },
+    { symbol: '$$',   label: 'Mid-range',        value: 50 },
+    { symbol: '$$$',  label: 'Premium',           value: 80 },
+    { symbol: '$$$$', label: 'High end',          value: 150 },
+  ]
+
+  function rateToTierValue(rate) {
+    const r = parseFloat(rate)
+    if (!r) return null
+    if (r < 30)  return 20
+    if (r < 60)  return 50
+    if (r < 100) return 80
+    return 150
+  }
+
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -757,18 +773,22 @@ export default function Dashboard() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Rate (used to show price range)</label>
-                    <p className="text-xs text-gray-400 mb-2">This number is never shown publicly — it's used to display a price range indicator ($, $$, $$$, $$$$) on your profile.</p>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                      <input
-                        type="text"
-                        value={hourlyRate}
-                        onChange={e => setHourlyRate(e.target.value)}
-                        placeholder="60"
-                        className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
-                      />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Price tier</label>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {PRICE_TIERS.map(tier => (
+                        <button
+                          key={tier.symbol}
+                          type="button"
+                          onClick={() => setHourlyRate(String(tier.value))}
+                          className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border-2 transition-all ${rateToTierValue(hourlyRate) === tier.value ? 'bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                          style={rateToTierValue(hourlyRate) === tier.value ? { borderColor: '#00267F', backgroundColor: '#EEF2FF' } : {}}
+                        >
+                          <span className="text-lg font-bold" style={{ color: '#00267F' }}>{tier.symbol}</span>
+                          <span className="text-xs text-gray-500 mt-0.5">{tier.label}</span>
+                        </button>
+                      ))}
                     </div>
+                    <p className="text-xs text-gray-400 mt-2">This helps clients find you in search. Your actual service prices are always shown on your profile.</p>
                   </div>
 
                   <div>
@@ -1317,22 +1337,24 @@ export default function Dashboard() {
                         />
                       </div>
 
-                      {/* Rate */}
+                      {/* Price tier */}
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Rate (used to show price range)</label>
-                        <p className="text-xs text-gray-400 mb-2">Never shown publicly — used to display a price range indicator ($, $$, $$$, $$$$) on your profile.</p>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">$</span>
-                          <input
-                            type="text"
-                            value={createRate}
-                            onChange={e => setCreateRate(e.target.value)}
-                            placeholder="e.g. 60"
-                            className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
-                            onFocus={e => e.target.style.borderColor = '#00267F'}
-                            onBlur={e => e.target.style.borderColor = ''}
-                          />
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Price tier</label>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {PRICE_TIERS.map(tier => (
+                            <button
+                              key={tier.symbol}
+                              type="button"
+                              onClick={() => setCreateRate(String(tier.value))}
+                              className={`flex flex-col items-center justify-center py-3 px-2 rounded-lg border-2 transition-all ${rateToTierValue(createRate) === tier.value ? 'bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                              style={rateToTierValue(createRate) === tier.value ? { borderColor: '#00267F', backgroundColor: '#EEF2FF' } : {}}
+                            >
+                              <span className="text-lg font-bold" style={{ color: '#00267F' }}>{tier.symbol}</span>
+                              <span className="text-xs text-gray-500 mt-0.5">{tier.label}</span>
+                            </button>
+                          ))}
                         </div>
+                        <p className="text-xs text-gray-400 mt-2">This helps clients find you in search. Your actual service prices are always shown on your profile.</p>
                       </div>
 
                       {/* Skills */}
