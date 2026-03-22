@@ -235,11 +235,14 @@ export default function Inbox() {
 
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-12">
         <p>© 2026 Vetted.bb · Connecting Barbados</p>
-        <p className="mt-1.5 text-xs">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 text-xs">
+          <a href="/search" className="hover:text-gray-600 transition-colors">Browse freelancers</a>
+          <a href="/signup" className="hover:text-gray-600 transition-colors">List your services</a>
+          <a href="/about" className="hover:text-gray-600 transition-colors">About</a>
+          <a href="/faq" className="hover:text-gray-600 transition-colors">FAQ</a>
           <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
-          <span className="mx-2">·</span>
           <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
-        </p>
+        </div>
       </footer>
     </main>
   )
