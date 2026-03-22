@@ -80,7 +80,7 @@ export default function Home() {
                     <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
                   </a>
                 ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user?.user_metadata?.full_name || user.email}</a>
+                  <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user?.user_metadata?.full_name || user?.email}</a>
                 )}
                 {freelancerProfile && (
                   <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
@@ -135,7 +135,7 @@ export default function Home() {
                     <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
                   </a>
                 ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name || user.email}</a>
+                  <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name || user?.email}</a>
                 )}
                 {freelancerProfile && (
                   <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">

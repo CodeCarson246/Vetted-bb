@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [editingService, setEditingService] = useState(null)
   const [serviceName, setServiceName] = useState('')
   const [servicePrice, setServicePrice] = useState('')
+  const [servicePriceOption, setServicePriceOption] = useState('')
   const [serviceDescription, setServiceDescription] = useState('')
   const [serviceDuration, setServiceDuration] = useState('')
   const [serviceSaving, setServiceSaving] = useState(false)
@@ -56,6 +57,8 @@ export default function Dashboard() {
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordSuccess, setPasswordSuccess] = useState(false)
   const [passwordError, setPasswordError] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Edit form state
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -79,6 +82,8 @@ export default function Dashboard() {
 
   // Create form state
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [createStep, setCreateStep] = useState(1)
+  const [createErrors, setCreateErrors] = useState({})
   const [createName, setCreateName] = useState('')
   const [createCompanyName, setCreateCompanyName] = useState('')
   const [createTrade, setCreateTrade] = useState('')
@@ -91,6 +96,7 @@ export default function Dashboard() {
   const [showCreateSvcForm, setShowCreateSvcForm] = useState(false)
   const [createSvcName, setCreateSvcName] = useState('')
   const [createSvcPrice, setCreateSvcPrice] = useState('')
+  const [createSvcPriceOption, setCreateSvcPriceOption] = useState('')
   const [createSvcDescription, setCreateSvcDescription] = useState('')
   const [createSvcDuration, setCreateSvcDuration] = useState('')
   const [creating, setCreating] = useState(false)
@@ -206,26 +212,37 @@ export default function Dashboard() {
 
     if (error) {
       setCreateError(error.message)
-    } else {
-      if (createServices.length > 0) {
-        await supabase.from('services').insert(
-          createServices.map(svc => ({
-            freelancer_id: data.id,
+      setCreating(false)
+      return
+    }
+
+    const newProfileId = data.id
+    console.log('Freelancer profile created:', newProfileId)
+
+    if (createServices.length > 0) {
+      console.log('Inserting services:', createServices)
+      const results = await Promise.all(
+        createServices.map(svc =>
+          supabase.from('services').insert({
+            freelancer_id: newProfileId,
             name: svc.name,
             price: svc.price,
             description: svc.description || null,
             duration: svc.duration || null,
-          }))
+          }).select().single()
         )
+      )
+      console.log('Service insert results:', results)
+      const insertErrors = results.filter(r => r.error)
+      if (insertErrors.length > 0) {
+        console.error('Service insert errors:', insertErrors)
+        setCreateError('Profile created but some services failed to save. You can add them from your dashboard.')
       }
-      setProfile(data)
-      setBio(data.bio || '')
-      setHourlyRate(data.hourly_rate || '')
-      setAvailable(data.available || false)
-      setSkillsInput((data.skills || []).join(', '))
-      setShowCreateForm(false)
+    } else {
+      console.log('No services to insert')
     }
-    setCreating(false)
+
+    router.push(`/freelancers/${newProfileId}`)
   }
 
   function addCreateService() {
@@ -238,6 +255,7 @@ export default function Dashboard() {
     }])
     setCreateSvcName('')
     setCreateSvcPrice('')
+    setCreateSvcPriceOption('')
     setCreateSvcDescription('')
     setCreateSvcDuration('')
     setShowCreateSvcForm(false)
@@ -301,13 +319,26 @@ export default function Dashboard() {
     setClientReviewSubmitting(false)
   }
 
+  const STANDARD_PRICES = ['$25', '$50', '$75', '$100', '$150', '$200', '$250', '$300', '$500', 'Price on request']
+
   function openServiceForm(svc = null) {
     setEditingService(svc)
     setServiceName(svc?.name || '')
-    setServicePrice(svc?.price || '')
     setServiceDescription(svc?.description || '')
     setServiceDuration(svc?.duration || '')
     setServiceError(null)
+    if (svc?.price) {
+      if (STANDARD_PRICES.includes(svc.price)) {
+        setServicePriceOption(svc.price)
+        setServicePrice(svc.price)
+      } else {
+        setServicePriceOption('Custom amount')
+        setServicePrice(svc.price)
+      }
+    } else {
+      setServicePriceOption('')
+      setServicePrice('')
+    }
     setShowServiceForm(true)
   }
 
@@ -316,6 +347,7 @@ export default function Dashboard() {
     setEditingService(null)
     setServiceName('')
     setServicePrice('')
+    setServicePriceOption('')
     setServiceDescription('')
     setServiceDuration('')
     setServiceError(null)
@@ -397,6 +429,14 @@ export default function Dashboard() {
     setPasswordSaving(false)
   }
 
+  async function handleDeleteProfile() {
+    setDeleting(true)
+    await supabase.from('services').delete().eq('freelancer_id', profile.id)
+    await supabase.from('reviews').delete().eq('freelancer_id', profile.id)
+    await supabase.from('freelancers').delete().eq('user_id', user.id)
+    window.location.reload()
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -417,7 +457,7 @@ export default function Dashboard() {
           <div className="hidden sm:flex gap-4 items-center">
             {role === 'client' ? (
               <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">
-                {user?.user_metadata?.full_name || user?.email}
+                {user?.user_metadata?.full_name?.trim() || user?.email}
               </a>
             ) : profile ? (
               <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -429,7 +469,13 @@ export default function Dashboard() {
                 <span className="text-gray-600 text-sm font-medium">{profile.name}</span>
               </a>
             ) : (
-              <span className="text-gray-600 text-sm font-medium">{user?.email}</span>
+              <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
+                  {(user?.user_metadata?.full_name?.trim() || user?.email || '')
+                    .split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
+                </div>
+                <span className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name?.trim() || user?.email}</span>
+              </a>
             )}
             {role !== 'client' && profile && (
               <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
@@ -461,7 +507,7 @@ export default function Dashboard() {
           <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
             {role === 'client' ? (
               <a href="/dashboard" className="text-gray-600 text-sm font-medium">
-                {user?.user_metadata?.full_name || user?.email}
+                {user?.user_metadata?.full_name?.trim() || user?.email}
               </a>
             ) : profile ? (
               <a href="/dashboard" className="flex items-center gap-2">
@@ -473,7 +519,13 @@ export default function Dashboard() {
                 <span className="text-gray-600 text-sm font-medium">{profile.name}</span>
               </a>
             ) : (
-              <span className="text-gray-600 text-sm font-medium">{user?.email}</span>
+              <a href="/dashboard" className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
+                  {(user?.user_metadata?.full_name?.trim() || user?.email || '')
+                    .split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
+                </div>
+                <span className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name?.trim() || user?.email}</span>
+              </a>
             )}
             {role !== 'client' && profile && (
               <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
@@ -506,7 +558,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm font-medium mb-1" style={{ color: '#93b8ff' }}>Welcome back</p>
                   <h1 className="text-2xl font-bold text-white leading-tight">
-                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there'}
+                    {user?.user_metadata?.full_name?.trim() || user?.email?.split('@')[0] || 'there'}
                   </h1>
                   <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>{user?.email}</p>
                 </div>
@@ -772,29 +824,53 @@ export default function Dashboard() {
                 <div className="px-6 sm:px-8 py-6 border-b border-gray-100 bg-gray-50">
                   <h3 className="font-semibold text-gray-900 mb-4">{editingService ? 'Edit service' : 'New service'}</h3>
                   <form onSubmit={handleServiceSubmit} className="flex flex-col gap-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Service name</label>
-                        <input
-                          type="text"
-                          required
-                          value={serviceName}
-                          onChange={e => setServiceName(e.target.value)}
-                          placeholder="e.g. Full house rewire"
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Service name</label>
+                      <input
+                        type="text"
+                        required
+                        value={serviceName}
+                        onChange={e => setServiceName(e.target.value)}
+                        placeholder="e.g. Full house rewire"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                      <select
+                        required
+                        value={servicePriceOption}
+                        onChange={e => {
+                          const v = e.target.value
+                          setServicePriceOption(v)
+                          if (v !== 'Custom amount') setServicePrice(v)
+                          else setServicePrice('')
+                        }}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      >
+                        <option value="">Select price</option>
+                        <option>$25</option>
+                        <option>$50</option>
+                        <option>$75</option>
+                        <option>$100</option>
+                        <option>$150</option>
+                        <option>$200</option>
+                        <option>$250</option>
+                        <option>$300</option>
+                        <option>$500</option>
+                        <option>Price on request</option>
+                        <option>Custom amount</option>
+                      </select>
+                      {servicePriceOption === 'Custom amount' && (
                         <input
                           type="text"
                           required
                           value={servicePrice}
                           onChange={e => setServicePrice(e.target.value)}
-                          placeholder='e.g. $150, From $80, Price on request'
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                          placeholder='e.g. From $80, $45 per sq ft, $120 + materials'
+                          className="w-full mt-2 px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                         />
-                      </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -808,13 +884,22 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Duration <span className="text-gray-400 font-normal">(optional)</span></label>
-                      <input
-                        type="text"
+                      <select
                         value={serviceDuration}
                         onChange={e => setServiceDuration(e.target.value)}
-                        placeholder="e.g. 2–4 hours, 1 day"
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
-                      />
+                      >
+                        <option value="">Select duration</option>
+                        <option>30 minutes</option>
+                        <option>1 hour</option>
+                        <option>1.5 hours</option>
+                        <option>2 hours</option>
+                        <option>3 hours</option>
+                        <option>Half day</option>
+                        <option>Full day</option>
+                        <option>2-3 days</option>
+                        <option>1 week</option>
+                      </select>
                     </div>
                     {serviceError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{serviceError}</p>}
                     <div className="flex gap-3">
@@ -847,8 +932,8 @@ export default function Dashboard() {
                   {services.map(svc => (
                     <div key={svc.id} className="px-6 sm:px-8 py-5 flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900">{svc.name}</p>
-                        {svc.description && <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{svc.description}</p>}
+                        <p className="font-semibold text-gray-900 capitalize">{svc.name}</p>
+                        {svc.description && <p className="text-sm text-gray-500 mt-0.5 leading-relaxed capitalize">{svc.description}</p>}
                         <div className="flex items-center gap-3 mt-2">
                           <span className="text-sm font-bold" style={{ color: '#00267F' }}>{svc.price}</span>
                           {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
@@ -1061,195 +1146,380 @@ export default function Dashboard() {
           </>
         ) : (
           /* No profile — create form */
-          <div className="bg-white rounded-2xl p-8 border border-gray-100">
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-md">
             {!showCreateForm ? (
-              <div className="text-center py-8">
-                <p className="text-4xl mb-4">🛠️</p>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">You don't have a freelancer profile yet</h2>
-                <p className="text-gray-500 text-sm mb-8">Create a profile to start getting discovered by clients across Barbados.</p>
-                <button
-                  onClick={() => setShowCreateForm(true)}
-                  className="text-white px-8 py-3 rounded-full font-medium hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: '#00267F' }}
-                >
-                  Create your freelancer profile
-                </button>
+              /* Welcome onboarding state — always shown for freelancers with no profile */
+              <div>
+                {/* Hero banner */}
+                <div className="rounded-2xl px-8 sm:px-12 py-10 text-center" style={{ backgroundColor: '#00267F' }}>
+                  <p className="text-4xl mb-4">🎉</p>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                    Welcome to Vetted.bb{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name.split(' ')[0]}` : ''}!
+                  </h2>
+                  <p className="text-sm sm:text-base" style={{ color: '#93b8ff' }}>
+                    Let's set up your profile so clients can find you
+                  </p>
+                </div>
+
+                {/* Steps + CTA */}
+                <div className="px-8 sm:px-12 py-8">
+                  <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                    {[
+                      { step: '1', label: 'Add your details', icon: (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                      )},
+                      { step: '2', label: 'List your services', icon: (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                      )},
+                      { step: '3', label: 'Start getting hired', icon: (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                      )},
+                    ].map(({ step, label, icon }) => (
+                      <div key={step} className="flex-1 flex items-center gap-4 rounded-xl px-5 py-5 border border-gray-100 shadow-sm" style={{ borderLeft: '3px solid #F9C000' }}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white" style={{ backgroundColor: '#00267F' }}>
+                          {icon}
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Step {step}</p>
+                          <p className="text-sm font-semibold text-gray-900">{label}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="text-center">
+                    <button
+                      onClick={() => { setCreateStep(1); setCreateErrors({}); setShowCreateForm(true) }}
+                      className="px-10 py-3.5 rounded-full font-bold text-base hover:opacity-90 transition-opacity shadow-sm"
+                      style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                    >
+                      Create my profile →
+                    </button>
+                    <p className="text-xs text-gray-400 mt-3">⏱ Takes about 2 minutes</p>
+                  </div>
+                </div>
               </div>
             ) : (
-              <>
-                <h2 className="text-lg font-bold text-gray-900 mb-6">Create your freelancer profile</h2>
-                <form onSubmit={handleCreate} className="flex flex-col gap-5">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
-                    <input type="text" required value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Jane Smith" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
-                  </div>
+              <div>
+                {/* Form hero banner */}
+                <div className="rounded-2xl px-8 sm:px-12 py-8 text-center" style={{ backgroundColor: '#00267F' }}>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Create your profile</h2>
+                  <p className="text-sm" style={{ color: '#93b8ff' }}>Tell clients what you do and how to find you</p>
+                  <div className="h-1 w-16 rounded-full mx-auto mt-4" style={{ backgroundColor: '#F9C000' }} />
+                </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Company name <span className="text-gray-400 font-normal">(optional)</span></label>
-                    <input type="text" value={createCompanyName} onChange={e => setCreateCompanyName(e.target.value)} placeholder="e.g. Santana's Plumbing (optional)" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Trade / profession</label>
-                    <input type="text" required value={createTrade} onChange={e => setCreateTrade(e.target.value)} placeholder="e.g. Plumber, Graphic Designer" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <input type="text" required value={createLocation} onChange={e => setCreateLocation(e.target.value)} placeholder="e.g. Bridgetown, Barbados" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                    <textarea required value={createBio} onChange={e => setCreateBio(e.target.value)} rows={4} placeholder="Tell clients about your experience and what you do..." className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Rate (used to show price range)</label>
-                    <p className="text-xs text-gray-400 mb-2">This number is never shown publicly — it's used to display a price range indicator ($, $$, $$$, $$$$) on your profile.</p>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                      <input type="text" required value={createRate} onChange={e => setCreateRate(e.target.value)} placeholder="60" className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
+                {/* Progress indicator */}
+                <div className="px-8 sm:px-12 pt-6 pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#00267F' }}>1</div>
+                      <span className="text-sm font-semibold" style={{ color: createStep === 1 ? '#00267F' : '#6b7280' }}>Your details</span>
+                    </div>
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: createStep === 2 ? '#00267F' : '#e5e7eb', color: createStep === 2 ? 'white' : '#9ca3af' }}>2</div>
+                      <span className="text-sm font-semibold" style={{ color: createStep === 2 ? '#00267F' : '#9ca3af' }}>Your services</span>
                     </div>
                   </div>
+                </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Skills <span className="text-gray-400 font-normal">(comma separated)</span></label>
-                    <input type="text" value={createSkills} onChange={e => setCreateSkills(e.target.value)} placeholder="e.g. Plumbing, Pipe fitting, Drain repair" className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white" />
-                  </div>
+                <form onSubmit={handleCreate} className="px-8 sm:px-12 pb-8 pt-4 flex flex-col gap-5">
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
-                    <div className="flex gap-3">
-                      <button type="button" onClick={() => setCreateAvailable(true)} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${createAvailable ? 'border-green-500 bg-green-50 text-green-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>Available</button>
-                      <button type="button" onClick={() => setCreateAvailable(false)} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors ${!createAvailable ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>Unavailable</button>
-                    </div>
-                  </div>
-
-                  {/* Services section */}
-                  <div className="border border-gray-100 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-gray-900 text-sm">Your services <span className="text-gray-400 font-normal">(optional)</span></h3>
-                      {!showCreateSvcForm && (
-                        <button
-                          type="button"
-                          onClick={() => setShowCreateSvcForm(true)}
-                          className="text-sm font-medium hover:opacity-80 transition-opacity"
-                          style={{ color: '#00267F' }}
-                        >
-                          + Add a service
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 mb-4">You can add these later from your dashboard.</p>
-
-                    {/* Added service cards */}
-                    {createServices.length > 0 && (
-                      <div className="flex flex-col gap-2 mb-4">
-                        {createServices.map((svc, i) => (
-                          <div key={i} className="flex items-start justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 text-sm">{svc.name}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-sm font-semibold" style={{ color: '#00267F' }}>{svc.price}</span>
-                                {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
-                              </div>
-                              {svc.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{svc.description}</p>}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setCreateServices(prev => prev.filter((_, idx) => idx !== i))}
-                              className="flex-shrink-0 text-xs text-red-400 hover:text-red-600 font-medium transition-colors mt-0.5"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Inline add-service form */}
-                    {showCreateSvcForm && (
-                      <div className="flex flex-col gap-3 pt-1">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Service name</label>
-                            <input
-                              type="text"
-                              value={createSvcName}
-                              onChange={e => setCreateSvcName(e.target.value)}
-                              placeholder="e.g. Full house rewire"
-                              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 text-sm outline-none focus:border-gray-400 bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Price</label>
-                            <input
-                              type="text"
-                              value={createSvcPrice}
-                              onChange={e => setCreateSvcPrice(e.target.value)}
-                              placeholder="e.g. $150, From $80"
-                              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 text-sm outline-none focus:border-gray-400 bg-white"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
-                          <textarea
-                            value={createSvcDescription}
-                            onChange={e => setCreateSvcDescription(e.target.value)}
-                            rows={2}
-                            placeholder="Describe what's included..."
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 text-sm outline-none focus:border-gray-400 bg-white resize-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Duration <span className="text-gray-400 font-normal">(optional)</span></label>
+                  {/* ── Step 1 ── */}
+                  {createStep === 1 && (
+                    <>
+                      {/* Full name */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full name</label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">👤</span>
                           <input
                             type="text"
-                            value={createSvcDuration}
-                            onChange={e => setCreateSvcDuration(e.target.value)}
-                            placeholder="e.g. 2–4 hours, 1 day"
-                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 text-sm outline-none focus:border-gray-400 bg-white"
+                            value={createName}
+                            onChange={e => { setCreateName(e.target.value); setCreateErrors(prev => ({ ...prev, name: '' })) }}
+                            placeholder="Jane Smith"
+                            className={`w-full pl-10 pr-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.name ? 'border-red-400 focus:border-red-400' : 'border-gray-200'}`}
+                            style={!createErrors.name ? { '--tw-ring-color': '#00267F' } : {}}
+                            onFocus={e => { if (!createErrors.name) e.target.style.borderColor = '#00267F' }}
+                            onBlur={e => { if (!createErrors.name) e.target.style.borderColor = '' }}
                           />
                         </div>
-                        <div className="flex gap-2">
+                        {createErrors.name && <p className="text-xs text-red-500 mt-1">{createErrors.name}</p>}
+                      </div>
+
+                      {/* Company name */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Company name <span className="text-gray-400 font-normal">(optional)</span></label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">🏢</span>
+                          <input
+                            type="text"
+                            value={createCompanyName}
+                            onChange={e => setCreateCompanyName(e.target.value)}
+                            placeholder="e.g. Santana's Plumbing"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
+                            onFocus={e => e.target.style.borderColor = '#00267F'}
+                            onBlur={e => e.target.style.borderColor = ''}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Trade */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Trade / profession</label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">🔧</span>
+                          <input
+                            type="text"
+                            value={createTrade}
+                            onChange={e => { setCreateTrade(e.target.value); setCreateErrors(prev => ({ ...prev, trade: '' })) }}
+                            placeholder="e.g. Plumber, Graphic Designer"
+                            className={`w-full pl-10 pr-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.trade ? 'border-red-400' : 'border-gray-200'}`}
+                            onFocus={e => { if (!createErrors.trade) e.target.style.borderColor = '#00267F' }}
+                            onBlur={e => { if (!createErrors.trade) e.target.style.borderColor = '' }}
+                          />
+                        </div>
+                        {createErrors.trade && <p className="text-xs text-red-500 mt-1">{createErrors.trade}</p>}
+                      </div>
+
+                      {/* Location */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Location</label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">📍</span>
+                          <input
+                            type="text"
+                            value={createLocation}
+                            onChange={e => { setCreateLocation(e.target.value); setCreateErrors(prev => ({ ...prev, location: '' })) }}
+                            placeholder="e.g. Bridgetown, Barbados"
+                            className={`w-full pl-10 pr-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.location ? 'border-red-400' : 'border-gray-200'}`}
+                            onFocus={e => { if (!createErrors.location) e.target.style.borderColor = '#00267F' }}
+                            onBlur={e => { if (!createErrors.location) e.target.style.borderColor = '' }}
+                          />
+                        </div>
+                        {createErrors.location && <p className="text-xs text-red-500 mt-1">{createErrors.location}</p>}
+                      </div>
+
+                      {/* Bio */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-sm font-semibold text-gray-700">Bio</label>
+                          <span className={`text-xs ${createBio.length > 300 ? 'text-red-500 font-medium' : 'text-gray-400'}`}>{createBio.length}/300</span>
+                        </div>
+                        <textarea
+                          value={createBio}
+                          onChange={e => setCreateBio(e.target.value.slice(0, 300))}
+                          rows={4}
+                          placeholder="Tell clients about your experience and what you do..."
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white resize-none"
+                          onFocus={e => e.target.style.borderColor = '#00267F'}
+                          onBlur={e => e.target.style.borderColor = ''}
+                        />
+                      </div>
+
+                      {/* Rate */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Rate (used to show price range)</label>
+                        <p className="text-xs text-gray-400 mb-2">Never shown publicly — used to display a price range indicator ($, $$, $$$, $$$$) on your profile.</p>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">$</span>
+                          <input
+                            type="text"
+                            value={createRate}
+                            onChange={e => setCreateRate(e.target.value)}
+                            placeholder="e.g. 60"
+                            className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
+                            onFocus={e => e.target.style.borderColor = '#00267F'}
+                            onBlur={e => e.target.style.borderColor = ''}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Skills */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Skills <span className="text-gray-400 font-normal">(comma separated)</span></label>
+                        <input
+                          type="text"
+                          value={createSkills}
+                          onChange={e => setCreateSkills(e.target.value)}
+                          placeholder="e.g. Plumbing, Pipe fitting, Drain repair"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
+                          onFocus={e => e.target.style.borderColor = '#00267F'}
+                          onBlur={e => e.target.style.borderColor = ''}
+                        />
+                      </div>
+
+                      {/* Availability */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Availability</label>
+                        <div className="grid grid-cols-2 gap-3">
                           <button
                             type="button"
-                            onClick={() => { setShowCreateSvcForm(false); setCreateSvcName(''); setCreateSvcPrice(''); setCreateSvcDescription(''); setCreateSvcDuration('') }}
-                            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-300 transition-colors bg-white"
+                            onClick={() => setCreateAvailable(true)}
+                            className={`py-3 rounded-lg border-2 text-sm font-semibold transition-all ${createAvailable ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'}`}
                           >
-                            Cancel
+                            ✓ Available
                           </button>
                           <button
                             type="button"
-                            onClick={addCreateService}
-                            disabled={!createSvcName.trim() || !createSvcPrice.trim()}
-                            className="flex-1 text-white py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ backgroundColor: '#00267F' }}
+                            onClick={() => setCreateAvailable(false)}
+                            className={`py-3 rounded-lg border-2 text-sm font-semibold transition-all ${!createAvailable ? 'border-gray-400 bg-gray-100 text-gray-700' : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'}`}
                           >
-                            Add service
+                            ✗ Unavailable
                           </button>
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  {createError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{createError}</p>}
+                      {/* Step 1 nav */}
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => { setShowCreateForm(false); setCreateStep(1); setCreateErrors({}) }}
+                          className="flex-1 py-3 rounded-lg border border-gray-200 text-gray-600 font-medium hover:border-gray-300 transition-colors bg-white"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const errs = {}
+                            if (!createName.trim()) errs.name = 'Full name is required'
+                            if (!createTrade.trim()) errs.trade = 'Trade or profession is required'
+                            if (!createLocation.trim()) errs.location = 'Location is required'
+                            if (Object.keys(errs).length > 0) { setCreateErrors(errs); return }
+                            setCreateErrors({})
+                            setCreateStep(2)
+                          }}
+                          className="flex-1 py-3 rounded-lg font-semibold text-white hover:opacity-90 transition-opacity"
+                          style={{ backgroundColor: '#00267F' }}
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </>
+                  )}
 
-                  <div className="flex gap-3">
-                    <button type="button" onClick={() => setShowCreateForm(false)} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-medium hover:border-gray-300">Cancel</button>
-                    <button
-                      type="submit"
-                      disabled={creating}
-                      className="flex-1 text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: '#00267F' }}
-                    >
-                      {creating ? 'Creating...' : 'Create profile'}
-                    </button>
-                  </div>
+                  {/* ── Step 2 ── */}
+                  {createStep === 2 && (
+                    <>
+                      {/* Services section */}
+                      <div className="border border-gray-100 rounded-xl p-5">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-semibold text-gray-900 text-sm">Your services <span className="text-gray-400 font-normal">(optional)</span></h3>
+                          {!showCreateSvcForm && (
+                            <button
+                              type="button"
+                              onClick={() => setShowCreateSvcForm(true)}
+                              className="text-sm font-medium hover:opacity-80 transition-opacity"
+                              style={{ color: '#00267F' }}
+                            >
+                              + Add a service
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mb-4">You can add these later from your dashboard.</p>
+
+                        {createServices.length > 0 && (
+                          <div className="flex flex-col gap-2 mb-4">
+                            {createServices.map((svc, i) => (
+                              <div key={i} className="flex items-start justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-gray-900 text-sm capitalize">{svc.name}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-sm font-semibold" style={{ color: '#00267F' }}>{svc.price}</span>
+                                    {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
+                                  </div>
+                                  {svc.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed capitalize">{svc.description}</p>}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setCreateServices(prev => prev.filter((_, idx) => idx !== i))}
+                                  className="flex-shrink-0 text-xs text-red-400 hover:text-red-600 font-medium transition-colors mt-0.5"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {showCreateSvcForm && (
+                          <div className="flex flex-col gap-3 pt-1">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Service name</label>
+                              <input type="text" value={createSvcName} onChange={e => setCreateSvcName(e.target.value)} placeholder="e.g. Full house rewire" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Price</label>
+                              <select
+                                value={createSvcPriceOption}
+                                onChange={e => {
+                                  const v = e.target.value
+                                  setCreateSvcPriceOption(v)
+                                  if (v !== 'Custom amount') setCreateSvcPrice(v)
+                                  else setCreateSvcPrice('')
+                                }}
+                                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white"
+                                onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''}
+                              >
+                                <option value="">Select price</option>
+                                <option>$25</option>
+                                <option>$50</option>
+                                <option>$75</option>
+                                <option>$100</option>
+                                <option>$150</option>
+                                <option>$200</option>
+                                <option>$250</option>
+                                <option>$300</option>
+                                <option>$500</option>
+                                <option>Price on request</option>
+                                <option>Custom amount</option>
+                              </select>
+                              {createSvcPriceOption === 'Custom amount' && (
+                                <input type="text" value={createSvcPrice} onChange={e => setCreateSvcPrice(e.target.value)} placeholder="e.g. From $80, $45 per sq ft, $120 + materials" className="w-full mt-2 px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
+                              )}
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+                              <textarea value={createSvcDescription} onChange={e => setCreateSvcDescription(e.target.value)} rows={2} placeholder="Describe what's included..." className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white resize-none" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Duration <span className="text-gray-400 font-normal">(optional)</span></label>
+                              <select value={createSvcDuration} onChange={e => setCreateSvcDuration(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''}>
+                                <option value="">Select duration</option>
+                                <option>30 minutes</option>
+                                <option>1 hour</option>
+                                <option>1.5 hours</option>
+                                <option>2 hours</option>
+                                <option>3 hours</option>
+                                <option>Half day</option>
+                                <option>Full day</option>
+                                <option>2-3 days</option>
+                                <option>1 week</option>
+                              </select>
+                            </div>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => { setShowCreateSvcForm(false); setCreateSvcName(''); setCreateSvcPrice(''); setCreateSvcPriceOption(''); setCreateSvcDescription(''); setCreateSvcDuration('') }} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-300 transition-colors bg-white">Cancel</button>
+                              <button type="button" onClick={addCreateService} disabled={!createSvcName.trim() || !createSvcPrice.trim()} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: '#00267F' }}>Add service</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {createError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{createError}</p>}
+
+                      {/* Step 2 nav */}
+                      <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={() => setCreateStep(1)} className="flex-1 py-3 rounded-lg border border-gray-200 text-gray-600 font-medium hover:border-gray-300 transition-colors bg-white">← Back</button>
+                        <button type="submit" disabled={creating} className="flex-1 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed" style={{ backgroundColor: '#00267F' }}>
+                          {creating ? 'Creating...' : 'Create profile'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+
                 </form>
-              </>
+              </div>
             )}
           </div>
         )}
@@ -1339,6 +1609,49 @@ export default function Dashboard() {
                   </button>
                 </form>
               </div>
+
+              {/* Danger zone — freelancers only */}
+              {role !== 'client' && profile && (
+                <>
+                  <div className="border-t border-gray-100" />
+                  <div>
+                    <h3 className="font-semibold text-red-600 mb-1">Danger zone</h3>
+                    <p className="text-sm text-gray-500 mb-4">Permanently delete your freelancer profile and all associated data.</p>
+
+                    {!showDeleteConfirm ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="px-5 py-2.5 rounded-full text-sm font-medium border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        Delete my freelancer profile
+                      </button>
+                    ) : (
+                      <div className="border border-red-200 rounded-xl p-5 bg-red-50">
+                        <p className="text-sm font-semibold text-red-700 mb-1">Are you sure?</p>
+                        <p className="text-sm text-red-600 mb-4">This will permanently delete your profile, services and reviews. This cannot be undone.</p>
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setShowDeleteConfirm(false)}
+                            className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-300 transition-colors bg-white"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleDeleteProfile}
+                            disabled={deleting}
+                            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deleting ? 'Deleting...' : 'Yes, delete everything'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
             </div>
           )}

@@ -35,7 +35,7 @@ export default function SignUp() {
     if (error) {
       setError(error.message)
     } else if (data.session) {
-      router.push('/dashboard')
+      router.push(role === 'freelancer' ? '/dashboard?welcome=true' : '/dashboard')
     } else {
       setSuccess(true)
     }
