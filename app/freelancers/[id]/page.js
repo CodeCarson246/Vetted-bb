@@ -48,6 +48,7 @@ export default function FreelancerProfile() {
 
   const [unreadCount, setUnreadCount] = useState(0)
   const [services, setServices] = useState([])
+  const [lightboxService, setLightboxService] = useState(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -448,20 +449,27 @@ export default function FreelancerProfile() {
               {services.map(s => (
                 <div
                   key={s.id}
-                  className="border border-gray-100 rounded-xl overflow-hidden flex flex-col hover:border-gray-300 transition-colors"
+                  className={`border border-gray-100 rounded-xl overflow-hidden flex flex-col transition-colors ${s.service_images?.length > 0 ? 'cursor-pointer hover:border-gray-400' : 'hover:border-gray-300'}`}
                   onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
                   onMouseLeave={e => e.currentTarget.style.borderColor = ''}
+                  onClick={() => s.service_images?.length > 0 && setLightboxService(s)}
                 >
                   {s.service_images?.length > 0 && (
-                    <div className="flex overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                      {s.service_images.map((img, i) => (
+                    <div className="relative flex overflow-hidden" style={{ height: '160px' }}>
+                      {s.service_images.slice(0, 2).map((img, i) => (
                         <img
                           key={img.id}
                           src={img.url}
                           alt={`${s.name} photo ${i + 1}`}
-                          className="h-40 w-48 object-cover flex-shrink-0"
+                          className="h-40 object-cover flex-shrink-0"
+                          style={{ width: s.service_images.length === 1 ? '100%' : '50%' }}
                         />
                       ))}
+                      {s.service_images.length > 2 && (
+                        <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                          +{s.service_images.length - 2} more
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="p-5 flex flex-col gap-2 flex-1">
@@ -733,6 +741,42 @@ export default function FreelancerProfile() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {lightboxService && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col"
+          style={{ backgroundColor: 'rgba(0,0,0,0.92)' }}
+          onClick={() => setLightboxService(null)}
+        >
+          <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
+            <div>
+              <h3 className="text-white font-bold text-lg">{lightboxService.name}</h3>
+              <p className="text-white/50 text-sm">{lightboxService.service_images.length} photo{lightboxService.service_images.length > 1 ? 's' : ''}</p>
+            </div>
+            <button
+              onClick={() => setLightboxService(null)}
+              className="text-white/70 hover:text-white text-3xl leading-none transition-colors"
+            >
+              ×
+            </button>
+          </div>
+          <div
+            className="flex-1 overflow-y-auto px-6 pb-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl mx-auto">
+              {lightboxService.service_images.map((img, i) => (
+                <img
+                  key={img.id}
+                  src={img.url}
+                  alt={`${lightboxService.name} photo ${i + 1}`}
+                  className="w-full rounded-xl object-cover"
+                  style={{ maxHeight: '320px' }}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
