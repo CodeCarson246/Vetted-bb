@@ -380,11 +380,12 @@ function SearchPage() {
                             {/* Name + availability dot */}
                             <div className="flex items-center gap-2">
                               <h3 className="text-lg font-bold text-gray-900 leading-tight capitalize">{f.name}</h3>
-                              <span
-                                className="w-2 h-2 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: f.available ? '#22c55e' : '#d1d5db' }}
-                                title={f.available ? 'Available' : 'Unavailable'}
-                              />
+                              <span className="flex items-center gap-1.5">
+                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${f.available ? 'bg-green-400' : 'bg-gray-300'}`} />
+                                <span className={`text-xs font-medium ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
+                                  {f.available ? 'Available' : 'Unavailable'}
+                                </span>
+                              </span>
                             </div>
                             {/* Trade + location */}
                             <p className="text-sm font-medium mt-0.5 capitalize" style={{ color: '#00267F' }}>

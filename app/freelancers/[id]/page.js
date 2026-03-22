@@ -4,6 +4,11 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
 
+function displayName(author) {
+  if (!author) return ''
+  return author.includes('@') ? author.split('@')[0] : author
+}
+
 function StarRating({ rating, light = false }) {
   return (
     <div className="flex gap-0.5">
@@ -26,6 +31,7 @@ export default function FreelancerProfile() {
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewHover, setReviewHover] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
+  const [reviewService, setReviewService] = useState('')
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
   const [reviewError, setReviewError] = useState(null)
   const [reviewSuccess, setReviewSuccess] = useState(false)
@@ -133,6 +139,7 @@ export default function FreelancerProfile() {
       author: reviewerName,
       rating: reviewRating,
       comment: reviewComment,
+      service_name: reviewService || null,
       type: 'client',
       date: new Date().toISOString().split('T')[0],
     })
@@ -154,6 +161,7 @@ export default function FreelancerProfile() {
 
       setReviewRating(0)
       setReviewComment('')
+      setReviewService('')
       setReviewSuccess(true)
       setTimeout(() => setReviewSuccess(false), 3000)
     }
@@ -337,6 +345,19 @@ export default function FreelancerProfile() {
         )}
       </nav>
 
+      {/* Breadcrumb */}
+      <div className="bg-white border-b border-gray-100 px-8 py-2.5">
+        <a
+          href="/search"
+          className="text-sm text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1.5"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to search
+        </a>
+      </div>
+
       {/* ── Hero banner ── */}
       <div className="w-full" style={{ backgroundColor: '#00267F' }}>
         <div className="max-w-4xl mx-auto px-6 sm:px-8 py-10">
@@ -386,7 +407,7 @@ export default function FreelancerProfile() {
                     </span>
                   )}
                   <button
-                    onClick={() => setContactOpen(true)}
+                    onClick={() => user ? setContactOpen(true) : window.location.href = '/login'}
                     className="font-semibold px-6 py-2.5 rounded-full hover:opacity-90 transition-opacity"
                     style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                   >
@@ -455,7 +476,7 @@ export default function FreelancerProfile() {
             <div className="flex gap-2">
               {[
                 { key: 'client', label: 'About this freelancer', count: clientReviewsList.length },
-                { key: 'freelancer', label: 'Their client reviews', count: freelancerReviewsList.length },
+                ...(freelancerReviewsList.length > 0 ? [{ key: 'freelancer', label: 'Their client reviews', count: freelancerReviewsList.length }] : []),
               ].map(tab => (
                 <button
                   key={tab.key}
@@ -479,15 +500,20 @@ export default function FreelancerProfile() {
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                          {review.author[0]?.toUpperCase()}
+                          {displayName(review.author)[0]?.toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900 text-sm">{review.author}</p>
+                          <p className="font-semibold text-gray-900 text-sm">{displayName(review.author)}</p>
                           <p className="text-xs text-gray-400">{review.date}</p>
                         </div>
                       </div>
                       <StarRating rating={review.rating} />
                     </div>
+                    {review.service_name && (
+                      <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full mb-2" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                        {review.service_name}
+                      </span>
+                    )}
                     <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
                   </div>
                 ))}
@@ -497,7 +523,7 @@ export default function FreelancerProfile() {
         </div>
 
         {/* Leave a review */}
-        {user && (
+        {user && freelancer && user.id !== freelancer.user_id && (
           <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
             <h2 className="text-base font-bold text-gray-900 mb-1">Leave a review</h2>
             <p className="text-sm text-gray-500 mb-6">Share your experience working with <span className="capitalize">{freelancer.name.split(' ')[0]}</span>.</p>
@@ -520,6 +546,24 @@ export default function FreelancerProfile() {
                   ))}
                 </div>
               </div>
+
+              {services.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Service <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <select
+                    value={reviewService}
+                    onChange={e => setReviewService(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-400 bg-white text-sm"
+                  >
+                    <option value="">Select the service you used</option>
+                    {services.map(s => (
+                      <option key={s.id} value={s.name}>{s.name} — {s.price}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Comment</label>
@@ -552,15 +596,25 @@ export default function FreelancerProfile() {
           </div>
         )}
 
+        {!user && (
+          <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
+            <p className="text-sm text-gray-500">
+              <a href="/login" className="font-medium underline" style={{ color: '#00267F' }}>Log in</a>
+              {' '}to leave a review for this freelancer.
+            </p>
+          </div>
+        )}
+
       </div>
 
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-4">
         <p>© 2026 Vetted.bb · Connecting Barbados</p>
-        <p className="mt-1.5 text-xs">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 text-xs">
+          <a href="/search" className="hover:text-gray-600 transition-colors">Browse freelancers</a>
+          <a href="/signup" className="hover:text-gray-600 transition-colors">List your services</a>
           <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
-          <span className="mx-2">·</span>
           <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
-        </p>
+        </div>
       </footer>
 
       {/* Contact modal */}

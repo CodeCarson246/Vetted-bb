@@ -76,7 +76,19 @@ export default function SignUp() {
         <div className="flex-1 flex flex-col items-center justify-center px-8 py-12">
 
           {/* Mobile logo */}
-          <a href="/" className="md:hidden text-2xl font-bold mb-10 hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
+          <a href="/" className="md:hidden text-2xl font-bold mb-6 hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
+          <div className="md:hidden flex flex-col gap-2 mb-8 w-full max-w-md">
+            {trustPoints.map(point => (
+              <div key={point} className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EEF2FF' }}>
+                  <svg className="w-3 h-3" fill="none" stroke="#00267F" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-500">{point}</p>
+              </div>
+            ))}
+          </div>
 
           <div className="w-full max-w-md">
             {success ? (

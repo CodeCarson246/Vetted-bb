@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [clientMessages, setClientMessages] = useState([])
   const [clientReviewsLeft, setClientReviewsLeft] = useState([])
   const [topFreelancers, setTopFreelancers] = useState([])
+  const [copied, setCopied] = useState(false)
 
   // Services state
   const [services, setServices] = useState([])
@@ -217,7 +218,7 @@ export default function Dashboard() {
         trade: createTrade,
         location: createLocation,
         bio: createBio,
-        hourly_rate: createRate,
+        hourly_rate: createRate || null,
         available: createAvailable,
         skills,
         category: createCategory || null,
@@ -864,6 +865,35 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* Share profile */}
+            <div className="bg-white rounded-2xl border border-gray-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 mb-0.5">Share your profile</p>
+                <p className="text-xs text-gray-400 truncate">vetted-bb.vercel.app/freelancers/{profile.id}</p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`https://vetted-bb.vercel.app/freelancers/${profile.id}`)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                  className="text-xs px-4 py-2 rounded-full border border-gray-200 font-medium text-gray-600 hover:border-gray-400 transition-colors"
+                >
+                  {copied ? '✓ Copied!' : 'Copy link'}
+                </button>
+                <a
+                  href={`https://wa.me/?text=Check out my profile on Vetted.bb: https://vetted-bb.vercel.app/freelancers/${profile.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-4 py-2 rounded-full font-medium text-white"
+                  style={{ backgroundColor: '#25D366' }}
+                >
+                  WhatsApp
+                </a>
+              </div>
+            </div>
+
             {/* My services */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
@@ -992,7 +1022,7 @@ export default function Dashboard() {
                     <div key={svc.id} className="px-6 sm:px-8 py-5 flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 capitalize">{svc.name}</p>
-                        {svc.description && <p className="text-sm text-gray-500 mt-0.5 leading-relaxed capitalize">{svc.description}</p>}
+                        {svc.description && <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{svc.description}</p>}
                         <div className="flex items-center gap-3 mt-2">
                           <span className="text-sm font-bold" style={{ color: '#00267F' }}>{svc.price}</span>
                           {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
@@ -1057,7 +1087,9 @@ export default function Dashboard() {
                       </div>
                       <div className="bg-white rounded-xl p-5 text-center border border-gray-100" style={{ borderTop: '3px solid #00267F' }}>
                         <svg className="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#00267F' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <p className="text-3xl font-bold text-gray-900">${profile.hourly_rate}</p>
+                        <p className="text-3xl font-bold text-gray-900">
+                          {profile.hourly_rate ? `$${profile.hourly_rate}` : '—'}
+                        </p>
                         <p className="text-sm text-gray-500 mt-2">Hourly rate</p>
                       </div>
                     </div>
@@ -1508,7 +1540,7 @@ export default function Dashboard() {
                                     <span className="text-sm font-semibold" style={{ color: '#00267F' }}>{svc.price}</span>
                                     {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
                                   </div>
-                                  {svc.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed capitalize">{svc.description}</p>}
+                                  {svc.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{svc.description}</p>}
                                 </div>
                                 <button
                                   type="button"
@@ -1740,11 +1772,12 @@ export default function Dashboard() {
 
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-12">
         <p>© 2026 Vetted.bb · Connecting Barbados</p>
-        <p className="mt-1.5 text-xs">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 text-xs">
+          <a href="/search" className="hover:text-gray-600 transition-colors">Browse freelancers</a>
+          <a href="/signup" className="hover:text-gray-600 transition-colors">List your services</a>
           <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
-          <span className="mx-2">·</span>
           <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
-        </p>
+        </div>
       </footer>
     </main>
   )

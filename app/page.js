@@ -133,7 +133,7 @@ export default function Home() {
             {user ? (
               <>
                 {freelancerProfile ? (
-                  <a href="/dashboard" className="flex items-center gap-2">
+                  <a href="/dashboard" onClick={() => setMenuOpen(false)} className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                       {freelancerProfile.avatar_url
                         ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
@@ -142,10 +142,10 @@ export default function Home() {
                     <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
                   </a>
                 ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name || user?.email}</a>
+                  <a href="/dashboard" onClick={() => setMenuOpen(false)} className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name || user?.email}</a>
                 )}
                 {freelancerProfile && (
-                  <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
+                  <a href="/inbox" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-gray-700 font-medium">
                     Inbox
                     {unreadCount > 0 && (
                       <span className="min-w-[18px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-1 leading-none">
@@ -158,8 +158,10 @@ export default function Home() {
               </>
             ) : (
               <>
-                <a href="/login" className="text-gray-700 font-medium">Log in</a>
-                <a href="/signup" className="font-medium" style={{ color: '#00267F' }}>Sign up</a>
+                <a href="/search" onClick={() => setMenuOpen(false)} className="text-gray-700 font-medium">Browse freelancers</a>
+                <a href="/signup" onClick={() => setMenuOpen(false)} className="text-gray-700 font-medium">List your services</a>
+                <a href="/login" onClick={() => setMenuOpen(false)} className="text-gray-700 font-medium">Log in</a>
+                <a href="/signup" onClick={() => setMenuOpen(false)} className="font-medium" style={{ color: '#00267F' }}>Sign up</a>
               </>
             )}
           </div>
@@ -214,7 +216,7 @@ export default function Home() {
       {/* Browse by category */}
       <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
         <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Browse by category</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 category-grid">
           {categories.map((cat) => (
             <a
               key={cat.name}
@@ -250,11 +252,12 @@ export default function Home() {
 
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm">
         <p>© 2026 Vetted.bb · Connecting Barbados</p>
-        <p className="mt-1.5 text-xs">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 text-xs">
+          <a href="/search" className="hover:text-gray-600 transition-colors">Browse freelancers</a>
+          <a href="/signup" className="hover:text-gray-600 transition-colors">List your services</a>
           <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
-          <span className="mx-2">·</span>
           <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
-        </p>
+        </div>
       </footer>
     </main>
   )
