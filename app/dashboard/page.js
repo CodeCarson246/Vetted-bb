@@ -455,8 +455,28 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-sm text-gray-400">Loading...</p>
+      <main className="min-h-screen bg-gray-50">
+        <nav className="bg-white border-b border-gray-100">
+          <div className="flex items-center justify-between px-8 py-5">
+            <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
+          </div>
+        </nav>
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
+          <div className="rounded-2xl overflow-hidden shadow-sm animate-pulse">
+            <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start" style={{ backgroundColor: '#00267F' }}>
+              <div className="w-24 h-24 rounded-full flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)', boxShadow: '0 0 0 4px rgba(255,255,255,0.15)' }} />
+              <div className="flex-1 min-w-0 text-center sm:text-left">
+                <div className="h-7 rounded w-48 mb-2 mx-auto sm:mx-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                <div className="h-5 rounded w-32 mb-3 mx-auto sm:mx-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                <div className="h-4 rounded w-40 mx-auto sm:mx-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+              </div>
+              <div className="flex sm:flex-col gap-2 flex-shrink-0">
+                <div className="h-9 rounded-full w-36" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                <div className="h-9 rounded-full w-28" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     )
   }

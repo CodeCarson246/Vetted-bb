@@ -162,8 +162,72 @@ export default function FreelancerProfile() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-sm text-gray-400">Loading...</p>
+      <main className="min-h-screen bg-gray-50">
+        <nav className="bg-white border-b border-gray-100">
+          <div className="flex items-center justify-between px-8 py-5">
+            <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
+          </div>
+        </nav>
+        <div className="w-full" style={{ backgroundColor: '#00267F' }}>
+          <div className="max-w-4xl mx-auto px-6 sm:px-8 py-10 animate-pulse">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+              <div className="w-24 h-24 rounded-full flex-shrink-0 border-4" style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)' }} />
+              <div className="flex-1 min-w-0">
+                <div className="h-7 rounded w-48 mb-2" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                <div className="h-5 rounded w-32 mb-1" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                <div className="h-4 rounded w-24 mb-4" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                <div className="flex gap-5">
+                  <div className="h-4 rounded w-32" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                  <div className="h-4 rounded w-28" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="h-1" style={{ backgroundColor: '#F9C000' }} />
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
+          <div className="bg-white rounded-xl border border-gray-100 border-l-4 overflow-hidden animate-pulse" style={{ borderLeftColor: '#00267F' }}>
+            <div className="px-7 py-6">
+              <div className="h-5 bg-gray-200 rounded w-16 mb-4" />
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-full" />
+                <div className="h-4 bg-gray-200 rounded w-5/6" />
+                <div className="h-4 bg-gray-200 rounded w-4/6" />
+              </div>
+              <div className="flex gap-2 mt-5">
+                <div className="h-7 bg-gray-200 rounded-full w-16" />
+                <div className="h-7 bg-gray-200 rounded-full w-20" />
+                <div className="h-7 bg-gray-200 rounded-full w-14" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden animate-pulse">
+            <div className="px-7 pt-6 pb-6">
+              <div className="h-5 bg-gray-200 rounded w-20 mb-4" />
+              <div className="flex gap-2 mb-6">
+                <div className="h-8 bg-gray-200 rounded-full w-44" />
+                <div className="h-8 bg-gray-200 rounded-full w-36" />
+              </div>
+              <div className="flex flex-col gap-4">
+                {[...Array(2)].map((_, i) => (
+                  <div key={i} className="border border-gray-100 rounded-xl p-5">
+                    <div className="flex gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-32 mb-1.5" />
+                        <div className="h-3 bg-gray-200 rounded w-20" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="h-3 bg-gray-200 rounded w-full" />
+                      <div className="h-3 bg-gray-200 rounded w-4/5" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     )
   }

@@ -301,8 +301,37 @@ function SearchPage() {
         </p>
 
         {loading ? (
-          <div className="text-center py-24 text-gray-400">
-            <p className="text-sm">Loading freelancers...</p>
+          <div className="flex flex-col gap-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl p-6 border border-gray-100 animate-pulse">
+                <div className="flex gap-5 items-start">
+                  <div className="w-16 h-16 rounded-full bg-gray-200 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="h-5 bg-gray-200 rounded w-40 mb-2" />
+                        <div className="h-4 bg-gray-200 rounded w-28 mb-3" />
+                        <div className="flex items-center gap-1">
+                          {[...Array(5)].map((_, j) => (
+                            <div key={j} className="w-3.5 h-3.5 bg-gray-200 rounded" />
+                          ))}
+                          <div className="w-8 h-3.5 bg-gray-200 rounded ml-1" />
+                        </div>
+                        <div className="flex gap-2 mt-3 flex-wrap">
+                          <div className="h-6 bg-gray-200 rounded-full w-16" />
+                          <div className="h-6 bg-gray-200 rounded-full w-20" />
+                          <div className="h-6 bg-gray-200 rounded-full w-14" />
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                        <div className="h-6 bg-gray-200 rounded-full w-8" />
+                        <div className="h-4 bg-gray-200 rounded w-20" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <>
