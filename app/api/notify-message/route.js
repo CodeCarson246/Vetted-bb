@@ -1,6 +1,21 @@
-import { Resend } from 'resend'
+const RESEND_API_KEY = process.env.RESEND_API_KEY
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+async function sendEmail({ to, subject, html }) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Vetted.bb <notifications@vetted.bb>',
+      to,
+      subject,
+      html,
+    }),
+  })
+  return res.json()
+}
 
 export async function POST(request) {
   try {
@@ -10,8 +25,7 @@ export async function POST(request) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    await resend.emails.send({
-      from: 'Vetted.bb <notifications@vetted.bb>',
+    await sendEmail({
       to: freelancerEmail,
       subject: `New message from ${senderName} — ${subject}`,
       html: `
