@@ -137,7 +137,7 @@ export default function FAQ() {
                 ) : (
                   <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user?.user_metadata?.full_name || user?.email}</a>
                 )}
-                {freelancerProfile && (
+                {freelancerProfile ? (
                   <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -147,6 +147,12 @@ export default function FAQ() {
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
+                  </a>
+                ) : user && (
+                  <a href="/messages" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors" title="My messages">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
                   </a>
                 )}
                 <button
@@ -175,7 +181,11 @@ export default function FAQ() {
             {user ? (
               <>
                 <a href="/dashboard" className="text-gray-700 font-medium">My dashboard</a>
-                {freelancerProfile && <a href="/inbox" className="text-gray-700 font-medium">Inbox</a>}
+                {freelancerProfile ? (
+                  <a href="/inbox" className="text-gray-700 font-medium">Inbox</a>
+                ) : user && (
+                  <a href="/messages" className="text-gray-700 font-medium">My messages</a>
+                )}
                 <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="text-left text-red-500 font-medium">Log out</button>
               </>
             ) : (
