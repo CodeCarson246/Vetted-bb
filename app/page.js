@@ -51,8 +51,20 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [freelancerProfile, setFreelancerProfile] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [freelancerCount, setFreelancerCount] = useState(null)
+  const [reviewCount, setReviewCount] = useState(null)
+  const [featuredReviews, setFeaturedReviews] = useState([])
 
   useEffect(() => {
+    Promise.all([
+      supabase.from('freelancers').select('*', { count: 'exact', head: true }).eq('available', true),
+      supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('type', 'client'),
+      supabase.from('reviews').select('comment, rating, author, date').eq('type', 'client').gte('rating', 5).not('comment', 'is', null).limit(3).order('date', { ascending: false }),
+    ]).then(([{ count: fc }, { count: rc }, { data: revs }]) => {
+      setFreelancerCount(fc || 0)
+      setReviewCount(rc || 0)
+      setFeaturedReviews(revs || [])
+    })
     supabase.auth.getUser().then(async ({ data }) => {
       const u = data.user
       setUser(u)
@@ -73,7 +85,7 @@ export default function Home() {
       {/* Navbar */}
       <nav className="relative bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
-          <span className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</span>
+          <a href="/" className="text-2xl font-bold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
           <div className="hidden sm:flex gap-4 items-center">
             {user ? (
               <>
@@ -169,26 +181,39 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="px-4 sm:px-8 py-20 sm:py-28 text-center" style={{ background: 'linear-gradient(to bottom right, #00267F, #001a5c)' }}>
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl sm:text-5xl font-bold text-white mb-5 leading-tight">
-            Find trusted freelancers<br className="hidden sm:block" /> in Barbados
+      <section className="px-4 sm:px-8 py-20 sm:py-32 text-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 60%, #001240 100%)' }}>
+        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #F9C000 0%, transparent 50%), radial-gradient(circle at 80% 20%, #ffffff 0%, transparent 40%)' }} />
+        <div className="max-w-3xl mx-auto relative">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#F9C000', border: '1px solid rgba(249,192,0,0.3)' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F9C000', display: 'inline-block' }} />
+            Barbados&apos; trusted freelancer marketplace
+          </div>
+          <h1 className="text-4xl sm:text-6xl font-bold text-white mb-6 leading-tight tracking-tight">
+            Find trusted freelancers<br className="hidden sm:block" />
+            <span style={{ color: '#F9C000' }}> in Barbados</span>
           </h1>
-          <p className="text-lg sm:text-xl mb-10" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            Every freelancer is reviewed by real clients. Every client is reviewed by freelancers.<br className="hidden sm:block" /> Real accountability, both ways.
+          <p className="text-lg sm:text-xl mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
+            Real reviews. Real accountability. Every freelancer rated by clients — every client rated by freelancers.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto">
             <input
               type="text"
               id="homeSearch"
-              placeholder="What do you need? e.g. plumber, graphic designer..."
-              className="flex-1 px-5 py-4 rounded-full text-gray-900 outline-none bg-white placeholder-gray-400 shadow-sm"
+              placeholder="e.g. plumber, graphic designer, electrician..."
+              className="flex-1 px-6 py-4 rounded-full text-gray-900 outline-none bg-white placeholder-gray-400 text-base"
+              style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const q = document.getElementById('homeSearch').value
+                  window.location.href = `/search?q=${q}`
+                }
+              }}
             />
             <button
-              className="px-8 py-4 rounded-full font-semibold shadow-sm transition-colors"
-              style={{ backgroundColor: '#F9C000', color: '#00267F' }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#E0AC00'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F9C000'}
+              className="px-8 py-4 rounded-full font-bold text-base transition-all"
+              style={{ backgroundColor: '#F9C000', color: '#00267F', boxShadow: '0 4px 16px rgba(249,192,0,0.35)' }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#E0AC00'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F9C000'; e.currentTarget.style.transform = 'translateY(0)' }}
               onClick={() => {
                 const q = document.getElementById('homeSearch').value
                 window.location.href = `/search?q=${q}`
@@ -204,7 +229,7 @@ export default function Home() {
       <section className="max-w-5xl mx-auto px-4 sm:px-8 py-14">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {trustSignals.map(s => (
-            <div key={s.title} className="bg-white border border-gray-100 rounded-2xl p-6 flex flex-col gap-3">
+            <div key={s.title} className="bg-white border border-gray-100 rounded-2xl p-6 flex flex-col gap-3 hover:shadow-sm transition-shadow" style={{ borderTop: '3px solid #00267F' }}>
               <span className="text-3xl">{s.icon}</span>
               <h3 className="font-semibold text-gray-900">{s.title}</h3>
               <p className="text-sm text-gray-500 leading-relaxed">{s.desc}</p>
@@ -239,7 +264,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             {steps.map(step => (
               <div key={step.n} className="flex flex-col items-center text-center gap-4">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
                   {step.n}
                 </div>
                 <h3 className="font-semibold text-gray-900">{step.title}</h3>
@@ -249,6 +274,58 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Social proof */}
+      {(freelancerCount > 0 || reviewCount > 0) && (
+        <section className="py-16 px-4 sm:px-8" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
+          <div className="max-w-5xl mx-auto">
+
+            {/* Stats row */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-14">
+              <div className="text-center">
+                <p className="text-3xl sm:text-4xl font-bold text-white">{freelancerCount}+</p>
+                <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Freelancers available</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl sm:text-4xl font-bold text-white">{reviewCount}+</p>
+                <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Verified reviews</p>
+              </div>
+              <div className="col-span-2 sm:col-span-1 text-center">
+                <p className="text-3xl sm:text-4xl font-bold" style={{ color: '#F9C000' }}>100%</p>
+                <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Barbados based</p>
+              </div>
+            </div>
+
+            {/* Review quotes */}
+            {featuredReviews.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {featuredReviews.map((rev, i) => (
+                  <div key={i} className="rounded-2xl p-6 flex flex-col gap-4" style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                    <div className="flex gap-0.5">
+                      {[1,2,3,4,5].map(s => (
+                        <span key={s} className="text-sm" style={{ color: '#F9C000' }}>★</span>
+                      ))}
+                    </div>
+                    <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                      &ldquo;{rev.comment.length > 120 ? rev.comment.slice(0, 120) + '…' : rev.comment}&rdquo;
+                    </p>
+                    <div className="flex items-center gap-3 mt-auto">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ backgroundColor: 'rgba(249,192,0,0.2)', color: '#F9C000' }}>
+                        {rev.author ? rev.author[0].toUpperCase() : '?'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">{rev.author || 'Client'}</p>
+                        <p className="text-xs" style={{ color: '#93b8ff' }}>{rev.date}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </div>
+        </section>
+      )}
 
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm">
         <p>© 2026 Vetted.bb · Connecting Barbados</p>

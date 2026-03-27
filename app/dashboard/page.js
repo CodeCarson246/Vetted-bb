@@ -4,6 +4,30 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
 
+function Toast({ message, type, onClose }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3000)
+    return () => clearTimeout(t)
+  }, [onClose])
+  return (
+    <div
+      style={{
+        position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999,
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '12px 18px', borderRadius: '12px',
+        backgroundColor: type === 'success' ? '#00267F' : '#dc2626',
+        color: 'white', fontSize: '14px', fontWeight: '500',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        animation: 'slideUp 0.2s ease'
+      }}
+    >
+      <span>{type === 'success' ? '✓' : '✕'}</span>
+      <span>{message}</span>
+      <button onClick={onClose} style={{ marginLeft: '8px', opacity: 0.7, background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px', lineHeight: 1 }}>×</button>
+    </div>
+  )
+}
+
 function displayName(author) {
   if (!author) return ''
   return author.includes('@') ? author.split('@')[0] : author
@@ -73,6 +97,7 @@ export default function Dashboard() {
   const [skillsInput, setSkillsInput] = useState('')
   const [category, setCategory] = useState('')
   const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState(null)
 
@@ -197,11 +222,11 @@ export default function Dashboard() {
       .eq('user_id', user.id)
 
     if (error) {
-      setSaveError(error.message)
+      setToast({ message: 'Something went wrong — please try again', type: 'error' })
     } else {
       setProfile(prev => ({ ...prev, bio, hourly_rate: hourlyRate, available, skills, category }))
-      setSaveSuccess(true)
-      setTimeout(() => { setSaveSuccess(false); setShowEditForm(false) }, 1500)
+      setShowEditForm(false)
+      setToast({ message: 'Profile updated successfully', type: 'success' })
     }
     setSaving(false)
   }
@@ -477,6 +502,7 @@ export default function Dashboard() {
       .order('created_at', { ascending: true })
     setServices(updatedSvc || [])
     closeServiceForm()
+    setToast({ message: editingService ? 'Service updated' : 'Service added', type: 'success' })
     setServiceSaving(false)
   }
 
@@ -494,7 +520,7 @@ export default function Dashboard() {
     if (error) {
       setEmailError(error.message)
     } else {
-      setEmailSuccess(true)
+      setToast({ message: 'Check your new email for a confirmation link', type: 'success' })
     }
     setEmailSaving(false)
   }
@@ -512,10 +538,9 @@ export default function Dashboard() {
     if (error) {
       setPasswordError(error.message)
     } else {
-      setPasswordSuccess(true)
       setNewPassword('')
       setConfirmPassword('')
-      setTimeout(() => setPasswordSuccess(false), 4000)
+      setToast({ message: 'Password updated successfully', type: 'success' })
     }
     setPasswordSaving(false)
   }
@@ -555,6 +580,18 @@ export default function Dashboard() {
       </main>
     )
   }
+
+  const completenessItems = profile ? [
+    { label: 'Profile photo', done: !!profile.avatar_url },
+    { label: 'Bio written', done: !!profile.bio && profile.bio.length > 20 },
+    { label: 'Skills added', done: (profile.skills || []).length > 0 },
+    { label: 'Service added', done: services.length > 0 },
+    { label: 'Service photos', done: services.some(s => s.service_images?.length > 0) },
+    { label: 'First review', done: reviews.filter(r => r.type === 'client').length > 0 },
+  ] : []
+  const completenessScore = completenessItems.length > 0
+    ? Math.round((completenessItems.filter(i => i.done).length / completenessItems.length) * 100)
+    : 0
 
   const clientReviews = reviews.filter(r => r.type === 'client')
   const freelancerReviews = reviews.filter(r => r.type === 'freelancer')
@@ -934,6 +971,39 @@ export default function Dashboard() {
                 </form>
               )}
             </div>
+
+            {/* Profile completeness */}
+            {completenessScore < 100 && (
+              <div className="bg-white rounded-2xl border border-gray-100 px-6 py-5 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-gray-900">Profile strength</p>
+                  <p className="text-sm font-bold" style={{ color: completenessScore >= 80 ? '#16a34a' : completenessScore >= 50 ? '#ca8a04' : '#00267F' }}>
+                    {completenessScore}%
+                  </p>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4">
+                  <div
+                    className="h-1.5 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${completenessScore}%`,
+                      backgroundColor: completenessScore >= 80 ? '#16a34a' : completenessScore >= 50 ? '#ca8a04' : '#00267F'
+                    }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {completenessItems.map(item => (
+                    <div key={item.label} className="flex items-center gap-2">
+                      <span className="text-xs flex-shrink-0" style={{ color: item.done ? '#16a34a' : '#d1d5db' }}>
+                        {item.done ? '✓' : '○'}
+                      </span>
+                      <span className={`text-xs ${item.done ? 'text-gray-400 line-through' : 'text-gray-600'}`}>
+                        {item.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Share profile */}
             <div className="bg-white rounded-2xl border border-gray-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
@@ -1884,6 +1954,7 @@ export default function Dashboard() {
           <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
         </div>
       </footer>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </main>
   )
 }
