@@ -987,6 +987,29 @@ export default function Dashboard() {
                     View public profile
                   </a>
                   <button
+                    onClick={async () => {
+                      const newVal = !profile.available
+                      const { error } = await supabase
+                        .from('freelancers')
+                        .update({ available: newVal })
+                        .eq('user_id', user.id)
+                      if (!error) {
+                        setProfile(prev => ({ ...prev, available: newVal }))
+                        setAvailable(newVal)
+                        setToast({ message: newVal ? 'You are now available for work' : 'You are now marked as unavailable', type: 'success' })
+                      }
+                    }}
+                    className="px-4 py-2 rounded-full text-sm font-medium transition-all text-center"
+                    style={{
+                      backgroundColor: profile.available ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.1)',
+                      color: profile.available ? '#4ade80' : 'rgba(255,255,255,0.5)',
+                      border: '1.5px solid',
+                      borderColor: profile.available ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.2)'
+                    }}
+                  >
+                    {profile.available ? '● Available' : '○ Unavailable'}
+                  </button>
+                  <button
                     onClick={() => setShowEditForm(v => !v)}
                     className="px-4 py-2 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
                     style={{ backgroundColor: '#F9C000', color: '#00267F' }}

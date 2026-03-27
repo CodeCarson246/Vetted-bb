@@ -54,16 +54,19 @@ export default function Home() {
   const [freelancerCount, setFreelancerCount] = useState(null)
   const [reviewCount, setReviewCount] = useState(null)
   const [featuredReviews, setFeaturedReviews] = useState([])
+  const [featuredFreelancers, setFeaturedFreelancers] = useState([])
 
   useEffect(() => {
     Promise.all([
       supabase.from('freelancers').select('*', { count: 'exact', head: true }).eq('available', true),
       supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('type', 'client'),
       supabase.from('reviews').select('comment, rating, author, date').eq('type', 'client').gte('rating', 5).not('comment', 'is', null).limit(3).order('date', { ascending: false }),
-    ]).then(([{ count: fc }, { count: rc }, { data: revs }]) => {
+      supabase.from('freelancers').select('id, name, trade, avatar_url, location, rating, review_count, hourly_rate, verified, skills').eq('available', true).gte('rating', 4).order('review_count', { ascending: false }).limit(3),
+    ]).then(([{ count: fc }, { count: rc }, { data: revs }, { data: featured }]) => {
       setFreelancerCount(fc || 0)
       setReviewCount(rc || 0)
       setFeaturedReviews(revs || [])
+      setFeaturedFreelancers(featured || [])
     })
     supabase.auth.getUser().then(async ({ data }) => {
       const u = data.user
@@ -264,6 +267,87 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* Featured freelancers */}
+      {featuredFreelancers.length > 0 && (
+        <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Featured freelancers</h2>
+              <p className="text-sm text-gray-500 mt-1">Top rated and available right now</p>
+            </div>
+            <a
+              href="/search"
+              className="text-sm font-semibold hover:opacity-80 transition-opacity"
+              style={{ color: '#00267F' }}
+            >
+              See all →
+            </a>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {featuredFreelancers.map(f => (
+              <a
+                key={f.id}
+                href={`/freelancers/${f.id}`}
+                className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-md transition-all group"
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = ''}
+              >
+                {/* Card header */}
+                <div className="px-5 pt-5 pb-4 flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+                    {f.avatar_url
+                      ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
+                      : f.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-bold text-gray-900 text-sm truncate">{f.name}</p>
+                      {f.verified && (
+                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#00267F' }}>✓</span>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium capitalize mt-0.5" style={{ color: '#00267F' }}>{f.trade}</p>
+                    {f.location && <p className="text-xs text-gray-400 mt-0.5">📍 {f.location}</p>}
+                  </div>
+                </div>
+                {/* Rating bar */}
+                <div className="px-5 pb-4 border-t border-gray-50 pt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex gap-0.5">
+                      {[1,2,3,4,5].map(s => (
+                        <span key={s} className="text-xs" style={{ color: s <= Math.round(f.rating) ? '#F9C000' : '#e5e7eb' }}>★</span>
+                      ))}
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700">{f.rating}</span>
+                    <span className="text-xs text-gray-400">({f.review_count})</span>
+                  </div>
+                  <span className="text-xs font-bold" style={{ color: '#00267F' }}>
+                    {f.hourly_rate === 'budget' ? '$' : f.hourly_rate === 'mid' ? '$$' : f.hourly_rate === 'premium' ? '$$$' : ''}
+                  </span>
+                </div>
+                {/* Skills */}
+                {f.skills?.length > 0 && (
+                  <div className="px-5 pb-4 flex flex-wrap gap-1.5">
+                    {f.skills.slice(0, 3).map(skill => (
+                      <span key={skill} className="text-xs px-2.5 py-1 rounded-full bg-gray-50 text-gray-500 border border-gray-100">{skill}</span>
+                    ))}
+                    {f.skills.length > 3 && (
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-gray-50 text-gray-400">+{f.skills.length - 3}</span>
+                    )}
+                  </div>
+                )}
+                {/* CTA */}
+                <div className="px-5 pb-5">
+                  <div className="w-full py-2.5 rounded-xl text-center text-sm font-semibold transition-colors" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                    View profile
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* How it works */}
       <section className="bg-white border-t border-gray-100 py-16 px-4 sm:px-8">

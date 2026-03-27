@@ -139,6 +139,18 @@ export default function FreelancerProfile() {
     if (error) {
       setContactError(error.message)
     } else {
+      fetch('/api/notify-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          freelancerEmail: freelancer.email,
+          freelancerName: freelancer.name,
+          senderName,
+          senderEmail,
+          subject,
+          message: contactMessage,
+        }),
+      }).catch(() => {})
       setContactSuccess(true)
       setTimeout(() => {
         setContactOpen(false)
