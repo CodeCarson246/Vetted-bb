@@ -55,6 +55,10 @@ export default function Dashboard() {
   const [showEditForm, setShowEditForm] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [clientMessages, setClientMessages] = useState([])
+  const [clientThreadReplies, setClientThreadReplies] = useState({})
+  const [clientThreadQuotes, setClientThreadQuotes] = useState({})
+  const [expandedClientMsg, setExpandedClientMsg] = useState(null)
+  const [viewingClientQuote, setViewingClientQuote] = useState(null)
   const [clientReviewsLeft, setClientReviewsLeft] = useState([])
   const [topFreelancers, setTopFreelancers] = useState([])
   const [copied, setCopied] = useState(false)
@@ -164,7 +168,7 @@ export default function Dashboard() {
 
       if (userRole === 'client') {
         const [{ data: msgs }, { data: rLeft }, { data: topF }] = await Promise.all([
-          supabase.from('messages').select('*, freelancers(name)').eq('sender_email', user.email).order('created_at', { ascending: false }),
+          supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location)').eq('sender_email', user.email).order('created_at', { ascending: false }),
           supabase.from('reviews').select('*').eq('author_email', user.email).order('date', { ascending: false }),
           supabase.from('freelancers').select('id, name, trade, avatar_url, rating, hourly_rate').order('rating', { ascending: false }).limit(3),
         ])
@@ -207,6 +211,34 @@ export default function Dashboard() {
     }
     init()
   }, [router])
+
+  async function expandClientMessage(msg) {
+    if (expandedClientMsg === msg.id) {
+      setExpandedClientMsg(null)
+      return
+    }
+    setExpandedClientMsg(msg.id)
+    const { data: r } = await supabase
+      .from('message_replies')
+      .select('*')
+      .eq('message_id', msg.id)
+      .order('created_at', { ascending: true })
+    setClientThreadReplies(prev => ({ ...prev, [msg.id]: r || [] }))
+    const quoteIds = (r || [])
+      .filter(rep => rep.body.startsWith('__QUOTE__'))
+      .map(rep => rep.body.replace('__QUOTE__', ''))
+    if (quoteIds.length > 0) {
+      const { data: qs } = await supabase
+        .from('quotes')
+        .select('*')
+        .in('id', quoteIds)
+      if (qs) {
+        const map = {}
+        qs.forEach(q => { map[q.id] = q })
+        setClientThreadQuotes(prev => ({ ...prev, ...map }))
+      }
+    }
+  }
 
   async function handleSave(e) {
     e.preventDefault()
@@ -801,28 +833,117 @@ export default function Dashboard() {
             {/* Messages sent */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
-                <h2 className="font-semibold text-gray-900">Messages sent <span className="text-gray-400 font-normal text-sm">({clientMessages.length})</span></h2>
+                <h2 className="font-semibold text-gray-900">My messages <span className="text-gray-400 font-normal text-sm">({clientMessages.length})</span></h2>
               </div>
-              <div className="p-6 sm:p-8">
+              <div className="divide-y divide-gray-50">
                 {clientMessages.length === 0 ? (
-                  <p className="text-sm text-gray-400">No messages sent yet. <a href="/search" style={{ color: '#00267F' }} className="font-medium hover:opacity-80">Browse freelancers →</a></p>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {clientMessages.map((msg, i) => (
-                      <div key={i} className="border border-gray-100 rounded-xl p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 text-sm">{msg.freelancers?.name || 'Freelancer'}</p>
-                            <p className="text-sm text-gray-600 mt-0.5">{msg.subject}</p>
-                          </div>
-                          <span className="text-xs text-gray-400 flex-shrink-0">
-                            {new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="p-8 text-center">
+                    <p className="text-sm text-gray-400">No messages yet. <a href="/search" style={{ color: '#00267F' }} className="font-medium hover:opacity-80">Browse freelancers →</a></p>
                   </div>
-                )}
+                ) : clientMessages.map(msg => (
+                  <div key={msg.id}>
+                    {/* Message row */}
+                    <div
+                      className="px-6 sm:px-8 py-5 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => expandClientMessage(msg)}
+                    >
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+                        {msg.freelancers?.avatar_url
+                          ? <img src={msg.freelancers.avatar_url} alt={msg.freelancers.name} className="w-full h-full object-cover" />
+                          : (msg.freelancers?.name || '?').split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900 text-sm">{msg.freelancers?.name || 'Freelancer'}</p>
+                          <span className="text-xs text-gray-400">{msg.freelancers?.trade}</span>
+                        </div>
+                        <p className="text-sm text-gray-500 truncate mt-0.5">{msg.subject}</p>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-xs text-gray-400">{new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                        <span className="text-gray-300 text-sm">{expandedClientMsg === msg.id ? '▲' : '▼'}</span>
+                      </div>
+                    </div>
+
+                    {/* Expanded thread */}
+                    {expandedClientMsg === msg.id && (
+                      <div className="px-6 sm:px-8 pb-6 border-t border-gray-50">
+
+                        {/* Original message */}
+                        <div className="mt-4 bg-gray-50 rounded-xl p-4">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Your message</p>
+                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                          <p className="text-xs text-gray-400 mt-2">{new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+
+                        {/* Replies and quotes */}
+                        {(clientThreadReplies[msg.id] || []).length > 0 && (
+                          <div className="mt-3 flex flex-col gap-3">
+                            {(clientThreadReplies[msg.id] || []).map(r => {
+                              const isQuote = r.body.startsWith('__QUOTE__')
+                              const quoteId = isQuote ? r.body.replace('__QUOTE__', '') : null
+                              const quoteData = quoteId ? (clientThreadQuotes[quoteId] || null) : null
+
+                              if (isQuote && quoteData) {
+                                return (
+                                  <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                                    <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#00267F' }}>
+                                      <div>
+                                        <p className="text-white font-semibold text-sm">Quote {quoteData.quote_number}</p>
+                                        <p className="text-xs mt-0.5" style={{ color: '#93b8ff' }}>From {msg.freelancers?.name} · {new Date(quoteData.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                      </div>
+                                      <button
+                                        onClick={() => setViewingClientQuote({ quote: quoteData, freelancer: msg.freelancers })}
+                                        className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity"
+                                        style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                                      >
+                                        View & download
+                                      </button>
+                                    </div>
+                                    <div className="px-4 py-3 flex items-center justify-between bg-gray-50">
+                                      <div className="flex items-center gap-4">
+                                        <div>
+                                          <p className="text-xs text-gray-400">Total</p>
+                                          <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-xs text-gray-400">Payment due</p>
+                                          <p className="text-sm font-semibold text-gray-700">{new Date(quoteData.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                        </div>
+                                      </div>
+                                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                                        {quoteData.status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )
+                              }
+
+                              return (
+                                <div key={r.id} className="flex items-start gap-3">
+                                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+                                    {msg.freelancers?.avatar_url
+                                      ? <img src={msg.freelancers.avatar_url} alt={msg.freelancers.name} className="w-full h-full object-cover" />
+                                      : (msg.freelancers?.name || '?')[0]?.toUpperCase()}
+                                  </div>
+                                  <div className="flex-1 bg-white border border-gray-100 rounded-xl px-4 py-3">
+                                    <p className="text-xs font-semibold text-gray-700 mb-1">{r.sender_name}</p>
+                                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
+                                    <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {(clientThreadReplies[msg.id] || []).length === 0 && (
+                          <p className="text-xs text-gray-400 mt-3 text-center">No replies yet</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1955,6 +2076,97 @@ export default function Dashboard() {
         </div>
       </footer>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Client quote viewer modal */}
+      {viewingClientQuote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setViewingClientQuote(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-screen overflow-y-auto p-8" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center gap-3">
+                {viewingClientQuote.freelancer?.avatar_url ? (
+                  <img src={viewingClientQuote.freelancer.avatar_url} alt={viewingClientQuote.freelancer.name} className="w-12 h-12 rounded-full object-cover" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
+                    {(viewingClientQuote.freelancer?.name || '?').split(' ').map(n => n[0]).join('')}
+                  </div>
+                )}
+                <div>
+                  <p className="font-bold text-gray-900">{viewingClientQuote.freelancer?.company_name || viewingClientQuote.freelancer?.name}</p>
+                  <p className="text-sm text-gray-500">{viewingClientQuote.freelancer?.trade}</p>
+                  <p className="text-xs text-gray-400">{viewingClientQuote.freelancer?.email}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold" style={{ color: '#00267F' }}>QUOTE</p>
+                <p className="text-xs text-gray-400 mt-1">{viewingClientQuote.quote.quote_number}</p>
+                <p className="text-xs text-gray-400">{new Date(viewingClientQuote.quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              </div>
+            </div>
+            <div className="h-0.5 mb-6 rounded-full" style={{ backgroundColor: '#F9C000' }} />
+            <div className="mb-6">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Billed to</p>
+              <p className="font-semibold text-gray-900">{viewingClientQuote.quote.client_name}</p>
+              <p className="text-sm text-gray-500">{viewingClientQuote.quote.client_email}</p>
+            </div>
+            <table className="w-full mb-6 text-sm">
+              <thead>
+                <tr style={{ backgroundColor: '#00267F' }}>
+                  <th className="text-left px-3 py-2 text-white font-medium rounded-tl-lg text-xs">Description</th>
+                  <th className="text-center px-3 py-2 text-white font-medium text-xs w-12">Qty</th>
+                  <th className="text-right px-3 py-2 text-white font-medium text-xs w-20">Unit price</th>
+                  <th className="text-right px-3 py-2 text-white font-medium rounded-tr-lg text-xs w-20">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(viewingClientQuote.quote.items || []).map((item, i) => (
+                  <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#f9fafb' : 'white' }}>
+                    <td className="px-3 py-2 text-gray-700">{item.description || '—'}</td>
+                    <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
+                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '—'}</td>
+                    <td className="px-3 py-2 font-medium text-gray-900 text-right">
+                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="flex justify-end mb-6">
+              <div className="w-48">
+                <div className="flex justify-between py-2 border-t border-gray-200">
+                  <span className="text-sm text-gray-500">Subtotal</span>
+                  <span className="text-sm font-medium text-gray-900">${Number(viewingClientQuote.quote.subtotal).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-2 border-t-2 border-gray-900 mt-1">
+                  <span className="text-sm font-bold text-gray-900">Total</span>
+                  <span className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(viewingClientQuote.quote.total).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: '#EEF2FF' }}>
+              <p className="text-xs font-semibold text-gray-700 mb-0.5">Payment due</p>
+              <p className="text-sm font-bold" style={{ color: '#00267F' }}>{new Date(viewingClientQuote.quote.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            </div>
+            {viewingClientQuote.quote.notes && (
+              <div className="border-t border-gray-100 pt-4 mb-4">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Notes</p>
+                <p className="text-xs text-gray-600 leading-relaxed">{viewingClientQuote.quote.notes}</p>
+              </div>
+            )}
+            <div className="border-t border-gray-100 pt-4 text-center mb-6">
+              <p className="text-xs text-gray-400">Generated via <span className="font-semibold" style={{ color: '#00267F' }}>Vetted.bb</span> · Connecting Barbados</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setViewingClientQuote(null)} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
+                Close
+              </button>
+              <button onClick={() => window.print()} className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   )
 }

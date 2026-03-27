@@ -39,3 +39,34 @@ body {
     margin: 0;
   }
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+  #quote-preview {
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 20px !important;
+    box-shadow: none !important;
+  }
+  .fixed {
+    position: static !important;
+    overflow: visible !important;
+  }
+  .overflow-y-auto {
+    overflow: visible !important;
+  }
+  .grid {
+    display: block !important;
+  }
+  .lg\:grid-cols-2 {
+    display: block !important;
+  }
+  .sticky {
+    position: static !important;
+  }
+}

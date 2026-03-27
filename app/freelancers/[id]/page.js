@@ -48,6 +48,8 @@ export default function FreelancerProfile() {
 
   const [unreadCount, setUnreadCount] = useState(0)
   const [services, setServices] = useState([])
+  const [cart, setCart] = useState([])
+  const [cartOpen, setCartOpen] = useState(false)
   const [lightboxService, setLightboxService] = useState(null)
   const [lightboxSlide, setLightboxSlide] = useState(0)
 
@@ -100,6 +102,25 @@ export default function FreelancerProfile() {
     if (id) fetchData()
   }, [id])
 
+  function addToCart(service) {
+    setCart(prev => {
+      if (prev.find(i => i.id === service.id)) return prev
+      return [...prev, service]
+    })
+    setCartOpen(true)
+  }
+
+  function removeFromCart(id) {
+    setCart(prev => prev.filter(i => i.id !== id))
+  }
+
+  function cartTotal() {
+    return cart.reduce((sum, item) => {
+      const num = parseFloat(item.price?.replace(/[^0-9.]/g, ''))
+      return sum + (isNaN(num) ? 0 : num)
+    }, 0)
+  }
+
   async function submitContact(e) {
     e.preventDefault()
     setContactSubmitting(true)
@@ -124,6 +145,8 @@ export default function FreelancerProfile() {
         setContactSuccess(false)
         setSubject('')
         setContactMessage('')
+        setCart([])
+        setCartOpen(false)
       }, 2000)
     }
     setContactSubmitting(false)
@@ -515,6 +538,18 @@ export default function FreelancerProfile() {
                         <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">{s.duration}</span>
                       )}
                     </div>
+                    {user && user.id !== freelancer.user_id && (
+                      <button
+                        onClick={e => { e.stopPropagation(); addToCart(s) }}
+                        disabled={!!cart.find(i => i.id === s.id)}
+                        className="w-full mt-3 py-2 rounded-lg text-xs font-semibold transition-all"
+                        style={cart.find(i => i.id === s.id)
+                          ? { backgroundColor: '#EEF2FF', color: '#00267F', cursor: 'default' }
+                          : { backgroundColor: '#00267F', color: 'white' }}
+                      >
+                        {cart.find(i => i.id === s.id) ? '✓ Added to estimate' : '+ Add to estimate'}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -673,6 +708,79 @@ export default function FreelancerProfile() {
       </footer>
 
       {/* Contact modal */}
+      {/* Estimate cart */}
+      {cart.length > 0 && (
+        <div
+          className="fixed bottom-6 left-1/2 z-40 w-full max-w-sm"
+          style={{ transform: 'translateX(-50%)' }}
+        >
+          {cartOpen ? (
+            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.18)', border: '1px solid rgba(0,38,127,0.1)' }}>
+              {/* Cart header */}
+              <div className="flex items-center justify-between px-5 py-4" style={{ backgroundColor: '#00267F' }}>
+                <div>
+                  <p className="text-white font-semibold text-sm">Your estimate</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#93b8ff' }}>{cart.length} service{cart.length > 1 ? 's' : ''} selected</p>
+                </div>
+                <button onClick={() => setCartOpen(false)} className="text-white/70 hover:text-white text-xl leading-none">×</button>
+              </div>
+              {/* Cart items */}
+              <div className="px-5 py-3 flex flex-col gap-2 max-h-52 overflow-y-auto">
+                {cart.map(item => (
+                  <div key={item.id} className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                      {item.duration && <p className="text-xs text-gray-400">{item.duration}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-sm font-bold" style={{ color: '#00267F' }}>{item.price}</span>
+                      <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-red-400 text-base leading-none transition-colors">×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Cart total + submit */}
+              <div className="px-5 pb-5 pt-3 border-t border-gray-100">
+                {cartTotal() > 0 && (
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-gray-500">Estimated total</span>
+                    <span className="text-base font-bold" style={{ color: '#00267F' }}>${cartTotal().toFixed(0)}</span>
+                  </div>
+                )}
+                <p className="text-xs text-gray-400 mb-3">Final prices are agreed directly with the freelancer.</p>
+                <button
+                  onClick={() => {
+                    const serviceList = cart.map(i => `• ${i.name} — ${i.price}`).join('\n')
+                    const total = cartTotal() > 0 ? `\n\nEstimated total: $${cartTotal().toFixed(0)}` : ''
+                    const msg = `Hi ${freelancer.name.split(' ')[0]}, I am interested in the following services:\n\n${serviceList}${total}\n\nCould you confirm availability and pricing?`
+                    setSenderName(senderName || '')
+                    setSubject(`Service enquiry — ${cart.length} service${cart.length > 1 ? 's' : ''}`)
+                    setContactMessage(msg)
+                    setContactOpen(true)
+                    setCartOpen(false)
+                  }}
+                  className="w-full py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                >
+                  Send estimate to {freelancer.name.split(' ')[0]} →
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setCartOpen(true)}
+              className="mx-auto flex items-center gap-2 px-5 py-3 rounded-full font-semibold text-sm shadow-lg"
+              style={{ backgroundColor: '#00267F', color: 'white', boxShadow: '0 4px 20px rgba(0,38,127,0.35)' }}
+            >
+              <span style={{ backgroundColor: '#F9C000', color: '#00267F', borderRadius: '50%', width: '20px', height: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                {cart.length}
+              </span>
+              View estimate
+            </button>
+          )}
+        </div>
+      )}
+
       {contactOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4"
