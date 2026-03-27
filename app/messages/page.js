@@ -272,7 +272,7 @@ export default function ClientMessages() {
       {/* Quote viewer modal */}
       {viewingQuote && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setViewingQuote(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-screen overflow-y-auto p-8" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-screen overflow-y-auto p-8 quote-doc-print" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-3">
                 {viewingQuote.freelancer?.avatar_url ? (
@@ -351,7 +351,23 @@ export default function ClientMessages() {
               <button onClick={() => setViewingQuote(null)} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
                 Close
               </button>
-              <button onClick={() => window.print()} className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+              <button
+                onClick={() => {
+                  const content = document.querySelector('.quote-doc-print')
+                  if (!content) return
+                  const printFrame = document.createElement('iframe')
+                  printFrame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;'
+                  document.body.appendChild(printFrame)
+                  const doc = printFrame.contentDocument || printFrame.contentWindow.document
+                  doc.open()
+                  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Quote</title><style>* { box-sizing: border-box; margin: 0; padding: 0; } body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 32px; background: white; color: #111827; } table { width: 100%; border-collapse: collapse; } th, td { padding: 8px 12px; font-size: 12px; } @page { margin: 0; size: A4; }</style></head><body>${content.innerHTML}</body></html>`)
+                  doc.close()
+                  printFrame.contentWindow.focus()
+                  setTimeout(() => { printFrame.contentWindow.print(); setTimeout(() => document.body.removeChild(printFrame), 1000) }, 500)
+                }}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+              >
                 Download PDF
               </button>
             </div>
