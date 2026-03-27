@@ -259,8 +259,34 @@ export default function FreelancerProfile() {
   const freelancerReviewsList = reviews.filter(r => r.type === 'freelancer')
   const priceIndicator = getPriceIndicator(freelancer.hourly_rate)
 
+  const jsonLd = freelancer ? {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: freelancer.name,
+    description: freelancer.bio || `${freelancer.trade} based in ${freelancer.location || 'Barbados'}`,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: freelancer.location || 'Barbados',
+      addressCountry: 'BB',
+    },
+    aggregateRating: freelancer.review_count > 0 ? {
+      '@type': 'AggregateRating',
+      ratingValue: freelancer.rating,
+      reviewCount: freelancer.review_count,
+      bestRating: 5,
+      worstRating: 1,
+    } : undefined,
+    url: `https://vetted-bb.vercel.app/freelancers/${freelancer.id}`,
+  } : null
+
   return (
     <main className="min-h-screen bg-gray-50">
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
 
       {/* Navbar */}
       <nav className="relative bg-white border-b border-gray-100">
