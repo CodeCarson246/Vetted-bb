@@ -149,9 +149,10 @@ export default function Inbox() {
 <title>Quote ${quoteNumber}</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; background:white; color:#111827; padding:40px; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; background:white; color:#111827; padding:40px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   @page { margin:1.2cm; size:A4; }
   table { border-collapse:collapse; }
+  * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
 </style>
 </head>
 <body>
@@ -275,7 +276,7 @@ export default function Inbox() {
     const avatarHtml = profile?.avatar_url
       ? `<img src="${profile.avatar_url}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;display:block"/>`
       : `<div style="width:56px;height:56px;border-radius:50%;background:#00267F;color:white;font-size:18px;font-weight:700;text-align:center;line-height:56px">${(profile?.name||'?').split(' ').map(n=>n[0]).join('')}</div>`
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Quote ${q.quote_number}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:white;color:#111827;padding:40px;}@page{margin:1.2cm;size:A4;}table{border-collapse:collapse;}</style></head><body>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Quote ${q.quote_number}</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:white;color:#111827;padding:40px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:1.2cm;size:A4;}table{border-collapse:collapse;}</style></head><body>
 <table width="100%" style="margin-bottom:28px"><tr><td style="vertical-align:top;width:50%"><table><tr><td style="vertical-align:top;padding-right:14px">${avatarHtml}</td><td style="vertical-align:top"><div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${profile?.company_name||profile?.name||''}</div>${profile?.company_name?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div><div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${profile?.location||''}</div>${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}</td></tr></table></td><td style="vertical-align:top;text-align:right;width:50%"><div style="font-size:34px;font-weight:800;color:#00267F;letter-spacing:4px;line-height:1">QUOTE</div><div style="font-size:12px;color:#9ca3af;margin-top:6px">${q.quote_number}</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(q.quote_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></td></tr></table>
 <table width="100%" style="margin-bottom:24px"><tr><td style="background:#F9C000;height:3px;font-size:0">&nbsp;</td></tr></table>
 <div style="margin-bottom:24px"><div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Billed to</div><div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:3px">${q.client_name}</div><div style="font-size:13px;color:#6b7280">${q.client_email}</div></div>
