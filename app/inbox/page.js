@@ -129,38 +129,169 @@ export default function Inbox() {
   }
 
   function printQuote() {
-    const content = document.getElementById('quote-preview')
-    if (!content) return
+    const subtotal = quoteTotal()
+    const itemRows = quoteItems.map((item, i) => `
+      <tr>
+        <td style="padding:10px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.description||'—'}</td>
+        <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:center;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.qty}</td>
+        <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+parseFloat(item.price).toFixed(2):'—'}</td>
+        <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#111827;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+((parseFloat(item.price)||0)*(parseInt(item.qty)||1)).toFixed(2):'—'}</td>
+      </tr>`).join('')
+
+    const avatarHtml = profile?.avatar_url
+      ? `<img src="${profile.avatar_url}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;display:block"/>`
+      : `<div style="width:56px;height:56px;border-radius:50%;background:#00267F;color:white;font-size:18px;font-weight:700;text-align:center;line-height:56px;display:block">${(profile?.name||'?').split(' ').map(n=>n[0]).join('')}</div>`
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Quote ${quoteNumber}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; background:white; color:#111827; padding:40px; }
+  @page { margin:1.2cm; size:A4; }
+  table { border-collapse:collapse; }
+</style>
+</head>
+<body>
+
+  <!-- Header: avatar/info left, QUOTE right — table layout -->
+  <table width="100%" style="margin-bottom:28px">
+    <tr>
+      <td style="vertical-align:top;width:50%">
+        <table>
+          <tr>
+            <td style="vertical-align:top;padding-right:14px">
+              ${avatarHtml}
+            </td>
+            <td style="vertical-align:top">
+              <div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${profile?.company_name||profile?.name||''}</div>
+              ${profile?.company_name?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}
+              <div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div>
+              <div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${profile?.location||''}</div>
+              ${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}
+            </td>
+          </tr>
+        </table>
+      </td>
+      <td style="vertical-align:top;text-align:right;width:50%">
+        <div style="font-size:34px;font-weight:800;color:#00267F;letter-spacing:4px;line-height:1">QUOTE</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:6px">${quoteNumber}</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(quoteDate).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Gold divider -->
+  <table width="100%" style="margin-bottom:24px"><tr><td style="background:#F9C000;height:3px;border-radius:2px;font-size:0">&nbsp;</td></tr></table>
+
+  <!-- Billed to -->
+  <div style="margin-bottom:24px">
+    <div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Billed to</div>
+    <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:3px">${quoteClientName||'Client'}</div>
+    <div style="font-size:13px;color:#6b7280">${quoteClientEmail}</div>
+  </div>
+
+  <!-- Line items -->
+  <table width="100%" style="border-collapse:collapse;margin-bottom:20px">
+    <thead>
+      <tr style="background:#00267F">
+        <th style="padding:10px 14px;text-align:left;color:white;font-size:12px;font-weight:600">Description</th>
+        <th style="padding:10px 14px;text-align:center;color:white;font-size:12px;font-weight:600;width:60px">Qty</th>
+        <th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Unit price</th>
+        <th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Total</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <!-- Totals — right aligned using table -->
+  <table width="100%" style="margin-bottom:24px">
+    <tr>
+      <td width="60%"></td>
+      <td width="40%">
+        <table width="100%">
+          <tr>
+            <td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#6b7280">Subtotal</td>
+            <td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#111827;text-align:right">$${subtotal.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#111827">Total</td>
+            <td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#00267F;text-align:right">$${subtotal.toFixed(2)}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Payment due box -->
+  <table width="100%" style="margin-bottom:24px">
+    <tr>
+      <td style="background:#EEF2FF;border-radius:10px;padding:16px 18px">
+        <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Payment due</div>
+        <div style="font-size:16px;font-weight:700;color:#00267F;margin-bottom:3px">${quoteDueDate()}</div>
+        <div style="font-size:12px;color:#9ca3af">${quotePaymentTerms==='due_receipt'?'Payment due upon receipt':quotePaymentTerms.replace('net','Net ')+' days from invoice date'}</div>
+      </td>
+    </tr>
+  </table>
+
+  ${quoteNotes?`
+  <!-- Notes -->
+  <table width="100%" style="margin-bottom:24px">
+    <tr><td style="border-top:1px solid #e5e7eb;padding-top:16px">
+      <div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Notes</div>
+      <div style="font-size:13px;color:#374151;line-height:1.7">${quoteNotes}</div>
+    </td></tr>
+  </table>`:''}
+
+  <!-- Footer -->
+  <table width="100%">
+    <tr><td style="border-top:1px solid #e5e7eb;padding-top:16px;text-align:center">
+      <div style="font-size:11px;color:#9ca3af">Generated via <span style="color:#00267F;font-weight:600">Vetted.bb</span> &middot; Connecting Barbados</div>
+    </td></tr>
+  </table>
+
+</body>
+</html>`
+
     const printFrame = document.createElement('iframe')
     printFrame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;'
     document.body.appendChild(printFrame)
     const doc = printFrame.contentDocument || printFrame.contentWindow.document
     doc.open()
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Quote</title>
-          <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 32px; background: white; color: #111827; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { padding: 8px 12px; font-size: 12px; }
-            @page { margin: 0; size: A4; }
-          </style>
-        </head>
-        <body>
-          ${content.innerHTML}
-        </body>
-      </html>
-    `)
+    doc.write(html)
     doc.close()
     printFrame.contentWindow.focus()
     setTimeout(() => {
       printFrame.contentWindow.print()
-      setTimeout(() => document.body.removeChild(printFrame), 1000)
-    }, 500)
+      setTimeout(() => document.body.removeChild(printFrame), 1500)
+    }, 800)
+  }
+
+  function printViewingQuote(q) {
+    const total = Number(q.total).toFixed(2)
+    const itemRows = (q.items||[]).map((item,i)=>`<tr><td style="padding:10px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.description||'—'}</td><td style="padding:10px 14px;font-size:13px;color:#374151;text-align:center;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.qty}</td><td style="padding:10px 14px;font-size:13px;color:#374151;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+parseFloat(item.price).toFixed(2):'—'}</td><td style="padding:10px 14px;font-size:13px;font-weight:600;color:#111827;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+((parseFloat(item.price)||0)*(parseInt(item.qty)||1)).toFixed(2):'—'}</td></tr>`).join('')
+    const avatarHtml = profile?.avatar_url
+      ? `<img src="${profile.avatar_url}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;display:block"/>`
+      : `<div style="width:56px;height:56px;border-radius:50%;background:#00267F;color:white;font-size:18px;font-weight:700;text-align:center;line-height:56px">${(profile?.name||'?').split(' ').map(n=>n[0]).join('')}</div>`
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Quote ${q.quote_number}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:white;color:#111827;padding:40px;}@page{margin:1.2cm;size:A4;}table{border-collapse:collapse;}</style></head><body>
+<table width="100%" style="margin-bottom:28px"><tr><td style="vertical-align:top;width:50%"><table><tr><td style="vertical-align:top;padding-right:14px">${avatarHtml}</td><td style="vertical-align:top"><div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${profile?.company_name||profile?.name||''}</div>${profile?.company_name?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div><div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${profile?.location||''}</div>${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}</td></tr></table></td><td style="vertical-align:top;text-align:right;width:50%"><div style="font-size:34px;font-weight:800;color:#00267F;letter-spacing:4px;line-height:1">QUOTE</div><div style="font-size:12px;color:#9ca3af;margin-top:6px">${q.quote_number}</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(q.quote_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></td></tr></table>
+<table width="100%" style="margin-bottom:24px"><tr><td style="background:#F9C000;height:3px;font-size:0">&nbsp;</td></tr></table>
+<div style="margin-bottom:24px"><div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Billed to</div><div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:3px">${q.client_name}</div><div style="font-size:13px;color:#6b7280">${q.client_email}</div></div>
+<table width="100%" style="border-collapse:collapse;margin-bottom:20px"><thead><tr style="background:#00267F"><th style="padding:10px 14px;text-align:left;color:white;font-size:12px;font-weight:600">Description</th><th style="padding:10px 14px;text-align:center;color:white;font-size:12px;font-weight:600;width:60px">Qty</th><th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Unit price</th><th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Total</th></tr></thead><tbody>${itemRows}</tbody></table>
+<table width="100%" style="margin-bottom:24px"><tr><td width="60%"></td><td width="40%"><table width="100%"><tr><td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#6b7280">Subtotal</td><td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#111827;text-align:right">$${total}</td></tr><tr><td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#111827">Total</td><td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#00267F;text-align:right">$${total}</td></tr></table></td></tr></table>
+<table width="100%" style="margin-bottom:24px"><tr><td style="background:#EEF2FF;border-radius:10px;padding:16px 18px"><div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Payment due</div><div style="font-size:16px;font-weight:700;color:#00267F;margin-bottom:3px">${new Date(q.due_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></td></tr></table>
+${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-top:1px solid #e5e7eb;padding-top:16px"><div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Notes</div><div style="font-size:13px;color:#374151;line-height:1.7">${q.notes}</div></td></tr></table>`:''}
+<table width="100%"><tr><td style="border-top:1px solid #e5e7eb;padding-top:16px;text-align:center"><div style="font-size:11px;color:#9ca3af">Generated via <span style="color:#00267F;font-weight:600">Vetted.bb</span> &middot; Connecting Barbados</div></td></tr></table>
+</body></html>`
+    const printFrame = document.createElement('iframe')
+    printFrame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;'
+    document.body.appendChild(printFrame)
+    const doc = printFrame.contentDocument||printFrame.contentWindow.document
+    doc.open(); doc.write(html); doc.close()
+    printFrame.contentWindow.focus()
+    setTimeout(()=>{printFrame.contentWindow.print();setTimeout(()=>document.body.removeChild(printFrame),1500)},800)
   }
 
   async function saveQuoteInApp() {
@@ -906,19 +1037,7 @@ export default function Inbox() {
                 Close
               </button>
               <button
-                onClick={() => {
-                  const content = document.getElementById('quote-view-doc')
-                  if (!content) return
-                  const printFrame = document.createElement('iframe')
-                  printFrame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;'
-                  document.body.appendChild(printFrame)
-                  const doc = printFrame.contentDocument || printFrame.contentWindow.document
-                  doc.open()
-                  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Quote</title><style>* { box-sizing: border-box; margin: 0; padding: 0; } body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 32px; background: white; color: #111827; } table { width: 100%; border-collapse: collapse; } th, td { padding: 8px 12px; font-size: 12px; } @page { margin: 0; size: A4; }</style></head><body>${content.innerHTML}</body></html>`)
-                  doc.close()
-                  printFrame.contentWindow.focus()
-                  setTimeout(() => { printFrame.contentWindow.print(); setTimeout(() => document.body.removeChild(printFrame), 1000) }, 500)
-                }}
+                onClick={() => printViewingQuote(viewingQuote)}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: '#F9C000', color: '#00267F' }}
               >
