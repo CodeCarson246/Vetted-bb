@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import TrustBar from '@/components/TrustBar'
 
 const categories = [
   { icon: "🔧", name: "Trades & Construction", searchQuery: "electrician plumber carpenter mason painter roofer welder tiler construction builder" },
@@ -37,13 +38,13 @@ const trustSignals = [
   {
     icon: <img src="https://flagcdn.com/bb.svg" width="40" height="28" style={{ borderRadius: '4px' }} alt="Barbados flag" />,
     title: "Barbados based",
-    desc: "Built specifically for the local community — not a generic global platform.",
+    desc: "Built specifically for the local community, not a generic global platform.",
   },
 ]
 
 const steps = [
   { n: "1", title: "Search for a freelancer", desc: "Browse by trade, skill, or name. Filter by rating, price, and availability." },
-  { n: "2", title: "Check their reviews", desc: "Read honest reviews from real clients — and see how they treat clients too." },
+  { n: "2", title: "Check their reviews", desc: "Read honest reviews from real clients and see how they treat clients too." },
   { n: "3", title: "Hire with confidence", desc: "Reach out knowing exactly who you're working with before you commit." },
 ]
 
@@ -245,7 +246,7 @@ export default function Home() {
             Find verified professionals<span style={{ color: '#F9C000' }}> in Barbados</span>
           </h1>
           <p className="text-lg sm:text-xl mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
-            Real reviews. Verified identities. Send a quote request in minutes — no more chasing WhatsApp numbers.
+            Real reviews. Verified identities. Send a quote request in minutes. No more chasing WhatsApp numbers.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto">
             <input
@@ -280,18 +281,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Trust signals */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-8 py-14">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {trustSignals.map(s => (
-            <div key={s.title} className="bg-white border border-gray-100 rounded-2xl p-6 flex flex-col gap-3 hover:shadow-sm transition-shadow" style={{ borderTop: '3px solid #00267F' }}>
-              <span className="text-3xl">{s.icon}</span>
-              <h3 className="font-semibold text-gray-900">{s.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{s.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Trust bar */}
+      <TrustBar />
 
       {/* Browse by category */}
       <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
@@ -442,7 +433,7 @@ export default function Home() {
 
               <ul className="flex flex-col gap-3 mb-8">
                 {[
-                  'Free to join — no commission on your jobs',
+                  'Free to join. No commission on your jobs.',
                   'Clients can send you quote requests directly through the platform',
                   'Build your reputation with verified reviews',
                 ].map(benefit => (
@@ -511,42 +502,20 @@ export default function Home() {
       <section className="py-16 px-4 sm:px-8" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
         <div className="max-w-5xl mx-auto">
 
-          {SHOW_STATS_NUMBERS ? (
-            /* Live stats row — enabled when NEXT_PUBLIC_SHOW_STATS_NUMBERS=true */
-            (freelancerCount > 0 || reviewCount > 0) && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-14">
-                <div className="text-center">
-                  <p className="text-3xl sm:text-4xl font-bold text-white">{freelancerCount}+</p>
-                  <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Freelancers available</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-3xl sm:text-4xl font-bold text-white">{reviewCount}+</p>
-                  <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Verified reviews</p>
-                </div>
-                <div className="col-span-2 sm:col-span-1 text-center">
-                  <p className="text-3xl sm:text-4xl font-bold" style={{ color: '#F9C000' }}>100%</p>
-                  <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Barbados based</p>
-                </div>
+          {/* Live stats row — enabled when NEXT_PUBLIC_SHOW_STATS_NUMBERS=true */}
+          {SHOW_STATS_NUMBERS && (freelancerCount > 0 || reviewCount > 0) && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-14">
+              <div className="text-center">
+                <p className="text-3xl sm:text-4xl font-bold text-white">{freelancerCount}+</p>
+                <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Freelancers available</p>
               </div>
-            )
-          ) : (
-            /* Qualitative trust bar — default until platform has scale */
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 mb-14">
-              <div className="flex flex-col items-center text-center gap-3">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#F9C000" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" fill="rgba(249,192,0,0.15)"/>
-                </svg>
-                <p className="text-white font-medium leading-snug text-sm sm:text-base">Every profile manually verified before going live</p>
+              <div className="text-center">
+                <p className="text-3xl sm:text-4xl font-bold text-white">{reviewCount}+</p>
+                <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Verified reviews</p>
               </div>
-              <div className="flex flex-col items-center text-center gap-3">
-                <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="#F9C000"/>
-                </svg>
-                <p className="text-white font-medium leading-snug text-sm sm:text-base">Two-way reviews — freelancers and clients both rated</p>
-              </div>
-              <div className="flex flex-col items-center text-center gap-3">
-                <img src="https://flagcdn.com/bb.svg" width="56" height="40" style={{ borderRadius: '4px', border: '1px solid rgba(255,255,255,0.25)' }} alt="Barbados flag" />
-                <p className="text-white font-medium leading-snug text-sm sm:text-base">Built exclusively for Barbados</p>
+              <div className="col-span-2 sm:col-span-1 text-center">
+                <p className="text-3xl sm:text-4xl font-bold" style={{ color: '#F9C000' }}>100%</p>
+                <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Barbados based</p>
               </div>
             </div>
           )}

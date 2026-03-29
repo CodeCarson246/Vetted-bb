@@ -16,7 +16,7 @@ export const metadata = {
     default: "Vetted.bb — Find Trusted Freelancers in Barbados",
     template: "%s | Vetted.bb",
   },
-  description: "Find trusted, reviewed freelancers across Barbados. Plumbers, electricians, designers, caterers and more — all rated by real clients.",
+  description: "Find trusted, reviewed freelancers across Barbados. Plumbers, electricians, designers, caterers and more, all rated by real clients.",
   keywords: ["freelancers Barbados", "tradespeople Barbados", "plumber Barbados", "electrician Barbados", "hire freelancer Barbados"],
   openGraph: {
     title: "Vetted.bb — Find Trusted Freelancers in Barbados",

@@ -323,7 +323,7 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
       .single()
 
     if (error) {
-      alert('Could not send quote — please try again')
+      alert('Could not send quote. Please try again.')
       return
     }
 
@@ -753,7 +753,7 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
                   placeholder="e.g. QT-20260327-001"
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
                 />
-                <p className="text-xs text-gray-400 mt-2">Auto-generated — edit as needed</p>
+                <p className="text-xs text-gray-400 mt-2">Auto-generated. Edit as needed.</p>
               </div>
 
               {/* Dates & terms */}

@@ -140,7 +140,7 @@ export default function Terms() {
 
           <section>
             <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>2. Description of Service</h2>
-            <p>Vetted.bb is an online marketplace that connects clients with independent freelancers based in Barbados. We provide a platform for discovery, communication, and review — we are not a staffing agency, employer, or service provider.</p>
+            <p>Vetted.bb is an online marketplace that connects clients with independent freelancers based in Barbados. We provide a platform for discovery, communication, and review. We are not a staffing agency, employer, or service provider.</p>
             <p className="mt-3">Vetted.bb does not employ freelancers, does not guarantee the quality or completion of any work, and is not a party to any agreement made between a client and a freelancer. Any contract for services is solely between the client and the freelancer. Vetted.bb accepts no liability for disputes, losses, or damages arising from those arrangements.</p>
             <p className="mt-3">We reserve the right to modify, suspend, or discontinue any aspect of the Platform at any time without prior notice.</p>
           </section>
@@ -164,7 +164,7 @@ export default function Terms() {
             <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>4. Freelancer Obligations</h2>
             <p>By registering as a freelancer on Vetted.bb, you agree to the following:</p>
             <ul className="list-disc list-inside mt-3 flex flex-col gap-2 text-gray-500">
-              <li><span className="text-gray-600 font-medium">Accurate profiles:</span> All information on your profile — including your name, trade, skills, location, and availability — must be truthful and kept up to date. Misleading or false information is grounds for account removal.</li>
+              <li><span className="text-gray-600 font-medium">Accurate profiles:</span> All information on your profile (including your name, trade, skills, location, and availability) must be truthful and kept up to date. Misleading or false information is grounds for account removal.</li>
               <li><span className="text-gray-600 font-medium">Honest reviews:</span> Reviews you leave about clients must reflect genuine experiences. You must not submit reviews in exchange for payment, discounts, or any other incentive.</li>
               <li><span className="text-gray-600 font-medium">Professional conduct:</span> You agree to treat all clients with professionalism and respect, both on the Platform and in any work arising from connections made through it.</li>
               <li><span className="text-gray-600 font-medium">Legal compliance:</span> You are responsible for ensuring that you have any licences, certifications, insurance, or permits required to perform the services you advertise. Vetted.bb does not verify these credentials.</li>
@@ -201,7 +201,7 @@ export default function Terms() {
 
           <section>
             <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>7. Intellectual Property</h2>
-            <p>All content on the Vetted.bb Platform — including the name, logo, design, text, and software — is the property of Vetted.bb or its licensors and is protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works from any part of the Platform without our express written consent.</p>
+            <p>All content on the Vetted.bb Platform (including the name, logo, design, text, and software) is the property of Vetted.bb or its licensors and is protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works from any part of the Platform without our express written consent.</p>
             <p className="mt-3">By submitting content to the Platform (including profile information, photos, and reviews), you grant Vetted.bb a non-exclusive, royalty-free, worldwide licence to use, display, and distribute that content in connection with operating and promoting the Platform.</p>
             <p className="mt-3">You represent that you own or have the necessary rights to any content you submit and that it does not infringe the rights of any third party.</p>
           </section>

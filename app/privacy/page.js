@@ -146,13 +146,13 @@ export default function Privacy() {
             <ul className="list-disc list-inside flex flex-col gap-1.5 text-gray-500">
               <li>Your name and email address, provided at registration</li>
               <li>Your account role (client or freelancer)</li>
-              <li>Your password, stored in hashed form — we never store plain-text passwords</li>
+              <li>Your password, stored in hashed form (we never store plain-text passwords)</li>
             </ul>
 
             <h3 className="font-semibold text-gray-800 mt-5 mb-2">Freelancer profile information</h3>
             <ul className="list-disc list-inside flex flex-col gap-1.5 text-gray-500">
               <li>Full name, trade or profession, location, and biography</li>
-              <li>Hourly rate (used internally to calculate a price range indicator — the exact rate is never shown publicly)</li>
+              <li>Hourly rate (used internally to calculate a price range indicator; the exact rate is never shown publicly)</li>
               <li>Skills and availability status</li>
               <li>Company name (optional)</li>
               <li>Profile photo, uploaded voluntarily</li>

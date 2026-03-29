@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import TrustBar from '@/components/TrustBar'
 
 export default function About() {
   const [user, setUser] = useState(null)
@@ -134,42 +135,20 @@ export default function About() {
         <div className="bg-white rounded-2xl border border-gray-100 px-8 py-8" style={{ borderLeft: '4px solid #00267F' }}>
           <h2 className="text-xl font-bold text-gray-900 mb-4">The problem we set out to solve</h2>
           <p className="text-gray-600 leading-relaxed mb-4">
-            Anyone who has lived in Barbados knows the drill. You need a plumber, an electrician, a graphic designer — so you ask around. You get a WhatsApp number from a friend of a friend. You send a message and hope for the best.
+            Anyone who has lived in Barbados knows the drill. You need a plumber, an electrician, a graphic designer, so you ask around. You get a WhatsApp number from a friend of a friend. You send a message and hope for the best.
           </p>
           <p className="text-gray-600 leading-relaxed">
-            Sometimes it works out. Sometimes you wait three weeks for a callback that never comes. There was no central place to find trusted local talent, read honest reviews, and make an informed decision — until now.
+            Sometimes it works out. Sometimes you wait three weeks for a callback that never comes. There was no central place to find trusted local talent, read honest reviews, and make an informed decision. Until now.
           </p>
         </div>
 
-        {/* What makes us different */}
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-6">What makes Vetted.bb different</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              {
-                icon: '🔁',
-                title: 'Two-way reviews',
-                desc: 'Clients review freelancers. Freelancers review clients. Both sides are accountable — not just the person doing the work.',
-              },
-              {
-                icon: '🇧🇧',
-                title: 'Barbados only',
-                desc: 'We are not a global platform that happens to include Barbados. Every single person on here is based on the island.',
-              },
-              {
-                icon: '🔍',
-                title: 'Real people',
-                desc: 'No fake profiles, no bots. Freelancers create genuine profiles with their real trade, location, and work history.',
-              },
-            ].map(item => (
-              <div key={item.title} className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col gap-3">
-                <span className="text-3xl">{item.icon}</span>
-                <h3 className="font-bold text-gray-900">{item.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      </div>
+
+      {/* What makes us different */}
+      <TrustBar />
+
+      {/* Remaining content */}
+      <div className="max-w-3xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
 
         {/* For freelancers */}
         <div className="bg-white rounded-2xl border border-gray-100 px-8 py-8" style={{ borderLeft: '4px solid #F9C000' }}>
@@ -193,7 +172,7 @@ export default function About() {
         <div className="bg-white rounded-2xl border border-gray-100 px-8 py-8" style={{ borderLeft: '4px solid #00267F' }}>
           <h2 className="text-xl font-bold text-gray-900 mb-4">For clients</h2>
           <p className="text-gray-600 leading-relaxed mb-4">
-            Search by trade, read reviews from real clients, and contact a freelancer directly — all in one place. Whether you need someone today or are planning ahead, Vetted.bb makes it easy to find the right person with confidence.
+            Search by trade, read reviews from real clients, and contact a freelancer directly. All in one place. Whether you need someone today or are planning ahead, Vetted.bb makes it easy to find the right person with confidence.
           </p>
           <a
             href="/search"

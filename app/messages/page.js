@@ -255,7 +255,7 @@ export default function ClientMessages() {
                       })}
 
                       {(replies[msg.id] || []).length === 0 && (
-                        <p className="text-xs text-gray-400 text-center py-2">No replies yet — the freelancer will respond here</p>
+                        <p className="text-xs text-gray-400 text-center py-2">No replies yet. The freelancer will respond here.</p>
                       )}
 
                       <a

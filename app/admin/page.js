@@ -202,6 +202,15 @@ export default function AdminPanel() {
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
               <h2 className="font-semibold text-gray-900" style={{ color: '#00267F' }}>Freelancers ({freelancerCount})</h2>
+              <div className="mt-3 rounded-xl px-4 py-3 text-xs text-amber-800 leading-relaxed" style={{ backgroundColor: '#FEF9EC', border: '1px solid #F9C000' }}>
+                <p className="font-semibold mb-1">⚠ Verification checklist: before approving the verified badge:</p>
+                <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+                  <li>Visit the public profile and review all portfolio/service images</li>
+                  <li>Images should be genuine photos of real work, not stock photos, placeholders, or unrelated content</li>
+                  <li>Reject or request replacement of any images that look generic, AI-generated, or irrelevant to the listed trade</li>
+                  <li>Check that service descriptions match the portfolio images shown</li>
+                </ul>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

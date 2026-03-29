@@ -34,7 +34,7 @@ const faqs = [
     items: [
       {
         question: 'What is Vetted.bb?',
-        answer: 'Vetted.bb is a freelancer marketplace built exclusively for Barbados. It connects clients with skilled local freelancers across trades, creative work, technology, health, and more — all in one place.',
+        answer: 'Vetted.bb is a freelancer marketplace built exclusively for Barbados. It connects clients with skilled local freelancers across trades, creative work, technology, health, and more, all in one place.',
       },
       {
         question: 'Is Vetted.bb free to use?',
@@ -84,7 +84,7 @@ const faqs = [
       },
       {
         question: 'Can I review a client I worked with?',
-        answer: 'Yes — this is one of Vetted.bb\'s most important features. From your dashboard, go to the Leave a review tab to rate a client you worked with. This helps other freelancers on the platform know what to expect.',
+        answer: 'Yes. This is one of Vetted.bb\'s most important features. From your dashboard, go to the Leave a review tab to rate a client you worked with. This helps other freelancers on the platform know what to expect.',
       },
       {
         question: 'What happens when a client contacts me?',

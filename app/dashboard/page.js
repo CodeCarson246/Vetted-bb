@@ -251,7 +251,7 @@ export default function Dashboard() {
       .eq('user_id', user.id)
 
     if (error) {
-      setToast({ message: 'Something went wrong — please try again', type: 'error' })
+      setToast({ message: 'Something went wrong. Please try again.', type: 'error' })
     } else {
       setProfile(prev => ({ ...prev, bio, hourly_rate: hourlyRate, available, skills, category }))
       setShowEditForm(false)
@@ -440,6 +440,29 @@ export default function Dashboard() {
     setExistingServiceImages([])
   }
 
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024  // 5 MB
+  const MIN_IMAGE_DIM = 200                 // 200×200 px
+
+  function validateImageFile(file) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return false
+    if (file.size > MAX_IMAGE_BYTES) return false
+    return true
+  }
+
+  function checkImageDimensions(file) {
+    return new Promise(resolve => {
+      const url = URL.createObjectURL(file)
+      const img = new window.Image()
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        resolve(img.width >= MIN_IMAGE_DIM && img.height >= MIN_IMAGE_DIM)
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(false) }
+      img.src = url
+    })
+  }
+
   async function handleServiceImageUpload(e) {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
@@ -450,7 +473,20 @@ export default function Dashboard() {
     setServiceImagesUploading(true)
     const uploaded = []
     for (const file of files) {
-      const ext = file.name.split('.').pop()
+      // Type + size check
+      if (!validateImageFile(file)) {
+        setServiceError('Please upload a proper photo of your work. Minimum 200×200px, max 5MB, JPG or PNG only.')
+        setServiceImagesUploading(false)
+        return
+      }
+      // Dimension check (requires reading the image)
+      const dimsOk = await checkImageDimensions(file)
+      if (!dimsOk) {
+        setServiceError('Please upload a proper photo of your work. Minimum 200×200px, max 5MB, JPG or PNG only.')
+        setServiceImagesUploading(false)
+        return
+      }
+      const ext = file.name.split('.').pop().toLowerCase()
       const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
       const { error: uploadError } = await supabase.storage
         .from('service-images')
@@ -517,9 +553,11 @@ export default function Dashboard() {
         .single()
       savedServiceId = newest?.id
     }
-    if (serviceImages.length > 0 && savedServiceId) {
+    // Filter out any partial uploads — only save images with a valid URL
+    const validImages = serviceImages.filter(img => img.url && img.url.startsWith('http'))
+    if (validImages.length > 0 && savedServiceId) {
       await Promise.all(
-        serviceImages.map(img =>
+        validImages.map(img =>
           supabase.from('service_images').insert({ service_id: savedServiceId, url: img.url })
         )
       )
@@ -624,8 +662,8 @@ export default function Dashboard() {
   const completenessBarColor = completenessScore >= 80 ? '#16a34a' : completenessScore >= 40 ? '#F9C000' : '#ef4444'
   const completenessLabel = completenessScore === 100 ? 'Profile complete'
     : completenessScore >= 80 ? 'Almost there!'
-    : completenessScore >= 40 ? 'Getting there — a few more steps'
-    : 'Incomplete — clients may not contact you'
+    : completenessScore >= 40 ? 'Getting there, a few more steps'
+    : 'Incomplete: clients may not contact you'
 
   const clientReviews = reviews.filter(r => r.type === 'client')
   const freelancerReviews = reviews.filter(r => r.type === 'freelancer')
@@ -1539,7 +1577,7 @@ export default function Dashboard() {
                       </div>
 
                       {clientReviewError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{clientReviewError}</p>}
-                      {clientReviewSuccess && <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-3">Review submitted — thank you!</p>}
+                      {clientReviewSuccess && <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-3">Review submitted. Thank you!</p>}
 
                       <button
                         type="submit"

@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import Tooltip from '@/components/Tooltip'
 
 function StarRating({ rating, light = false }) {
   return (
@@ -569,13 +570,22 @@ export default function FreelancerProfile() {
                         <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>({freelancer.review_count})</span>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Client rating</p>
-                      <div className="flex items-center gap-1.5">
-                        <StarRating rating={freelancer.client_rating} light />
-                        <span className="text-white text-sm font-semibold">{freelancer.client_rating}</span>
+                    {freelancer.client_rating > 0 && (
+                      <div>
+                        <p className="text-xs mb-1 flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                          Client rating
+                          <Tooltip text="This is how previous freelancers have rated this client to work with. A high client rating means they communicate well, pay on time, and are easy to work with.">
+                            <svg className="w-3 h-3 cursor-help" viewBox="0 0 20 20" fill="currentColor" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                            </svg>
+                          </Tooltip>
+                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <StarRating rating={freelancer.client_rating} light />
+                          <span className="text-white text-sm font-semibold">{freelancer.client_rating}</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -638,7 +648,7 @@ export default function FreelancerProfile() {
           <div className="max-w-4xl mx-auto px-4 sm:px-8 py-3 flex items-start gap-2.5">
             <span className="text-base flex-shrink-0 leading-none mt-0.5">⚡</span>
             <p className="text-xs text-gray-500 flex-1 leading-relaxed">
-              You can request a detailed quote from this professional — they'll respond with pricing, timeline, and a PDF you can download.
+              You can request a detailed quote from this professional. They'll respond with pricing, timeline, and a PDF you can download.
             </p>
             <button
               onClick={() => {
@@ -692,8 +702,20 @@ export default function FreelancerProfile() {
                           alt={`${s.name} photo ${i + 1}`}
                           className="h-40 object-cover flex-shrink-0"
                           style={{ width: s.service_images.length === 1 ? '100%' : '50%' }}
+                          onError={e => {
+                            e.currentTarget.style.display = 'none'
+                            const ph = e.currentTarget.parentNode.querySelector('.img-unavailable')
+                            if (ph) ph.style.display = 'flex'
+                          }}
                         />
                       ))}
+                      {/* Broken-image fallback — hidden until onError fires */}
+                      <div
+                        className="img-unavailable h-40 flex-shrink-0 items-center justify-center text-xs text-gray-400 font-medium"
+                        style={{ display: 'none', backgroundColor: '#f3f4f6', width: '100%' }}
+                      >
+                        Photo unavailable
+                      </div>
                       {s.service_images.length > 2 && (
                         <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
                           +{s.service_images.length - 2} more
@@ -821,7 +843,7 @@ export default function FreelancerProfile() {
                   >
                     <option value="">Select the service you used</option>
                     {services.map(s => (
-                      <option key={s.id} value={s.name}>{s.name} — {s.price}</option>
+                      <option key={s.id} value={s.name}>{s.name} ({s.price})</option>
                     ))}
                   </select>
                 </div>
@@ -845,7 +867,7 @@ export default function FreelancerProfile() {
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{reviewError}</p>
               )}
               {reviewSuccess && (
-                <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg px-4 py-3">Review submitted — thank you!</p>
+                <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg px-4 py-3">Review submitted. Thank you!</p>
               )}
 
               <button
@@ -926,7 +948,7 @@ export default function FreelancerProfile() {
                 <p className="text-xs text-gray-400 mb-3">Final prices are agreed directly with the freelancer.</p>
                 <button
                   onClick={() => {
-                    const serviceList = cart.map(i => `• ${i.name} — ${i.price}`).join('\n')
+                    const serviceList = cart.map(i => `• ${i.name}: ${i.price}`).join('\n')
                     const total = cartTotal() > 0 ? `\n\nEstimated total: $${cartTotal().toFixed(0)}` : ''
                     const msg = `Hi ${freelancer.name.split(' ')[0]}, I am interested in the following services:\n\n${serviceList}${total}\n\nCould you confirm availability and pricing?`
                     setSenderName(senderName || '')
@@ -1095,7 +1117,17 @@ export default function FreelancerProfile() {
                 alt={`${lightboxService.name} photo ${lightboxSlide + 1}`}
                 className="max-h-full max-w-full rounded-xl object-contain"
                 style={{ maxHeight: 'calc(100vh - 200px)' }}
+                onError={e => {
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextSibling?.style && (e.currentTarget.nextSibling.style.display = 'flex')
+                }}
               />
+              <div
+                className="rounded-xl items-center justify-center text-sm text-white/50 font-medium"
+                style={{ display: 'none', width: '300px', height: '200px', backgroundColor: 'rgba(255,255,255,0.05)' }}
+              >
+                Photo unavailable
+              </div>
               {imgs.length > 1 && (
                 <>
                   <button
@@ -1128,7 +1160,15 @@ export default function FreelancerProfile() {
                       outlineOffset: '2px',
                     }}
                   >
-                    <img src={img.url} alt="" className="w-full h-full object-cover" />
+                    <img
+                      src={img.url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      onError={e => {
+                        e.currentTarget.style.display = 'none'
+                        e.currentTarget.parentNode.style.backgroundColor = 'rgba(255,255,255,0.08)'
+                      }}
+                    />
                   </button>
                 ))}
               </div>
