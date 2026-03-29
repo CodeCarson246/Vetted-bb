@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 
 const categories = [
   { icon: "🔧", name: "Trades & Construction", searchQuery: "electrician plumber carpenter mason painter roofer welder tiler construction builder" },
@@ -46,6 +47,10 @@ const steps = [
   { n: "3", title: "Hire with confidence", desc: "Reach out knowing exactly who you're working with before you commit." },
 ]
 
+// Toggle: set NEXT_PUBLIC_SHOW_STATS_NUMBERS=true in .env.local to switch from
+// the qualitative trust bar to the live-count stats row (use when 50+ providers & 100+ reviews).
+const SHOW_STATS_NUMBERS = process.env.NEXT_PUBLIC_SHOW_STATS_NUMBERS === 'true'
+
 export default function Home() {
   const [user, setUser] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -55,19 +60,49 @@ export default function Home() {
   const [reviewCount, setReviewCount] = useState(null)
   const [featuredReviews, setFeaturedReviews] = useState([])
   const [featuredFreelancers, setFeaturedFreelancers] = useState([])
+  const [categoryCounts, setCategoryCounts] = useState({})
+
+  // Lightweight fetch: just enough to compute per-category provider counts
+  // for the subtle "Coming soon" badge on empty category tiles.
+  useEffect(() => {
+    supabase.from('freelancers').select('name, trade, skills').then(({ data }) => {
+      if (!data) return
+      const counts = {}
+      for (const cat of categories) {
+        const words = cat.searchQuery.toLowerCase().split(/\s+/).filter(Boolean)
+        counts[cat.name] = data.filter(f => {
+          const haystack = [f.name, f.trade, ...(f.skills || [])].join(' ').toLowerCase()
+          return words.some(w => haystack.includes(w))
+        }).length
+      }
+      setCategoryCounts(counts)
+    })
+  }, [])
+
+  // Featured professionals — fetched from the ISR-cached API route
+  useEffect(() => {
+    fetch('/api/featured-professionals')
+      .then(r => r.json())
+      .then(({ data }) => setFeaturedFreelancers(data || []))
+  }, [])
 
   useEffect(() => {
-    Promise.all([
-      supabase.from('freelancers').select('*', { count: 'exact', head: true }).eq('available', true),
-      supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('type', 'client'),
-      supabase.from('reviews').select('comment, rating, author, date').eq('type', 'client').gte('rating', 5).not('comment', 'is', null).limit(3).order('date', { ascending: false }),
-      supabase.from('freelancers').select('id, name, trade, avatar_url, location, rating, review_count, hourly_rate, verified, skills').eq('available', true).gte('rating', 4).order('review_count', { ascending: false }).limit(3),
-    ]).then(([{ count: fc }, { count: rc }, { data: revs }, { data: featured }]) => {
-      setFreelancerCount(fc || 0)
-      setReviewCount(rc || 0)
-      setFeaturedReviews(revs || [])
-      setFeaturedFreelancers(featured || [])
-    })
+    const reviewsQuery = supabase.from('reviews').select('comment, rating, author, date').eq('type', 'client').gte('rating', 5).not('comment', 'is', null).limit(3).order('date', { ascending: false })
+    if (SHOW_STATS_NUMBERS) {
+      Promise.all([
+        supabase.from('freelancers').select('*', { count: 'exact', head: true }).eq('available', true),
+        supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('type', 'client'),
+        reviewsQuery,
+      ]).then(([{ count: fc }, { count: rc }, { data: revs }]) => {
+        setFreelancerCount(fc || 0)
+        setReviewCount(rc || 0)
+        setFeaturedReviews(revs || [])
+      })
+    } else {
+      reviewsQuery.then(({ data: revs }) => {
+        setFeaturedReviews(revs || [])
+      })
+    }
     supabase.auth.getUser().then(async ({ data }) => {
       const u = data.user
       setUser(u)
@@ -88,7 +123,13 @@ export default function Home() {
       {/* Navbar */}
       <nav className="relative bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
-          <a href="/" className="text-2xl font-bold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
+          <div className="flex items-center gap-6">
+            <a href="/" className="text-2xl font-bold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
+            <a href="/search" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+              <span className="hidden sm:inline">Browse Professionals</span>
+              <span className="sm:hidden">Browse</span>
+            </a>
+          </div>
           <div className="hidden sm:flex gap-4 items-center">
             {user ? (
               <>
@@ -197,20 +238,20 @@ export default function Home() {
         <div className="max-w-3xl mx-auto relative">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#F9C000', border: '1px solid rgba(249,192,0,0.3)' }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F9C000', display: 'inline-block' }} />
-            Barbados&apos; trusted freelancer marketplace
+            🇧🇧 Barbados&apos; #1 professional marketplace
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold text-white mb-6 leading-tight tracking-tight">
-            Find trusted freelancers<br className="hidden sm:block" />
-            <span style={{ color: '#F9C000' }}> in Barbados</span>
+            Stop guessing.<br className="hidden sm:block" />
+            Find verified professionals<span style={{ color: '#F9C000' }}> in Barbados</span>
           </h1>
           <p className="text-lg sm:text-xl mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
-            Real reviews. Real accountability. Every freelancer rated by clients — every client rated by freelancers.
+            Real reviews. Verified identities. Send a quote request in minutes — no more chasing WhatsApp numbers.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto">
             <input
               type="text"
               id="homeSearch"
-              placeholder="e.g. plumber, graphic designer, electrician..."
+              placeholder="Try: plumber, electrician, wedding photographer..."
               className="flex-1 px-6 py-4 rounded-full text-gray-900 outline-none bg-white placeholder-gray-400 text-base"
               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}
               onKeyDown={e => {
@@ -233,6 +274,9 @@ export default function Home() {
               Search
             </button>
           </div>
+          <p className="text-xs mt-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            Free to use · No account needed to browse · 100% Barbados-based professionals
+          </p>
         </div>
       </section>
 
@@ -253,98 +297,110 @@ export default function Home() {
       <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
         <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Browse by category</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 category-grid">
-          {categories.map((cat) => (
-            <a
-              key={cat.name}
-              href={`/search?q=${encodeURIComponent(cat.searchQuery)}`}
-              className="flex flex-col items-center gap-3 px-4 py-6 bg-white border border-gray-100 rounded-2xl hover:shadow-sm cursor-pointer transition-all group"
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = ''}
-            >
-              <span className="text-4xl">{cat.icon}</span>
-              <span className="font-medium text-gray-700 text-sm text-center leading-snug">{cat.name}</span>
-            </a>
-          ))}
+          {categories.map((cat) => {
+            const isEmpty = categoryCounts[cat.name] === 0
+            return (
+              <a
+                key={cat.name}
+                href={`/search?q=${encodeURIComponent(cat.searchQuery)}&category=${encodeURIComponent(cat.name)}`}
+                className="flex flex-col items-center gap-3 px-4 py-6 bg-white border border-gray-100 rounded-2xl hover:shadow-sm cursor-pointer transition-all group"
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = ''}
+              >
+                <span className="text-4xl">{cat.icon}</span>
+                <span className="font-medium text-gray-700 text-sm text-center leading-snug">{cat.name}</span>
+                {isEmpty && (
+                  <span className="text-xs text-gray-400 font-normal -mt-1">Coming soon</span>
+                )}
+              </a>
+            )
+          })}
         </div>
       </section>
 
-      {/* Featured freelancers */}
+      {/* Top-Rated Professionals */}
       {featuredFreelancers.length > 0 && (
         <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Featured freelancers</h2>
-              <p className="text-sm text-gray-500 mt-1">Top rated and available right now</p>
-            </div>
-            <a
-              href="/search"
-              className="text-sm font-semibold hover:opacity-80 transition-opacity"
-              style={{ color: '#00267F' }}
-            >
-              See all →
-            </a>
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-bold text-gray-900">Top-Rated Professionals This Week</h2>
+            <p className="text-sm text-gray-500 mt-2">Real people. Real reviews. Ready to hire.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {featuredFreelancers.map(f => (
               <a
                 key={f.id}
                 href={`/freelancers/${f.id}`}
-                className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-md transition-all group"
-                onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = ''}
+                className="group bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all hover:shadow-lg"
+                style={{ borderTop: '3px solid #00267F' }}
               >
-                {/* Card header */}
-                <div className="px-5 pt-5 pb-4 flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                    {f.avatar_url
-                      ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
-                      : f.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="font-bold text-gray-900 text-sm truncate">{f.name}</p>
-                      {f.verified && (
-                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#00267F' }}>✓</span>
-                      )}
+                <div className="p-6">
+                  {/* Avatar + identity */}
+                  <div className="flex items-center gap-4 mb-5">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+                      {f.avatar_url
+                        ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
+                        : f.name.split(' ').map(n => n[0]).join('')}
                     </div>
-                    <p className="text-xs font-medium capitalize mt-0.5" style={{ color: '#00267F' }}>{f.trade}</p>
-                    {f.location && <p className="text-xs text-gray-400 mt-0.5">📍 {f.location}</p>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <p className="font-bold text-gray-900 leading-tight truncate">{f.name}</p>
+                        <span className="flex items-center gap-1 flex-shrink-0">
+                          <span className={`w-2 h-2 rounded-full ${f.available ? 'bg-green-400' : 'bg-gray-300'}`} />
+                          <span className={`text-xs ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
+                            {f.available ? 'Available' : 'Unavailable'}
+                          </span>
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold capitalize" style={{ color: '#F9C000' }}>{f.trade}</p>
+                      {f.location && <p className="text-xs text-gray-400 mt-0.5">📍 {f.location}</p>}
+                    </div>
                   </div>
-                </div>
-                {/* Rating bar */}
-                <div className="px-5 pb-4 border-t border-gray-50 pt-3 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
+
+                  {/* Rating */}
+                  <div className="flex items-center gap-1.5 mb-4">
                     <div className="flex gap-0.5">
                       {[1,2,3,4,5].map(s => (
-                        <span key={s} className="text-xs" style={{ color: s <= Math.round(f.rating) ? '#F9C000' : '#e5e7eb' }}>★</span>
+                        <span key={s} className="text-sm" style={{ color: s <= Math.round(f.rating) ? '#F9C000' : '#e5e7eb' }}>★</span>
                       ))}
                     </div>
-                    <span className="text-xs font-semibold text-gray-700">{f.rating}</span>
-                    <span className="text-xs text-gray-400">({f.review_count})</span>
+                    <span className="text-sm font-semibold text-gray-800">{f.rating}</span>
+                    <span className="text-xs text-gray-400">({f.review_count} {f.review_count === 1 ? 'review' : 'reviews'})</span>
                   </div>
-                  <span className="text-xs font-bold" style={{ color: '#00267F' }}>
-                    {f.hourly_rate === 'budget' ? '$' : f.hourly_rate === 'mid' ? '$$' : f.hourly_rate === 'premium' ? '$$$' : ''}
-                  </span>
-                </div>
-                {/* Skills */}
-                {f.skills?.length > 0 && (
-                  <div className="px-5 pb-4 flex flex-wrap gap-1.5">
-                    {f.skills.slice(0, 3).map(skill => (
-                      <span key={skill} className="text-xs px-2.5 py-1 rounded-full bg-gray-50 text-gray-500 border border-gray-100">{skill}</span>
-                    ))}
-                    {f.skills.length > 3 && (
-                      <span className="text-xs px-2.5 py-1 rounded-full bg-gray-50 text-gray-400">+{f.skills.length - 3}</span>
-                    )}
-                  </div>
-                )}
-                {/* CTA */}
-                <div className="px-5 pb-5">
-                  <div className="w-full py-2.5 rounded-xl text-center text-sm font-semibold transition-colors" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                    View profile
+
+                  {/* Verified badge */}
+                  {f.verified && (
+                    <div className="flex items-center gap-1.5 mb-4">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(249,192,0,0.2)" stroke="#F9C000" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9 12l2 2 4-4" stroke="#F9C000" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span className="text-xs font-semibold" style={{ color: '#00267F' }}>Verified</span>
+                    </div>
+                  )}
+
+                  {/* Skill tags */}
+                  {f.skills?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-6">
+                      {f.skills.slice(0, 3).map(skill => (
+                        <span key={skill} className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>{skill}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* CTA */}
+                  <div className="w-full py-2.5 rounded-xl text-center text-sm font-semibold transition-opacity group-hover:opacity-90" style={{ backgroundColor: '#00267F', color: 'white' }}>
+                    View Profile
                   </div>
                 </div>
               </a>
             ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <a href="/search" className="text-sm font-semibold hover:opacity-70 transition-opacity" style={{ color: '#00267F' }}>
+              Browse all professionals →
+            </a>
           </div>
         </section>
       )}
@@ -367,57 +423,163 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Social proof */}
-      {(freelancerCount > 0 || reviewCount > 0) && (
-        <section className="py-16 px-4 sm:px-8" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
-          <div className="max-w-5xl mx-auto">
+      {/* Provider recruitment */}
+      <section className="px-4 sm:px-8 py-16 sm:py-20" style={{ backgroundColor: '#00267F' }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-center gap-12 sm:gap-16">
 
-            {/* Stats row */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-14">
-              <div className="text-center">
-                <p className="text-3xl sm:text-4xl font-bold text-white">{freelancerCount}+</p>
-                <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Freelancers available</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl sm:text-4xl font-bold text-white">{reviewCount}+</p>
-                <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Verified reviews</p>
-              </div>
-              <div className="col-span-2 sm:col-span-1 text-center">
-                <p className="text-3xl sm:text-4xl font-bold" style={{ color: '#F9C000' }}>100%</p>
-                <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Barbados based</p>
+            {/* Text */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#F9C000' }}>
+                For Professionals
+              </p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white leading-snug mb-4">
+                Get found by clients who are already looking for you
+              </h2>
+              <p className="text-sm sm:text-base leading-relaxed mb-8" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                Join Barbados&apos; only professional marketplace with real reviews and verified profiles. Set up your free profile in under 10 minutes.
+              </p>
+
+              <ul className="flex flex-col gap-3 mb-8">
+                {[
+                  'Free to join — no commission on your jobs',
+                  'Clients can send you quote requests directly through the platform',
+                  'Build your reputation with verified reviews',
+                ].map(benefit => (
+                  <li key={benefit} className="flex items-start gap-3">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true" className="flex-shrink-0 mt-0.5">
+                      <circle cx="9" cy="9" r="9" fill="rgba(249,192,0,0.2)" />
+                      <path d="M5.5 9l2.5 2.5 4.5-4.5" stroke="#F9C000" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <a
+                href="/signup"
+                className="inline-block px-7 py-3.5 rounded-full font-bold text-sm transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+              >
+                Create Your Free Profile
+              </a>
+              <p className="text-xs mt-4" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Already listed? Share your profile link and start getting inquiries.
+              </p>
+            </div>
+
+            {/* Illustration */}
+            <div className="flex-shrink-0 flex items-center justify-center w-full sm:w-64">
+              <div className="relative w-56 h-56 flex items-center justify-center">
+                {/* Outer glow ring */}
+                <div className="absolute inset-0 rounded-full" style={{ backgroundColor: 'rgba(249,192,0,0.08)', border: '1px solid rgba(249,192,0,0.15)' }} />
+                {/* Inner content */}
+                <div className="relative flex flex-col items-center gap-3">
+                  {/* Top row: two profile blobs */}
+                  <div className="flex gap-3">
+                    {[['🔧','Plumber'],['💇','Stylist']].map(([icon, label]) => (
+                      <div key={label} className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                        <span className="text-2xl">{icon}</span>
+                        <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>{label}</span>
+                        <span className="text-xs font-semibold" style={{ color: '#F9C000' }}>★ 4.9</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Bottom centre: third card */}
+                  <div className="flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                    <span className="text-2xl">💻</span>
+                    <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>Developer</span>
+                    <span className="text-xs font-semibold" style={{ color: '#F9C000' }}>★ 5.0</span>
+                  </div>
+                  {/* Verified badge floating */}
+                  <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#00267F" strokeWidth="0"/>
+                      <path d="M9 12l2 2 4-4" stroke="#F9C000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Verified
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Review quotes */}
-            {featuredReviews.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {featuredReviews.map((rev, i) => (
-                  <div key={i} className="rounded-2xl p-6 flex flex-col gap-4" style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
-                    <div className="flex gap-0.5">
-                      {[1,2,3,4,5].map(s => (
-                        <span key={s} className="text-sm" style={{ color: '#F9C000' }}>★</span>
-                      ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Social proof */}
+      <section className="py-16 px-4 sm:px-8" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
+        <div className="max-w-5xl mx-auto">
+
+          {SHOW_STATS_NUMBERS ? (
+            /* Live stats row — enabled when NEXT_PUBLIC_SHOW_STATS_NUMBERS=true */
+            (freelancerCount > 0 || reviewCount > 0) && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-14">
+                <div className="text-center">
+                  <p className="text-3xl sm:text-4xl font-bold text-white">{freelancerCount}+</p>
+                  <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Freelancers available</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl sm:text-4xl font-bold text-white">{reviewCount}+</p>
+                  <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Verified reviews</p>
+                </div>
+                <div className="col-span-2 sm:col-span-1 text-center">
+                  <p className="text-3xl sm:text-4xl font-bold" style={{ color: '#F9C000' }}>100%</p>
+                  <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Barbados based</p>
+                </div>
+              </div>
+            )
+          ) : (
+            /* Qualitative trust bar — default until platform has scale */
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 mb-14">
+              <div className="flex flex-col items-center text-center gap-3">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#F9C000" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" fill="rgba(249,192,0,0.15)"/>
+                </svg>
+                <p className="text-white font-medium leading-snug text-sm sm:text-base">Every profile manually verified before going live</p>
+              </div>
+              <div className="flex flex-col items-center text-center gap-3">
+                <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="#F9C000"/>
+                </svg>
+                <p className="text-white font-medium leading-snug text-sm sm:text-base">Two-way reviews — freelancers and clients both rated</p>
+              </div>
+              <div className="flex flex-col items-center text-center gap-3">
+                <img src="https://flagcdn.com/bb.svg" width="56" height="40" style={{ borderRadius: '4px', border: '1px solid rgba(255,255,255,0.25)' }} alt="Barbados flag" />
+                <p className="text-white font-medium leading-snug text-sm sm:text-base">Built exclusively for Barbados</p>
+              </div>
+            </div>
+          )}
+
+          {/* Review quotes */}
+          {featuredReviews.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {featuredReviews.map((rev, i) => (
+                <div key={i} className="rounded-2xl p-6 flex flex-col gap-4" style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <div className="flex gap-0.5">
+                    {[1,2,3,4,5].map(s => (
+                      <span key={s} className="text-sm" style={{ color: '#F9C000' }}>★</span>
+                    ))}
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                    &ldquo;{rev.comment.length > 120 ? rev.comment.slice(0, 120) + '…' : rev.comment}&rdquo;
+                  </p>
+                  <div className="flex items-center gap-3 mt-auto">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ backgroundColor: 'rgba(249,192,0,0.2)', color: '#F9C000' }}>
+                      {formatDisplayName(rev.author)[0]?.toUpperCase() ?? '?'}
                     </div>
-                    <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                      &ldquo;{rev.comment.length > 120 ? rev.comment.slice(0, 120) + '…' : rev.comment}&rdquo;
-                    </p>
-                    <div className="flex items-center gap-3 mt-auto">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ backgroundColor: 'rgba(249,192,0,0.2)', color: '#F9C000' }}>
-                        {rev.author ? rev.author[0].toUpperCase() : '?'}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">{rev.author || 'Client'}</p>
-                        <p className="text-xs" style={{ color: '#93b8ff' }}>{rev.date}</p>
-                      </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">{formatDisplayName(rev.author)}</p>
+                      <p className="text-xs" style={{ color: '#93b8ff' }}>{rev.date}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
+          )}
 
-          </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm">
         <p>© 2026 Vetted.bb · Connecting Barbados</p>

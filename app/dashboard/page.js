@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -28,10 +29,6 @@ function Toast({ message, type, onClose }) {
   )
 }
 
-function displayName(author) {
-  if (!author) return ''
-  return author.includes('@') ? author.split('@')[0] : author
-}
 
 function StarRating({ rating }) {
   return (
@@ -614,16 +611,21 @@ export default function Dashboard() {
   }
 
   const completenessItems = profile ? [
-    { label: 'Profile photo', done: !!profile.avatar_url },
-    { label: 'Bio written', done: !!profile.bio && profile.bio.length > 20 },
-    { label: 'Skills added', done: (profile.skills || []).length > 0 },
-    { label: 'Service added', done: services.length > 0 },
-    { label: 'Service photos', done: services.some(s => s.service_images?.length > 0) },
-    { label: 'First review', done: reviews.filter(r => r.type === 'client').length > 0 },
+    { label: 'Profile photo', done: !!profile.avatar_url, weight: 30, action: () => setShowEditForm(true) },
+    { label: 'Bio (min. 100 characters)', done: !!profile.bio && profile.bio.length >= 100, weight: 20, action: () => setShowEditForm(true) },
+    { label: 'Add a service', done: services.some(s => s.name?.trim() && s.description?.trim()), weight: 20, action: () => setShowServiceForm(true) },
+    { label: 'Location set', done: !!(profile.location?.trim()), weight: 10, action: () => setShowEditForm(true) },
+    { label: 'Add 3+ skill tags', done: (profile.skills || []).length >= 3, weight: 10, action: () => setShowEditForm(true) },
+    { label: 'Confirm availability', done: profile.available !== null && profile.available !== undefined, weight: 10, action: () => setShowEditForm(true) },
   ] : []
   const completenessScore = completenessItems.length > 0
-    ? Math.round((completenessItems.filter(i => i.done).length / completenessItems.length) * 100)
+    ? completenessItems.filter(i => i.done).reduce((sum, i) => sum + i.weight, 0)
     : 0
+  const completenessBarColor = completenessScore >= 80 ? '#16a34a' : completenessScore >= 40 ? '#F9C000' : '#ef4444'
+  const completenessLabel = completenessScore === 100 ? 'Profile complete'
+    : completenessScore >= 80 ? 'Almost there!'
+    : completenessScore >= 40 ? 'Getting there — a few more steps'
+    : 'Incomplete — clients may not contact you'
 
   const clientReviews = reviews.filter(r => r.type === 'client')
   const freelancerReviews = reviews.filter(r => r.type === 'freelancer')
@@ -950,6 +952,41 @@ export default function Dashboard() {
           </div>
         ) : profile ? (
           <>
+            {/* Profile completeness — first thing freelancers see */}
+            {completenessScore < 100 && (
+              <div className="bg-white rounded-2xl border border-gray-100 px-6 py-5 mb-6">
+                <div className="flex items-start justify-between gap-4 mb-1">
+                  <p className="text-sm font-semibold text-gray-900">Profile strength</p>
+                  <p className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: completenessBarColor }}>{completenessScore}%</p>
+                </div>
+                <p className="text-xs mb-3 font-medium" style={{ color: completenessBarColor }}>{completenessLabel}</p>
+                <div className="w-full bg-gray-100 rounded-full h-2 mb-5">
+                  <div
+                    className="h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${completenessScore}%`, backgroundColor: completenessBarColor }}
+                  />
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {completenessItems.filter(i => !i.done).map(item => (
+                    <button
+                      key={item.label}
+                      onClick={item.action}
+                      className="flex items-center gap-3 text-left w-full group"
+                    >
+                      <span className="w-4 h-4 rounded-full border-2 flex-shrink-0" style={{ borderColor: '#d1d5db' }} />
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors flex-1">{item.label}</span>
+                      <svg className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-5 pt-4 border-t border-gray-100">
+                  Complete profiles receive <span className="font-semibold text-gray-600">4× more client inquiries.</span>
+                </p>
+              </div>
+            )}
+
             {/* Profile card - navy hero */}
             <div className="rounded-2xl mb-6 overflow-hidden shadow-sm">
               <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start" style={{ backgroundColor: '#00267F' }}>
@@ -1115,39 +1152,6 @@ export default function Dashboard() {
                 </form>
               )}
             </div>
-
-            {/* Profile completeness */}
-            {completenessScore < 100 && (
-              <div className="bg-white rounded-2xl border border-gray-100 px-6 py-5 mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold text-gray-900">Profile strength</p>
-                  <p className="text-sm font-bold" style={{ color: completenessScore >= 80 ? '#16a34a' : completenessScore >= 50 ? '#ca8a04' : '#00267F' }}>
-                    {completenessScore}%
-                  </p>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4">
-                  <div
-                    className="h-1.5 rounded-full transition-all duration-500"
-                    style={{
-                      width: `${completenessScore}%`,
-                      backgroundColor: completenessScore >= 80 ? '#16a34a' : completenessScore >= 50 ? '#ca8a04' : '#00267F'
-                    }}
-                  />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {completenessItems.map(item => (
-                    <div key={item.label} className="flex items-center gap-2">
-                      <span className="text-xs flex-shrink-0" style={{ color: item.done ? '#16a34a' : '#d1d5db' }}>
-                        {item.done ? '✓' : '○'}
-                      </span>
-                      <span className={`text-xs ${item.done ? 'text-gray-400 line-through' : 'text-gray-600'}`}>
-                        {item.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Share profile */}
             <div className="bg-white rounded-2xl border border-gray-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
@@ -1441,10 +1445,10 @@ export default function Dashboard() {
                               <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-3">
                                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
-                                    {displayName(review.author)[0]?.toUpperCase()}
+                                    {formatDisplayName(review.author)[0]?.toUpperCase()}
                                   </div>
                                   <div>
-                                    <p className="font-semibold text-gray-900 text-sm">{displayName(review.author)}</p>
+                                    <p className="font-semibold text-gray-900 text-sm">{formatDisplayName(review.author)}</p>
                                     <p className="text-xs text-gray-400">{review.date}</p>
                                   </div>
                                 </div>
@@ -1468,10 +1472,10 @@ export default function Dashboard() {
                               <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-3">
                                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#FEF9E7', color: '#00267F' }}>
-                                    {displayName(review.author)[0]?.toUpperCase()}
+                                    {formatDisplayName(review.author)[0]?.toUpperCase()}
                                   </div>
                                   <div>
-                                    <p className="font-semibold text-gray-900 text-sm">{displayName(review.author)}</p>
+                                    <p className="font-semibold text-gray-900 text-sm">{formatDisplayName(review.author)}</p>
                                     <p className="text-xs text-gray-400">{review.date}</p>
                                   </div>
                                 </div>

@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
+import SearchEmptyState from '@/components/SearchEmptyState'
 
 function StarRating({ rating }) {
   return (
@@ -17,6 +18,7 @@ function StarRating({ rating }) {
 function SearchPage() {
   const searchParams = useSearchParams()
   const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('')
   const [freelancers, setFreelancers] = useState([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
@@ -41,7 +43,9 @@ function SearchPage() {
 
   useEffect(() => {
     const q = searchParams.get('q')
+    const cat = searchParams.get('category')
     if (q) setQuery(q)
+    if (cat) setCategory(cat)
   }, [searchParams])
 
   useEffect(() => {
@@ -68,6 +72,7 @@ function SearchPage() {
 
   function clearFilters() {
     setQuery('')
+    setCategory('')
     setAvailability('all')
     setPriceRange('all')
     setLocation('')
@@ -103,7 +108,13 @@ function SearchPage() {
     <main className="min-h-screen bg-gray-50">
       <nav className="relative bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
-          <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
+          <div className="flex items-center gap-6">
+            <a href="/" className="text-2xl font-bold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
+            <a href="/search" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+              <span className="hidden sm:inline">Browse Professionals</span>
+              <span className="sm:hidden">Browse</span>
+            </a>
+          </div>
           <div className="hidden sm:flex gap-4 items-center">
             {user ? (
               <>
@@ -346,22 +357,7 @@ function SearchPage() {
             <p className="text-sm text-gray-400 mb-4">{filtered.length} freelancer{filtered.length !== 1 ? 's' : ''} found</p>
 
             {filtered.length === 0 ? (
-              <div className="bg-white rounded-xl border border-gray-100 text-center py-20 px-8">
-                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-5">
-                  <svg className="w-7 h-7 text-gray-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                  </svg>
-                </div>
-                <p className="font-semibold text-gray-700 mb-1">No freelancers match your search</p>
-                <p className="text-sm text-gray-400 mb-6">Try a different keyword, or clear your filters to browse everyone.</p>
-                <button
-                  onClick={clearFilters}
-                  className="text-sm font-medium text-white px-5 py-2 rounded-full hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: '#00267F' }}
-                >
-                  Clear filters
-                </button>
-              </div>
+              <SearchEmptyState query={query} category={category} />
             ) : (
               <div className="flex flex-col gap-3">
                 {filtered.map(f => (

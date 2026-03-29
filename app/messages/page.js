@@ -82,9 +82,14 @@ export default function ClientMessages() {
       {/* Navbar */}
       <nav className="relative bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
-          <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
+          <div className="flex items-center gap-6">
+            <a href="/" className="text-2xl font-bold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
+            <a href="/search" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+              <span className="hidden sm:inline">Browse Professionals</span>
+              <span className="sm:hidden">Browse</span>
+            </a>
+          </div>
           <div className="hidden sm:flex gap-4 items-center">
-            <a href="/search" className="text-gray-600 text-sm font-medium hover:text-gray-900">Browse</a>
             <a href="/messages" className="relative p-1.5 transition-colors" style={{ color: '#00267F' }}>
               <EnvelopeIcon className="w-5 h-5" />
             </a>

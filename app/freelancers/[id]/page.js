@@ -1,13 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
-
-function displayName(author) {
-  if (!author) return ''
-  return author.includes('@') ? author.split('@')[0] : author
-}
+import { formatDisplayName } from '@/lib/formatDisplayName'
 
 function StarRating({ rating, light = false }) {
   return (
@@ -52,6 +48,13 @@ export default function FreelancerProfile() {
   const [cartOpen, setCartOpen] = useState(false)
   const [lightboxService, setLightboxService] = useState(null)
   const [lightboxSlide, setLightboxSlide] = useState(0)
+  const [stickyVisible, setStickyVisible] = useState(false)
+  const [messageCount, setMessageCount] = useState(0)
+  const [quoteBannerDismissed, setQuoteBannerDismissed] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('quoting_banner_dismissed') === '1'
+    return false
+  })
+  const contactBtnRef = useRef(null)
 
   function openLightbox(s) {
     setLightboxService(s)
@@ -88,19 +91,49 @@ export default function FreelancerProfile() {
         .single()
 
       if (f) {
-        const [{ data: r }, { data: s }] = await Promise.all([
+        const [{ data: r }, { data: s }, { count: msgCount }] = await Promise.all([
           supabase.from('reviews').select('*').eq('freelancer_id', f.id),
           supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
+          supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', f.id),
         ])
-        setFreelancer(f)
-        setReviews(r || [])
+
+        const allReviews = r || []
+
+        // Compute rating + count from the live reviews rather than the
+        // potentially-stale denormalized columns on the freelancers row.
+        const clientRevs = allReviews.filter(rev => rev.type === 'client')
+        const reviewCount = clientRevs.length
+        const avgRating = reviewCount > 0
+          ? Math.round((clientRevs.reduce((sum, rev) => sum + rev.rating, 0) / reviewCount) * 10) / 10
+          : 0
+
+        const freelancerRevs = allReviews.filter(rev => rev.type === 'freelancer')
+        const clientRatingCount = freelancerRevs.length
+        const clientRating = clientRatingCount > 0
+          ? Math.round((freelancerRevs.reduce((sum, rev) => sum + rev.rating, 0) / clientRatingCount) * 10) / 10
+          : 0
+
+        setFreelancer({ ...f, rating: avgRating, review_count: reviewCount, client_rating: clientRating })
+        setReviews(allReviews)
         setServices(s || [])
+        setMessageCount(msgCount || 0)
       }
 
       setLoading(false)
     }
     if (id) fetchData()
   }, [id])
+
+  useEffect(() => {
+    const btn = contactBtnRef.current
+    if (!btn) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observer.observe(btn)
+    return () => observer.disconnect()
+  }, [freelancer]) // re-run once freelancer data is loaded and button is rendered
 
   function addToCart(service) {
     setCart(prev => {
@@ -164,8 +197,21 @@ export default function FreelancerProfile() {
     setContactSubmitting(false)
   }
 
+  const REVIEW_MIN_CHARS = 30
+
   async function submitReview(e) {
     e.preventDefault()
+
+    // Client-side guard (mirrors server validation)
+    if (reviewRating === 0) {
+      setReviewError('Please select a star rating.')
+      return
+    }
+    if (reviewComment.trim().length < REVIEW_MIN_CHARS) {
+      setReviewError(`Please write at least ${REVIEW_MIN_CHARS} characters so your review is useful to others.`)
+      return
+    }
+
     setReviewSubmitting(true)
     setReviewError(null)
 
@@ -176,18 +222,24 @@ export default function FreelancerProfile() {
     }
     if (!reviewerName) reviewerName = user.user_metadata?.full_name || user.email.split('@')[0]
 
-    const { error } = await supabase.from('reviews').insert({
-      freelancer_id: freelancer.id,
-      author: reviewerName,
-      rating: reviewRating,
-      comment: reviewComment,
-      service_name: reviewService || null,
-      type: 'client',
-      date: new Date().toISOString().split('T')[0],
+    const res = await fetch('/api/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        freelancer_id: freelancer.id,
+        author: reviewerName,
+        rating: reviewRating,
+        comment: reviewComment,
+        service_name: reviewService || null,
+        type: 'client',
+        date: new Date().toISOString().split('T')[0],
+      }),
     })
 
-    if (error) {
-      setReviewError(error.message)
+    const result = await res.json()
+
+    if (!res.ok) {
+      setReviewError(result.error || 'Something went wrong. Please try again.')
     } else {
       const { data: r } = await supabase.from('reviews').select('*').eq('freelancer_id', freelancer.id)
       setReviews(r || [])
@@ -197,8 +249,6 @@ export default function FreelancerProfile() {
       const newRating = newCount > 0
         ? Math.round((clientReviews.reduce((sum, rev) => sum + rev.rating, 0) / newCount) * 10) / 10
         : 0
-
-      await supabase.from('freelancers').update({ rating: newRating, review_count: newCount }).eq('id', freelancer.id)
       setFreelancer(prev => ({ ...prev, rating: newRating, review_count: newCount }))
 
       setReviewRating(0)
@@ -294,6 +344,16 @@ export default function FreelancerProfile() {
   const freelancerReviewsList = reviews.filter(r => r.type === 'freelancer')
   const priceIndicator = getPriceIndicator(freelancer.hourly_rate)
 
+  const whatsappShareUrl = (() => {
+    const profileUrl = `https://vetted-bb.vercel.app/freelancers/${id}`
+    const loc = freelancer.location ? `based in ${freelancer.location}` : 'in Barbados'
+    const reviewPart = freelancer.review_count > 0
+      ? ` with ${freelancer.review_count} review${freelancer.review_count === 1 ? '' : 's'}`
+      : ''
+    const text = `Check out ${freelancer.name} on Vetted.bb — they're a ${freelancer.trade} ${loc}${reviewPart}. ${profileUrl}`
+    return `https://wa.me/?text=${encodeURIComponent(text)}`
+  })()
+
   const jsonLd = freelancer ? {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
@@ -326,7 +386,13 @@ export default function FreelancerProfile() {
       {/* Navbar */}
       <nav className="relative bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
-          <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
+          <div className="flex items-center gap-6">
+            <a href="/" className="text-2xl font-bold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
+            <a href="/search" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+              <span className="hidden sm:inline">Browse Professionals</span>
+              <span className="sm:hidden">Browse</span>
+            </a>
+          </div>
           <div className="hidden sm:flex gap-4 items-center">
             {user ? (
               <>
@@ -440,10 +506,17 @@ export default function FreelancerProfile() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
 
             {/* Avatar */}
-            <div className="w-24 h-24 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-2xl font-bold border-4 border-white/30" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }}>
-              {freelancer.avatar_url
-                ? <img src={freelancer.avatar_url} alt={freelancer.name} className="w-full h-full object-cover" />
-                : freelancer.name.split(' ').map(n => n[0]).join('')}
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="w-24 h-24 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-2xl font-bold border-4 border-white/30" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }}>
+                {freelancer.avatar_url
+                  ? <img src={freelancer.avatar_url} alt={freelancer.name} className="w-full h-full object-cover" />
+                  : freelancer.name.split(' ').map(n => n[0]).join('')}
+              </div>
+              {!freelancer.avatar_url && user?.id === freelancer.user_id && (
+                <a href="/dashboard" className="text-xs font-medium underline underline-offset-2 opacity-80 hover:opacity-100 transition-opacity" style={{ color: '#F9C000' }}>
+                  Add a photo
+                </a>
+              )}
             </div>
 
             {/* Info */}
@@ -455,6 +528,37 @@ export default function FreelancerProfile() {
                   {freelancer.location && (
                     <p className="text-sm mt-0.5 capitalize" style={{ color: '#93b8ff' }}>📍 {freelancer.location}</p>
                   )}
+
+                  {/* Trust signals */}
+                  {(() => {
+                    const createdAt = freelancer.created_at ? new Date(freelancer.created_at) : null
+                    const daysOld = createdAt ? (Date.now() - createdAt.getTime()) / 86400000 : 0
+                    const memberSince = createdAt && daysOld > 7
+                      ? createdAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                      : null
+                    const showInquiries = messageCount >= 5
+                    if (!memberSince && !showInquiries) return null
+                    return (
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                        {memberSince && (
+                          <span className="text-xs flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Member since {memberSince}
+                          </span>
+                        )}
+                        {showInquiries && (
+                          <span className="text-xs flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            {messageCount} inquiries received
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
 
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 mt-3">
                     <div>
@@ -475,20 +579,50 @@ export default function FreelancerProfile() {
                   </div>
                 </div>
 
-                {/* Right: price + contact */}
-                <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-3 flex-shrink-0">
+                {/* Right: price + CTAs */}
+                <div className="flex flex-col items-stretch sm:items-end gap-2 flex-shrink-0">
                   {priceIndicator && (
-                    <span className="text-sm font-bold px-3 py-1 rounded-full border-2" style={{ color: '#F9C000', borderColor: '#F9C000' }}>
+                    <span className="text-sm font-bold px-3 py-1 rounded-full border-2 self-center sm:self-end" style={{ color: '#F9C000', borderColor: '#F9C000' }}>
                       {priceIndicator}
                     </span>
                   )}
                   <button
+                    ref={contactBtnRef}
                     onClick={() => user ? setContactOpen(true) : window.location.href = '/login'}
-                    className="font-semibold px-6 py-2.5 rounded-full hover:opacity-90 transition-opacity"
+                    className="font-semibold px-6 py-2.5 rounded-full hover:opacity-90 transition-opacity text-center"
                     style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                   >
                     Contact
                   </button>
+                  <button
+                    onClick={() => {
+                      if (!user) { window.location.href = '/login'; return }
+                      if (cart.length > 0) {
+                        setCartOpen(true)
+                      } else {
+                        const firstName = freelancer.name.split(' ')[0]
+                        setSubject(`Quote request — ${freelancer.trade}`)
+                        setContactMessage(`Hi ${firstName}, I'd like to request a detailed quote for your services. Could you share pricing, availability, and an estimated timeline?`)
+                        setContactOpen(true)
+                      }
+                    }}
+                    className="font-semibold px-6 py-2.5 rounded-full border-2 hover:bg-white/10 transition-colors text-center"
+                    style={{ borderColor: '#F9C000', color: '#F9C000' }}
+                  >
+                    Request a Quote
+                  </button>
+                  <a
+                    href={whatsappShareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-5 py-2 rounded-full font-semibold text-sm text-white hover:opacity-90 transition-opacity text-center"
+                    style={{ backgroundColor: '#25D366' }}
+                  >
+                    <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    Share on WhatsApp
+                  </a>
                 </div>
               </div>
             </div>
@@ -497,6 +631,26 @@ export default function FreelancerProfile() {
         {/* Gold accent stripe */}
         <div className="h-1" style={{ backgroundColor: '#F9C000' }} />
       </div>
+
+      {/* How quoting works — dismissible strip */}
+      {!quoteBannerDismissed && (
+        <div className="border-b border-gray-100" style={{ backgroundColor: '#F5F7FF' }}>
+          <div className="max-w-4xl mx-auto px-4 sm:px-8 py-3 flex items-start gap-2.5">
+            <span className="text-base flex-shrink-0 leading-none mt-0.5">⚡</span>
+            <p className="text-xs text-gray-500 flex-1 leading-relaxed">
+              You can request a detailed quote from this professional — they'll respond with pricing, timeline, and a PDF you can download.
+            </p>
+            <button
+              onClick={() => {
+                setQuoteBannerDismissed(true)
+                localStorage.setItem('quoting_banner_dismissed', '1')
+              }}
+              className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 text-lg leading-none ml-1 mt-0.5"
+              aria-label="Dismiss"
+            >×</button>
+          </div>
+        </div>
+      )}
 
       {/* ── Content ── */}
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
@@ -567,7 +721,7 @@ export default function FreelancerProfile() {
                           ? { backgroundColor: '#EEF2FF', color: '#00267F', cursor: 'default' }
                           : { backgroundColor: '#00267F', color: 'white' }}
                       >
-                        {cart.find(i => i.id === s.id) ? '✓ Added to estimate' : '+ Add to estimate'}
+                        {cart.find(i => i.id === s.id) ? '✓ In your quote' : '+ Add to Quote'}
                       </button>
                     )}
                   </div>
@@ -608,10 +762,10 @@ export default function FreelancerProfile() {
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                          {displayName(review.author)[0]?.toUpperCase()}
+                          {formatDisplayName(review.author)[0]?.toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900 text-sm">{displayName(review.author)}</p>
+                          <p className="font-semibold text-gray-900 text-sm">{formatDisplayName(review.author)}</p>
                           <p className="text-xs text-gray-400">{review.date}</p>
                         </div>
                       </div>
@@ -676,13 +830,15 @@ export default function FreelancerProfile() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Comment</label>
                 <textarea
-                  required
                   value={reviewComment}
                   onChange={e => setReviewComment(e.target.value)}
                   rows={3}
                   placeholder="Share your experience working with this freelancer..."
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-400 bg-white resize-none text-sm"
                 />
+                <p className="text-xs mt-1.5" style={{ color: reviewComment.trim().length >= REVIEW_MIN_CHARS ? '#16a34a' : '#6b7280' }}>
+                  {reviewComment.trim().length}/{REVIEW_MIN_CHARS} characters minimum
+                </p>
               </div>
 
               {reviewError && (
@@ -694,7 +850,7 @@ export default function FreelancerProfile() {
 
               <button
                 type="submit"
-                disabled={reviewSubmitting || reviewRating === 0}
+                disabled={reviewSubmitting || reviewRating === 0 || reviewComment.trim().length < REVIEW_MIN_CHARS}
                 className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ backgroundColor: '#00267F' }}
               >
@@ -980,6 +1136,47 @@ export default function FreelancerProfile() {
           </div>
         )
       })()}
+
+      {/* Sticky bottom action bar — mobile only, shown when header Contact is out of view */}
+      {stickyVisible && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white px-4 py-3 flex gap-2" style={{ borderTop: '1px solid #e5e7eb', boxShadow: '0 -4px 16px rgba(0,0,0,0.08)' }}>
+          <button
+            onClick={() => user ? setContactOpen(true) : window.location.href = '/login'}
+            className="flex-1 py-3 rounded-full font-semibold text-sm border-2 hover:bg-gray-50 transition-colors"
+            style={{ borderColor: '#00267F', color: '#00267F' }}
+          >
+            Message
+          </button>
+          <button
+            onClick={() => {
+              if (cart.length > 0) {
+                setCartOpen(true)
+              } else {
+                const firstName = freelancer.name.split(' ')[0]
+                setSubject(`Quote request — ${freelancer.trade}`)
+                setContactMessage(`Hi ${firstName}, I'd like to request a quote for your services. Could you let me know your availability and pricing?`)
+                setContactOpen(true)
+              }
+            }}
+            className="flex-1 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+          >
+            {cart.length > 0 ? `View estimate (${cart.length})` : 'Request a Quote'}
+          </button>
+          <a
+            href={whatsappShareUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-12 flex-shrink-0 flex items-center justify-center rounded-full hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: '#25D366' }}
+            aria-label="Share on WhatsApp"
+          >
+            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+          </a>
+        </div>
+      )}
     </main>
   )
 }
