@@ -177,15 +177,56 @@ export default function FreelancerProfile() {
     setContactSubmitting(true)
     setContactError(null)
 
-    const { error } = await supabase.from('messages').insert({
-      freelancer_id: freelancer.id,
-      sender_name: senderName,
-      sender_email: senderEmail,
-      subject,
-      message: contactMessage,
-      created_at: new Date().toISOString(),
-      read: false,
-    })
+    // NOTE: Existing duplicate threads created before this deduplication fix can be
+    // manually merged or removed in Supabase if desired. Going forward, all new
+    // messages between the same client (matched by email) and freelancer are grouped
+    // into one thread instead of creating separate threads per entry point.
+
+    // Step 1 — Check for an existing thread between this client and freelancer
+    const { data: existingThreads } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('freelancer_id', freelancer.id)
+      .eq('sender_email', senderEmail)
+      .order('created_at', { ascending: true })
+      .limit(1)
+
+    const existingThread = existingThreads?.[0] || null
+
+    let error
+
+    if (existingThread) {
+      // Step 2 — Thread exists: append as a reply with an inquiry-type label
+      const inquiryLabel = subject.toLowerCase().includes('quote')
+        ? '--- New quote request ---'
+        : subject.toLowerCase().includes('enquiry')
+        ? '--- New service enquiry ---'
+        : '--- New message ---'
+
+      const { error: replyError } = await supabase.from('message_replies').insert({
+        message_id: existingThread.id,
+        sender_name: senderName,
+        body: `${inquiryLabel}\n\n${contactMessage}`,
+      })
+      error = replyError
+
+      if (!replyError) {
+        // Mark thread as unread so the freelancer is notified of the new inquiry
+        await supabase.from('messages').update({ read: false }).eq('id', existingThread.id)
+      }
+    } else {
+      // Step 3 — No existing thread: create a new message row as normal (first contact)
+      const { error: insertError } = await supabase.from('messages').insert({
+        freelancer_id: freelancer.id,
+        sender_name: senderName,
+        sender_email: senderEmail,
+        subject,
+        message: contactMessage,
+        created_at: new Date().toISOString(),
+        read: false,
+      })
+      error = insertError
+    }
 
     if (error) {
       setContactError(error.message)

@@ -8,7 +8,11 @@
       "Bash(wc:*)",
       "Bash(find /c/Users/redma/Desktop/vetted-bb -type f \\\\\\(-name *.sql -o -name schema.sql \\\\\\))",
       "Bash(grep -r \"DELETE\\\\|delete.*review\\\\|review.*delete\\\\|review_reports\" /c/Users/redma/Desktop/vetted-bb/app --include=*.js)",
-      "Bash(grep -r \"review_reports\\\\|report.*review\\\\|flag.*review\" /c/Users/redma/Desktop/vetted-bb --include=*.js --include=*.jsx --include=*.ts --include=*.sql)"
+      "Bash(grep -r \"review_reports\\\\|report.*review\\\\|flag.*review\" /c/Users/redma/Desktop/vetted-bb --include=*.js --include=*.jsx --include=*.ts --include=*.sql)",
+      "Bash(ls:*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -n \"sender_name\\\\|sender_email\\\\|freelancer_id\\\\|read\\\\|created_at\" /c/Users/redma/Desktop/vetted-bb/app/freelancers/[id]/page.js)",
+      "Bash(grep:*)"
     ]
   }
 }

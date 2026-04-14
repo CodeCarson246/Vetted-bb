@@ -27,11 +27,16 @@ export default function Inbox() {
   const [freelancerServices, setFreelancerServices] = useState([])
   const [quoteNumber, setQuoteNumber] = useState('')
   const [quoteItems, setQuoteItems] = useState([{ description: '', qty: 1, price: '' }])
-  const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split('T')[0])
+  const [quoteDate, setQuoteDate] = useState(() => {
+    const now = new Date()
+    const ast = new Date(now.getTime() - (4 * 60 * 60 * 1000))
+    return ast.toISOString().split('T')[0]
+  })
   const [quotePaymentTerms, setQuotePaymentTerms] = useState('net14')
   const [quoteNotes, setQuoteNotes] = useState('')
   const [quoteClientName, setQuoteClientName] = useState('')
   const [quoteClientEmail, setQuoteClientEmail] = useState('')
+  const [quoteToast, setQuoteToast] = useState(null)
 
   const unreadCount = messages.filter(m => !m.read).length
 
@@ -63,7 +68,29 @@ export default function Inbox() {
           .select('*')
           .eq('freelancer_id', p.id)
           .order('created_at', { ascending: false })
-        setMessages(msgs || [])
+
+        const messageList = msgs || []
+        if (messageList.length > 0) {
+          // Fetch the latest reply timestamp for each thread so we can sort by
+          // most recent activity (original message or any reply), not just send date
+          const { data: latestReplies } = await supabase
+            .from('message_replies')
+            .select('message_id, created_at')
+            .in('message_id', messageList.map(m => m.id))
+            .order('created_at', { ascending: false })
+
+          const latestReplyAt = {}
+          ;(latestReplies || []).forEach(r => {
+            if (!latestReplyAt[r.message_id]) latestReplyAt[r.message_id] = r.created_at
+          })
+
+          const enriched = messageList
+            .map(m => ({ ...m, last_activity_at: latestReplyAt[m.id] || m.created_at }))
+            .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))
+          setMessages(enriched)
+        } else {
+          setMessages([])
+        }
       }
 
       setLoading(false)
@@ -76,11 +103,13 @@ export default function Inbox() {
     setQuoteClientName(msg.sender_name || '')
     setQuoteClientEmail(msg.sender_email || '')
     setQuoteItems([{ description: '', qty: 1, price: '' }])
-    setQuoteDate(new Date().toISOString().split('T')[0])
+    const now = new Date()
+    const ast = new Date(now.getTime() - (4 * 60 * 60 * 1000))
+    const astDate = ast.toISOString().split('T')[0]
+    setQuoteDate(astDate)
     setQuotePaymentTerms('net14')
     setQuoteNotes('')
-    const d = new Date()
-    setQuoteNumber(`QT-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${Math.floor(Math.random()*900)+100}`)
+    setQuoteNumber(`QT-${astDate.replace(/-/g, '').slice(0, 8)}-${Math.floor(Math.random()*900)+100}`)
   }
 
   function quoteTotal() {
@@ -92,7 +121,8 @@ export default function Inbox() {
   }
 
   function quoteDueDate() {
-    const base = new Date(quoteDate)
+    const [y, m, d] = quoteDate.split('-').map(Number)
+    const base = new Date(y, m - 1, d) // local midnight — no UTC offset flip
     const terms = { 'due_receipt': 0, 'net7': 7, 'net14': 14, 'net30': 30, 'net60': 60 }
     const days = terms[quotePaymentTerms] ?? 14
     base.setDate(base.getDate() + days)
@@ -129,6 +159,7 @@ export default function Inbox() {
 
   function printQuote() {
     const subtotal = quoteTotal()
+    const validCompanyName = profile?.company_name?.trim().length > 3 ? profile.company_name : null
     const itemRows = quoteItems.map((item, i) => `
       <tr>
         <td style="padding:10px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.description||'—'}</td>
@@ -145,7 +176,7 @@ export default function Inbox() {
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>Quote ${quoteNumber}</title>
+<title>Quote-${quoteNumber}-${quoteClientName}</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; background:white; color:#111827; padding:40px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -166,8 +197,8 @@ export default function Inbox() {
               ${avatarHtml}
             </td>
             <td style="vertical-align:top">
-              <div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${profile?.company_name||profile?.name||''}</div>
-              ${profile?.company_name?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}
+              <div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${validCompanyName||profile?.name||''}</div>
+              ${validCompanyName?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}
               <div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div>
               <div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${profile?.location||''}</div>
               ${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}
@@ -178,7 +209,7 @@ export default function Inbox() {
       <td style="vertical-align:top;text-align:right;width:50%">
         <div style="font-size:34px;font-weight:800;color:#00267F;letter-spacing:4px;line-height:1">QUOTE</div>
         <div style="font-size:12px;color:#9ca3af;margin-top:6px">${quoteNumber}</div>
-        <div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(quoteDate).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(quoteDate + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
       </td>
     </tr>
   </table>
@@ -236,7 +267,7 @@ export default function Inbox() {
     </tr>
   </table>
 
-  ${quoteNotes?`
+  ${quoteNotes?.trim()?`
   <!-- Notes -->
   <table width="100%" style="margin-bottom:24px">
     <tr><td style="border-top:1px solid #e5e7eb;padding-top:16px">
@@ -271,18 +302,19 @@ export default function Inbox() {
 
   function printViewingQuote(q) {
     const total = Number(q.total).toFixed(2)
+    const pValidCompanyName = profile?.company_name?.trim().length > 3 ? profile.company_name : null
     const itemRows = (q.items||[]).map((item,i)=>`<tr><td style="padding:10px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.description||'—'}</td><td style="padding:10px 14px;font-size:13px;color:#374151;text-align:center;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.qty}</td><td style="padding:10px 14px;font-size:13px;color:#374151;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+parseFloat(item.price).toFixed(2):'—'}</td><td style="padding:10px 14px;font-size:13px;font-weight:600;color:#111827;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+((parseFloat(item.price)||0)*(parseInt(item.qty)||1)).toFixed(2):'—'}</td></tr>`).join('')
     const avatarHtml = profile?.avatar_url
       ? `<img src="${profile.avatar_url}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;display:block"/>`
       : `<div style="width:56px;height:56px;border-radius:50%;background:#00267F;color:white;font-size:18px;font-weight:700;text-align:center;line-height:56px">${(profile?.name||'?').split(' ').map(n=>n[0]).join('')}</div>`
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Quote ${q.quote_number}</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:white;color:#111827;padding:40px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:1.2cm;size:A4;}table{border-collapse:collapse;}</style></head><body>
-<table width="100%" style="margin-bottom:28px"><tr><td style="vertical-align:top;width:50%"><table><tr><td style="vertical-align:top;padding-right:14px">${avatarHtml}</td><td style="vertical-align:top"><div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${profile?.company_name||profile?.name||''}</div>${profile?.company_name?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div><div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${profile?.location||''}</div>${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}</td></tr></table></td><td style="vertical-align:top;text-align:right;width:50%"><div style="font-size:34px;font-weight:800;color:#00267F;letter-spacing:4px;line-height:1">QUOTE</div><div style="font-size:12px;color:#9ca3af;margin-top:6px">${q.quote_number}</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(q.quote_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></td></tr></table>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Quote-${q.quote_number}-${q.client_name}</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:white;color:#111827;padding:40px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:1.2cm;size:A4;}table{border-collapse:collapse;}</style></head><body>
+<table width="100%" style="margin-bottom:28px"><tr><td style="vertical-align:top;width:50%"><table><tr><td style="vertical-align:top;padding-right:14px">${avatarHtml}</td><td style="vertical-align:top"><div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${pValidCompanyName||profile?.name||''}</div>${pValidCompanyName?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div><div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${profile?.location||''}</div>${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}</td></tr></table></td><td style="vertical-align:top;text-align:right;width:50%"><div style="font-size:34px;font-weight:800;color:#00267F;letter-spacing:4px;line-height:1">QUOTE</div><div style="font-size:12px;color:#9ca3af;margin-top:6px">${q.quote_number}</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(q.quote_date + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></td></tr></table>
 <table width="100%" style="margin-bottom:24px"><tr><td style="background:#F9C000;height:3px;font-size:0">&nbsp;</td></tr></table>
 <div style="margin-bottom:24px"><div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Billed to</div><div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:3px">${q.client_name}</div><div style="font-size:13px;color:#6b7280">${q.client_email}</div></div>
 <table width="100%" style="border-collapse:collapse;margin-bottom:20px"><thead><tr style="background:#00267F"><th style="padding:10px 14px;text-align:left;color:white;font-size:12px;font-weight:600">Description</th><th style="padding:10px 14px;text-align:center;color:white;font-size:12px;font-weight:600;width:60px">Qty</th><th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Unit price</th><th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Total</th></tr></thead><tbody>${itemRows}</tbody></table>
 <table width="100%" style="margin-bottom:24px"><tr><td width="60%"></td><td width="40%"><table width="100%"><tr><td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#6b7280">Subtotal</td><td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#111827;text-align:right">$${total}</td></tr><tr><td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#111827">Total</td><td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#00267F;text-align:right">$${total}</td></tr></table></td></tr></table>
-<table width="100%" style="margin-bottom:24px"><tr><td style="background:#EEF2FF;border-radius:10px;padding:16px 18px"><div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Payment due</div><div style="font-size:16px;font-weight:700;color:#00267F;margin-bottom:3px">${new Date(q.due_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></td></tr></table>
-${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-top:1px solid #e5e7eb;padding-top:16px"><div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Notes</div><div style="font-size:13px;color:#374151;line-height:1.7">${q.notes}</div></td></tr></table>`:''}
+<table width="100%" style="margin-bottom:24px"><tr><td style="background:#EEF2FF;border-radius:10px;padding:16px 18px"><div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Payment due</div><div style="font-size:16px;font-weight:700;color:#00267F;margin-bottom:3px">${new Date(q.due_date + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></td></tr></table>
+${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-top:1px solid #e5e7eb;padding-top:16px"><div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Notes</div><div style="font-size:13px;color:#374151;line-height:1.7">${q.notes}</div></td></tr></table>`:''}
 <table width="100%"><tr><td style="border-top:1px solid #e5e7eb;padding-top:16px;text-align:center"><div style="font-size:11px;color:#9ca3af">Generated via <span style="color:#00267F;font-weight:600">Vetted.bb</span> &middot; Connecting Barbados</div></td></tr></table>
 </body></html>`
     const printFrame = document.createElement('iframe')
@@ -295,11 +327,11 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
   }
 
   async function saveQuoteInApp() {
-    const d = new Date(quoteDate)
+    const [qy, qm, qd] = quoteDate.split('-').map(Number)
     const terms = { 'due_receipt': 0, 'net7': 7, 'net14': 14, 'net30': 30, 'net60': 60 }
     const days = terms[quotePaymentTerms] ?? 14
-    const due = new Date(d)
-    due.setDate(due.getDate() + days)
+    const due = new Date(qy, qm - 1, qd + days) // local date, no UTC flip
+    const dueStr = `${due.getFullYear()}-${String(due.getMonth()+1).padStart(2,'0')}-${String(due.getDate()).padStart(2,'0')}`
 
     const { data: savedQuote, error } = await supabase
       .from('quotes')
@@ -309,7 +341,7 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
         quote_number: quoteNumber,
         quote_date: quoteDate,
         payment_terms: quotePaymentTerms,
-        due_date: due.toISOString().split('T')[0],
+        due_date: dueStr,
         client_name: quoteClientName,
         client_email: quoteClientEmail,
         items: quoteItems,
@@ -332,8 +364,10 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
       body: `__QUOTE__${savedQuote.id}`,
     })
 
+    const recipientName = quoteClientName
     setQuoteMsg(null)
-    alert('Quote sent successfully!')
+    setQuoteToast(`Quote sent to ${recipientName}`)
+    setTimeout(() => setQuoteToast(null), 4000)
   }
 
   async function sendQuoteToClient() {
@@ -473,7 +507,7 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
                           )}
                         </div>
                         <span className="text-xs text-gray-400 flex-shrink-0">
-                          {new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </div>
 
@@ -588,7 +622,7 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
 
       {/* Quote builder */}
       {quoteMsg && (
-        <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
+        <div className="fixed inset-0 z-[200] bg-gray-50 overflow-y-auto">
 
           {/* Builder header */}
           <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10 no-print">
@@ -597,7 +631,8 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
               <p className="text-xs text-gray-400 mt-0.5">For {quoteClientName} · {quoteMsg.subject}</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
+              {/* Desktop action buttons — hidden on mobile, shown at bottom instead */}
+              <div className="hidden lg:flex items-center gap-2">
                 <button
                   onClick={saveQuoteInApp}
                   className="px-4 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
@@ -629,7 +664,7 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
             </div>
           </div>
 
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
 
             {/* Left — form */}
             <div className="flex flex-col gap-6 no-print">
@@ -769,8 +804,8 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
                     </div>
                   )}
                   <div>
-                    <p className="font-bold text-gray-900 text-base">{profile?.company_name || profile?.name}</p>
-                    {profile?.company_name && <p className="text-sm text-gray-500">{profile?.name}</p>}
+                    <p className="font-bold text-gray-900 text-base">{(profile?.company_name?.trim().length > 3 ? profile.company_name : null) || profile?.name}</p>
+                    {profile?.company_name?.trim().length > 3 && <p className="text-sm text-gray-500">{profile?.name}</p>}
                     <p className="text-sm text-gray-500">{profile?.trade}</p>
                     <p className="text-xs text-gray-400">{profile?.location}</p>
                     {profile?.email && <p className="text-xs text-gray-400">{profile.email}</p>}
@@ -779,7 +814,7 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
                 <div className="text-right">
                   <p className="text-2xl font-bold" style={{ color: '#00267F' }}>QUOTE</p>
                   <p className="text-xs text-gray-400 mt-1">{quoteNumber}</p>
-                  <p className="text-xs text-gray-400">{new Date(quoteDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="text-xs text-gray-400">{new Date(quoteDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
               </div>
 
@@ -855,13 +890,50 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
 
             </div>
           </div>
+
+          {/* Mobile action buttons — visible below content on small screens, hidden on desktop */}
+          <div className="lg:hidden max-w-5xl mx-auto px-4 sm:px-6 pb-10 no-print flex flex-col gap-3">
+            <button
+              onClick={saveQuoteInApp}
+              className="w-full py-3 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#00267F' }}
+            >
+              Send in-app
+            </button>
+            <button
+              onClick={sendQuoteToClient}
+              className="w-full py-3 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity border"
+              style={{ borderColor: '#00267F', color: '#00267F' }}
+            >
+              Send via email
+            </button>
+            <button
+              onClick={printQuote}
+              className="w-full py-3 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+            >
+              Download PDF
+            </button>
+          </div>
         </div>
       )}
 
       {/* Quote viewer modal */}
       {viewingQuote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setViewingQuote(null)}>
-          <div id="quote-view-doc" className="bg-white rounded-2xl w-full max-w-2xl max-h-screen overflow-y-auto p-8" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] flex items-start justify-center px-4 pt-20" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setViewingQuote(null)}>
+          <div id="quote-view-doc" className="relative bg-white rounded-2xl w-full max-w-2xl max-h-[calc(100vh-100px)] overflow-y-auto p-8" onClick={e => e.stopPropagation()}>
+
+            {/* Close button */}
+            <button
+              onClick={() => setViewingQuote(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Close"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="4" y1="4" x2="16" y2="16" />
+                <line x1="16" y1="4" x2="4" y2="16" />
+              </svg>
+            </button>
 
             {/* Header */}
             <div className="flex items-start justify-between mb-6 no-print-close">
@@ -874,7 +946,7 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
                   </div>
                 )}
                 <div>
-                  <p className="font-bold text-gray-900">{profile?.company_name || profile?.name}</p>
+                  <p className="font-bold text-gray-900">{(profile?.company_name?.trim().length > 3 ? profile.company_name : null) || profile?.name}</p>
                   <p className="text-sm text-gray-500">{profile?.trade}</p>
                   <p className="text-xs text-gray-400">{profile?.email}</p>
                 </div>
@@ -882,7 +954,7 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
               <div className="text-right">
                 <p className="text-2xl font-bold" style={{ color: '#00267F' }}>QUOTE</p>
                 <p className="text-xs text-gray-400 mt-1">{viewingQuote.quote_number}</p>
-                <p className="text-xs text-gray-400">{new Date(viewingQuote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="text-xs text-gray-400">{new Date(viewingQuote.quote_date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
               </div>
             </div>
 
@@ -932,10 +1004,10 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
 
             <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: '#EEF2FF' }}>
               <p className="text-xs font-semibold text-gray-700 mb-0.5">Payment due</p>
-              <p className="text-sm font-bold" style={{ color: '#00267F' }}>{new Date(viewingQuote.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <p className="text-sm font-bold" style={{ color: '#00267F' }}>{new Date(viewingQuote.due_date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </div>
 
-            {viewingQuote.notes && (
+            {viewingQuote.notes?.trim() && (
               <div className="border-t border-gray-100 pt-4 mb-4">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Notes</p>
                 <p className="text-xs text-gray-600 leading-relaxed">{viewingQuote.notes}</p>
@@ -963,6 +1035,12 @@ ${q.notes?`<table width="100%" style="margin-bottom:24px"><tr><td style="border-
         </div>
       )}
 
+      {/* Quote sent toast */}
+      {quoteToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-full text-sm font-semibold text-white shadow-lg pointer-events-none" style={{ backgroundColor: '#00267F' }}>
+          {quoteToast}
+        </div>
+      )}
     </main>
   )
 }
