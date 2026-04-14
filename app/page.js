@@ -43,20 +43,29 @@ const trustSignals = [
 ]
 
 const steps = [
-  { n: "1", title: "Search for a freelancer", desc: "Browse by trade, skill, or name. Filter by rating, price, and availability." },
-  { n: "2", title: "Check their reviews", desc: "Read honest reviews from real clients and see how they treat clients too." },
-  { n: "3", title: "Hire with confidence", desc: "Reach out knowing exactly who you're working with before you commit." },
+  { n: "1", icon: "🔍", title: "Search your trade", desc: "Type what you need — plumber, photographer, tutor — and filter by location or category. See real profiles with real reviews." },
+  { n: "2", icon: "💬", title: "Send a quote request", desc: "Pick services from a freelancer's portfolio, add them to your estimate cart, and send a formal quote request — all in-app." },
+  { n: "3", icon: "⭐", title: "Get it done & review", desc: "Work with your professional, then leave an honest review. Your feedback helps the whole Barbados community." },
 ]
 
 // Toggle: set NEXT_PUBLIC_SHOW_STATS_NUMBERS=true in .env.local to switch from
 // the qualitative trust bar to the live-count stats row (use when 50+ providers & 100+ reviews).
 const SHOW_STATS_NUMBERS = process.env.NEXT_PUBLIC_SHOW_STATS_NUMBERS === 'true'
 
+function getAvatarGradient(name) {
+  const gradients = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)',
+    'linear-gradient(135deg, #0099f7 0%, #00267F 100%)',
+  ]
+  const hash = (name || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  return gradients[hash % gradients.length]
+}
+
 export default function Home() {
-  const [user, setUser] = useState(null)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [freelancerProfile, setFreelancerProfile] = useState(null)
-  const [unreadCount, setUnreadCount] = useState(0)
   const [freelancerCount, setFreelancerCount] = useState(null)
   const [reviewCount, setReviewCount] = useState(null)
   const [featuredReviews, setFeaturedReviews] = useState([])
@@ -84,7 +93,10 @@ export default function Home() {
   useEffect(() => {
     fetch('/api/featured-professionals')
       .then(r => r.json())
-      .then(({ data }) => setFeaturedFreelancers(data || []))
+      .then(({ data, error }) => {
+        console.log('[Featured Professionals] data:', data, '| error:', error, '| count:', data?.length ?? 0)
+        setFeaturedFreelancers(data || [])
+      })
   }, [])
 
   useEffect(() => {
@@ -104,137 +116,13 @@ export default function Home() {
         setFeaturedReviews(revs || [])
       })
     }
-    supabase.auth.getUser().then(async ({ data }) => {
-      const u = data.user
-      setUser(u)
-      if (u && u.user_metadata?.role !== 'client') {
-        const { data: fp } = await supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single()
-        setFreelancerProfile(fp || null)
-        if (fp) {
-          const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', fp.id).eq('read', false)
-          setUnreadCount(count || 0)
-        }
-      }
-    })
   }, [])
 
   return (
     <main className="min-h-screen bg-gray-50">
 
-      {/* Navbar */}
-      <nav className="relative bg-white border-b border-gray-100">
-        <div className="flex items-center justify-between px-8 py-5">
-          <div className="flex items-center gap-6">
-            <a href="/" className="text-2xl font-bold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
-            <a href="/search" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-              <span className="hidden sm:inline">Browse Professionals</span>
-              <span className="sm:hidden">Browse</span>
-            </a>
-          </div>
-          <div className="hidden sm:flex gap-4 items-center">
-            {user ? (
-              <>
-                {freelancerProfile ? (
-                  <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                      {freelancerProfile.avatar_url
-                        ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
-                        : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
-                  </a>
-                ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user?.user_metadata?.full_name || user?.email}</a>
-                )}
-                {freelancerProfile ? (
-                  <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-0.5 leading-none">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </a>
-                ) : user && (
-                  <a href="/messages" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors" title="My messages">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </a>
-                )}
-                <button
-                  onClick={() => supabase.auth.signOut().then(() => window.location.reload())}
-                  className="text-white px-5 py-2 rounded-full font-medium transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: '#00267F' }}
-                >
-                  Log out
-                </button>
-              </>
-            ) : (
-              <>
-                <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
-                <a
-                  href="/signup"
-                  className="text-white px-5 py-2 rounded-full font-medium transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: '#00267F' }}
-                >
-                  Sign up
-                </a>
-              </>
-            )}
-          </div>
-          <button className="sm:hidden p-2 text-gray-600" onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />}
-            </svg>
-          </button>
-        </div>
-        {menuOpen && (
-          <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
-            {user ? (
-              <>
-                {freelancerProfile ? (
-                  <a href="/dashboard" onClick={() => setMenuOpen(false)} className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                      {freelancerProfile.avatar_url
-                        ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
-                        : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
-                  </a>
-                ) : (
-                  <a href="/dashboard" onClick={() => setMenuOpen(false)} className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name || user?.email}</a>
-                )}
-                {freelancerProfile ? (
-                  <a href="/inbox" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-gray-700 font-medium">
-                    Inbox
-                    {unreadCount > 0 && (
-                      <span className="min-w-[18px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-1 leading-none">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </a>
-                ) : user && (
-                  <a href="/messages" onClick={() => setMenuOpen(false)} className="text-gray-700 font-medium">My messages</a>
-                )}
-                <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="text-left text-red-500 font-medium">Log out</button>
-              </>
-            ) : (
-              <>
-                <a href="/search" onClick={() => setMenuOpen(false)} className="text-gray-700 font-medium">Browse freelancers</a>
-                <a href="/signup" onClick={() => setMenuOpen(false)} className="text-gray-700 font-medium">List your services</a>
-                <a href="/login" onClick={() => setMenuOpen(false)} className="text-gray-700 font-medium">Log in</a>
-                <a href="/signup" onClick={() => setMenuOpen(false)} className="font-medium" style={{ color: '#00267F' }}>Sign up</a>
-              </>
-            )}
-          </div>
-        )}
-      </nav>
-
       {/* Hero */}
-      <section className="px-4 sm:px-8 py-20 sm:py-32 text-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 60%, #001240 100%)' }}>
+      <section className="px-4 sm:px-8 pt-20 sm:pt-32 text-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 60%, #001240 100%)', paddingBottom: '120px' }}>
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #F9C000 0%, transparent 50%), radial-gradient(circle at 80% 20%, #ffffff 0%, transparent 40%)' }} />
         <div className="max-w-3xl mx-auto relative">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#F9C000', border: '1px solid rgba(249,192,0,0.3)' }}>
@@ -279,10 +167,222 @@ export default function Home() {
             Free to use · No account needed to browse · 100% Barbados-based professionals
           </p>
         </div>
+
+        {/* Wave divider — fill matches TrustBar navy (#00267F) */}
+        <div style={{ position: 'absolute', bottom: '-1px', left: 0, width: '100%', lineHeight: 0, overflow: 'hidden' }}>
+          <svg
+            viewBox="0 0 1440 60"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
+            style={{ display: 'block', width: '100%', height: '60px' }}
+          >
+            <path d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" fill="#00267F" />
+          </svg>
+        </div>
       </section>
 
       {/* Trust bar */}
       <TrustBar />
+
+      {/* Featured Professionals */}
+      {featuredFreelancers.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 sm:px-8 pb-16" style={{ paddingTop: '80px' }}>
+          <div className="mb-10">
+            <p style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.75rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#d9a800', marginBottom: '8px' }}>
+              TOP RATED
+            </p>
+            <h2 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '2.2rem', letterSpacing: '-0.8px', color: '#00267F', marginBottom: '8px', lineHeight: 1.15 }}>
+              Featured Professionals
+            </h2>
+            <p style={{ color: '#6B7280', fontSize: '1rem', fontFamily: "'Inter', sans-serif" }}>
+              Real people. Real reviews. Ready to hire.
+            </p>
+          </div>
+
+          {/* Desktop: 3-column grid | Mobile: horizontal scroll carousel */}
+          <div
+            className="no-scrollbar hidden-scroll-mobile"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '24px',
+            }}
+          >
+            <style>{`
+              @media (max-width: 767px) {
+                .hidden-scroll-mobile {
+                  display: flex !important;
+                  overflow-x: auto;
+                  scroll-snap-type: x mandatory;
+                  padding: 0 24px;
+                  padding-right: 48px;
+                  gap: 16px;
+                }
+                .hidden-scroll-mobile > a {
+                  min-width: 85vw;
+                  flex-shrink: 0;
+                  scroll-snap-align: start;
+                }
+              }
+            `}</style>
+            {featuredFreelancers.map(f => (
+              <a
+                key={f.id}
+                href={`/freelancers/${f.id}`}
+                style={{
+                  backgroundColor: 'white',
+                  borderTop: '4px solid #00267F',
+                  borderRadius: '16px',
+                  padding: '28px 24px 24px',
+                  boxShadow: 'var(--card-shadow)',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--card-shadow-hover)' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--card-shadow)' }}
+              >
+                {/* Header row */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
+                  <div style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '1.1rem',
+                    background: f.avatar_url ? undefined : getAvatarGradient(f.name),
+                    backgroundColor: f.avatar_url ? undefined : 'transparent',
+                  }}>
+                    {f.avatar_url
+                      ? <img src={f.avatar_url} alt={f.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : f.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '3px' }}>
+                      <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '1rem', color: '#00267F', lineHeight: 1.2 }}>{f.name}</span>
+                    </div>
+                    <p style={{ fontSize: '0.82rem', color: '#6B7280', marginTop: '2px', textTransform: 'capitalize' }}>{f.trade}</p>
+                  </div>
+                </div>
+
+                {/* Star rating */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '12px' }}>
+                  {f.review_count > 0 ? (
+                    <>
+                      <div style={{ display: 'flex', gap: '2px' }}>
+                        {[1,2,3,4,5].map(s => (
+                          <span key={s} style={{ fontSize: '0.85rem', color: s <= Math.round(f.rating) ? '#F9C000' : '#e5e7eb' }}>★</span>
+                        ))}
+                      </div>
+                      <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.85rem', color: '#00267F' }}>{f.rating}</span>
+                      <span style={{ fontSize: '0.82rem', color: '#6B7280' }}>({f.review_count} {f.review_count === 1 ? 'review' : 'reviews'})</span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '0.82rem', color: '#6B7280' }}>No reviews yet</span>
+                  )}
+                </div>
+
+                {/* Bio */}
+                {f.bio && (
+                  <p style={{
+                    fontSize: '0.85rem',
+                    color: '#6B7280',
+                    lineHeight: 1.6,
+                    marginBottom: '12px',
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                  }}>
+                    {f.bio}
+                  </p>
+                )}
+
+                {/* Skill tags */}
+                {f.skills?.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
+                    {f.skills.slice(0, 3).map(skill => (
+                      <span key={skill} style={{
+                        fontSize: '0.73rem',
+                        fontWeight: 600,
+                        color: '#00267F',
+                        backgroundColor: 'rgba(0,38,127,0.06)',
+                        padding: '3px 10px',
+                        borderRadius: '999px',
+                      }}>
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Card footer */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderTop: '1px solid rgba(0,38,127,0.07)',
+                  paddingTop: '16px',
+                  marginTop: 'auto',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: f.available ? '#22c55e' : '#f97316', flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: f.available ? '#16a34a' : '#ea580c' }}>
+                      {f.available ? 'Available now' : 'Busy this week'}
+                    </span>
+                  </div>
+                  <span style={{
+                    backgroundColor: '#00267F',
+                    color: 'white',
+                    fontSize: '0.8rem',
+                    padding: '8px 18px',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                  }}>
+                    View Profile
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {/* Scroll hint dots — mobile only */}
+          <div className="flex justify-center items-center gap-2 mt-5 md:hidden">
+            <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#00267F', display: 'inline-block' }} />
+            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'rgba(0,38,127,0.2)', display: 'inline-block' }} />
+            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'rgba(0,38,127,0.2)', display: 'inline-block' }} />
+          </div>
+
+          <div className="text-center mt-10">
+            <a
+              href="/search"
+              style={{
+                backgroundColor: '#00267F',
+                color: 'white',
+                padding: '14px 36px',
+                borderRadius: '10px',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                textDecoration: 'none',
+                display: 'inline-block',
+                fontFamily: "'Sora', sans-serif",
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              Browse all professionals →
+            </a>
+          </div>
+        </section>
+      )}
 
       {/* Browse by category */}
       <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
@@ -309,105 +409,59 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Top-Rated Professionals */}
-      {featuredFreelancers.length > 0 && (
-        <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl font-bold text-gray-900">Top-Rated Professionals This Week</h2>
-            <p className="text-sm text-gray-500 mt-2">Real people. Real reviews. Ready to hire.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {featuredFreelancers.map(f => (
-              <a
-                key={f.id}
-                href={`/freelancers/${f.id}`}
-                className="group bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all hover:shadow-lg"
-                style={{ borderTop: '3px solid #00267F' }}
-              >
-                <div className="p-6">
-                  {/* Avatar + identity */}
-                  <div className="flex items-center gap-4 mb-5">
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                      {f.avatar_url
-                        ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
-                        : f.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                        <p className="font-bold text-gray-900 leading-tight truncate">{f.name}</p>
-                        <span className="flex items-center gap-1 flex-shrink-0">
-                          <span className={`w-2 h-2 rounded-full ${f.available ? 'bg-green-400' : 'bg-gray-300'}`} />
-                          <span className={`text-xs ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
-                            {f.available ? 'Available' : 'Unavailable'}
-                          </span>
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold capitalize" style={{ color: '#F9C000' }}>{f.trade}</p>
-                      {f.location && <p className="text-xs text-gray-400 mt-0.5">📍 {f.location}</p>}
-                    </div>
-                  </div>
-
-                  {/* Rating */}
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <div className="flex gap-0.5">
-                      {[1,2,3,4,5].map(s => (
-                        <span key={s} className="text-sm" style={{ color: s <= Math.round(f.rating) ? '#F9C000' : '#e5e7eb' }}>★</span>
-                      ))}
-                    </div>
-                    <span className="text-sm font-semibold text-gray-800">{f.rating}</span>
-                    <span className="text-xs text-gray-400">({f.review_count} {f.review_count === 1 ? 'review' : 'reviews'})</span>
-                  </div>
-
-                  {/* Verified badge */}
-                  {f.verified && (
-                    <div className="flex items-center gap-1.5 mb-4">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(249,192,0,0.2)" stroke="#F9C000" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M9 12l2 2 4-4" stroke="#F9C000" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span className="text-xs font-semibold" style={{ color: '#00267F' }}>Verified</span>
-                    </div>
-                  )}
-
-                  {/* Skill tags */}
-                  {f.skills?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-6">
-                      {f.skills.slice(0, 3).map(skill => (
-                        <span key={skill} className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>{skill}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* CTA */}
-                  <div className="w-full py-2.5 rounded-xl text-center text-sm font-semibold transition-opacity group-hover:opacity-90" style={{ backgroundColor: '#00267F', color: 'white' }}>
-                    View Profile
-                  </div>
-                </div>
-              </a>
-            ))}
-          </div>
-
-          <div className="text-center mt-8">
-            <a href="/search" className="text-sm font-semibold hover:opacity-70 transition-opacity" style={{ color: '#00267F' }}>
-              Browse all professionals →
-            </a>
-          </div>
-        </section>
-      )}
-
       {/* How it works */}
-      <section className="bg-white border-t border-gray-100 py-16 px-4 sm:px-8">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-12 text-center">How it works</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      <section id="how-it-works" style={{ backgroundColor: '#00267F' }} className="py-16 px-4 sm:px-8">
+        <div className="max-w-5xl mx-auto">
+          {/* Section header */}
+          <div className="mb-14">
+            <p style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.75rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#F9C000', marginBottom: '10px' }}>
+              SIMPLE PROCESS
+            </p>
+            <h2 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '2.2rem', color: 'white', marginBottom: '12px', lineHeight: 1.15 }}>
+              Get it done in three steps
+            </h2>
+            <p style={{ color: '#93b8ff', fontSize: '1rem', fontFamily: "'Inter', sans-serif" }}>
+              From search to quote in minutes — no back-and-forth, no hassle.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             {steps.map(step => (
-              <div key={step.n} className="flex flex-col items-center text-center gap-4">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+              <div
+                key={step.n}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '16px',
+                  padding: '32px 28px',
+                }}
+              >
+                {/* Step number badge */}
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  backgroundColor: '#F9C000',
+                  color: '#00267F',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: "'Sora', sans-serif",
+                  fontWeight: 800,
+                  fontSize: '1.1rem',
+                  marginBottom: '16px',
+                  flexShrink: 0,
+                }}>
                   {step.n}
                 </div>
-                <h3 className="font-semibold text-gray-900">{step.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
+                {/* Icon */}
+                <div style={{ fontSize: '1.8rem', marginBottom: '14px' }}>{step.icon}</div>
+                <h3 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '1.05rem', color: 'white', marginBottom: '10px' }}>
+                  {step.title}
+                </h3>
+                <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.65 }}>
+                  {step.desc}
+                </p>
               </div>
             ))}
           </div>
@@ -448,7 +502,7 @@ export default function Home() {
               </ul>
 
               <a
-                href="/signup"
+                href="/signup?role=freelancer"
                 className="inline-block px-7 py-3.5 rounded-full font-bold text-sm transition-opacity hover:opacity-90"
                 style={{ backgroundColor: '#F9C000', color: '#00267F' }}
               >
@@ -550,17 +604,6 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm">
-        <p>© 2026 Vetted.bb · Connecting Barbados</p>
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 text-xs">
-          <a href="/search" className="hover:text-gray-600 transition-colors">Browse freelancers</a>
-          <a href="/signup" className="hover:text-gray-600 transition-colors">List your services</a>
-          <a href="/about" className="hover:text-gray-600 transition-colors">About</a>
-          <a href="/faq" className="hover:text-gray-600 transition-colors">FAQ</a>
-          <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
-          <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
-        </div>
-      </footer>
     </main>
   )
 }

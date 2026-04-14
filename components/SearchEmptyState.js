@@ -65,7 +65,7 @@ export default function SearchEmptyState({ query, category }) {
       {/* CTAs */}
       <div className="flex flex-col sm:flex-row gap-3 justify-center w-full sm:w-auto">
         <a
-          href="/signup"
+          href="/signup?role=freelancer"
           className="px-7 py-3 rounded-full font-semibold text-sm transition-opacity hover:opacity-90"
           style={{ backgroundColor: '#F9C000', color: '#00267F' }}
         >

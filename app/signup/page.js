@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 const trustPoints = [
@@ -11,6 +11,7 @@ const trustPoints = [
 
 export default function SignUp() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -18,6 +19,13 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    const param = searchParams.get('role')
+    if (param === 'freelancer' || param === 'client') {
+      setRole(param)
+    }
+  }, [searchParams])
 
   async function handleSubmit(e) {
     e.preventDefault()

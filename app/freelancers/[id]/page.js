@@ -5,6 +5,9 @@ import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import Tooltip from '@/components/Tooltip'
+import WeekView from '@/components/calendar/WeekView'
+import MonthView from '@/components/calendar/MonthView'
+import { nowAST, getWeekStart, getWeekDays, MONTHS } from '@/components/calendar/calUtils'
 
 function StarRating({ rating, light = false }) {
   return (
@@ -23,7 +26,6 @@ export default function FreelancerProfile() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('client')
   const [user, setUser] = useState(null)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [freelancerProfile, setFreelancerProfile] = useState(null)
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewHover, setReviewHover] = useState(0)
@@ -32,6 +34,13 @@ export default function FreelancerProfile() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
   const [reviewError, setReviewError] = useState(null)
   const [reviewSuccess, setReviewSuccess] = useState(false)
+
+  // Report review state
+  const [reportingReview, setReportingReview] = useState(null)
+  const [reportReason, setReportReason] = useState('')
+  const [reportDetail, setReportDetail] = useState('')
+  const [reportSubmitting, setReportSubmitting] = useState(false)
+  const [reportToast, setReportToast] = useState(null)
 
   // Contact modal state
   const [contactOpen, setContactOpen] = useState(false)
@@ -43,7 +52,15 @@ export default function FreelancerProfile() {
   const [contactError, setContactError] = useState(null)
   const [contactSuccess, setContactSuccess] = useState(false)
 
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [availabilityBlocks, setAvailabilityBlocks] = useState([])
+  const [availabilitySettings, setAvailabilitySettings] = useState(null)
+  const [pubCalView, setPubCalView] = useState('week')
+  const [pubWeekStart, setPubWeekStart] = useState(() => getWeekStart(nowAST()))
+  const [pubCalMonth, setPubCalMonth] = useState(() => {
+    const n = nowAST()
+    return { year: n.getFullYear(), month: n.getMonth() }
+  })
+
   const [services, setServices] = useState([])
   const [cart, setCart] = useState([])
   const [cartOpen, setCartOpen] = useState(false)
@@ -72,10 +89,6 @@ export default function FreelancerProfile() {
           const { data: fp } = await supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single()
           setFreelancerProfile(fp || null)
           setSenderName(fp?.name || u.user_metadata?.full_name || u.email.split('@')[0])
-          if (fp) {
-            const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', fp.id).eq('read', false)
-            setUnreadCount(count || 0)
-          }
         } else {
           setSenderName(u.user_metadata?.full_name || u.email.split('@')[0])
         }
@@ -92,10 +105,12 @@ export default function FreelancerProfile() {
         .single()
 
       if (f) {
-        const [{ data: r }, { data: s }, { count: msgCount }] = await Promise.all([
+        const [{ data: r }, { data: s }, { count: msgCount }, { data: ab }, { data: as }] = await Promise.all([
           supabase.from('reviews').select('*').eq('freelancer_id', f.id),
           supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
           supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', f.id),
+          supabase.from('availability_blocks').select('*').eq('freelancer_id', f.id).order('start_time', { ascending: true }),
+          supabase.from('availability_settings').select('*').eq('freelancer_id', f.id).single(),
         ])
 
         const allReviews = r || []
@@ -118,6 +133,8 @@ export default function FreelancerProfile() {
         setReviews(allReviews)
         setServices(s || [])
         setMessageCount(msgCount || 0)
+        setAvailabilityBlocks(ab || [])
+        setAvailabilitySettings(as || null)
       }
 
       setLoading(false)
@@ -261,14 +278,32 @@ export default function FreelancerProfile() {
     setReviewSubmitting(false)
   }
 
+  async function submitReport(e) {
+    e.preventDefault()
+    if (!reportReason) return
+    setReportSubmitting(true)
+    const { error } = await supabase.from('review_reports').insert({
+      review_id: reportingReview.id,
+      reporter_id: user.id,
+      reason: reportReason,
+      detail: reportDetail.trim() || null,
+      status: 'pending',
+    })
+    setReportSubmitting(false)
+    if (error) {
+      setReportToast({ message: 'Failed to submit report. Please email us at hello@vetted.bb', type: 'error' })
+    } else {
+      setReportingReview(null)
+      setReportReason('')
+      setReportDetail('')
+      setReportToast({ message: 'Report submitted. Our team will review within 48 hours.', type: 'success' })
+    }
+    setTimeout(() => setReportToast(null), 5000)
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <nav className="bg-white border-b border-gray-100">
-          <div className="flex items-center justify-between px-8 py-5">
-            <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
-          </div>
-        </nav>
         <div className="w-full" style={{ backgroundColor: '#00267F' }}>
           <div className="max-w-4xl mx-auto px-6 sm:px-8 py-10 animate-pulse">
             <div className="flex flex-col sm:flex-row sm:items-center gap-6">
@@ -383,110 +418,6 @@ export default function FreelancerProfile() {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-
-      {/* Navbar */}
-      <nav className="relative bg-white border-b border-gray-100">
-        <div className="flex items-center justify-between px-8 py-5">
-          <div className="flex items-center gap-6">
-            <a href="/" className="text-2xl font-bold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
-            <a href="/search" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-              <span className="hidden sm:inline">Browse Professionals</span>
-              <span className="sm:hidden">Browse</span>
-            </a>
-          </div>
-          <div className="hidden sm:flex gap-4 items-center">
-            {user ? (
-              <>
-                {freelancerProfile ? (
-                  <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                      {freelancerProfile.avatar_url
-                        ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
-                        : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
-                  </a>
-                ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">{user?.user_metadata?.full_name || user?.email}</a>
-                )}
-                {freelancerProfile ? (
-                  <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-0.5 leading-none">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </a>
-                ) : user && (
-                  <a href="/messages" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors" title="My messages">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </a>
-                )}
-                <button
-                  onClick={() => supabase.auth.signOut().then(() => window.location.reload())}
-                  className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: '#00267F' }}
-                >
-                  Log out
-                </button>
-              </>
-            ) : (
-              <>
-                <a href="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</a>
-                <a href="/signup" className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Sign up</a>
-              </>
-            )}
-          </div>
-          <button className="sm:hidden p-2 text-gray-600" onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />}
-            </svg>
-          </button>
-        </div>
-        {menuOpen && (
-          <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
-            {user ? (
-              <>
-                {freelancerProfile ? (
-                  <a href="/dashboard" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                      {freelancerProfile.avatar_url
-                        ? <img src={freelancerProfile.avatar_url} alt={freelancerProfile.name} className="w-full h-full object-cover" />
-                        : freelancerProfile.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <span className="text-gray-600 text-sm font-medium">{freelancerProfile.name}</span>
-                  </a>
-                ) : (
-                  <a href="/dashboard" className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name || user?.email}</a>
-                )}
-                {freelancerProfile ? (
-                  <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
-                    Inbox
-                    {unreadCount > 0 && (
-                      <span className="min-w-[18px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-1 leading-none">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </a>
-                ) : user && (
-                  <a href="/messages" className="text-gray-700 font-medium">My messages</a>
-                )}
-                <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} className="text-left text-red-500 font-medium">Log out</button>
-              </>
-            ) : (
-              <>
-                <a href="/login" className="text-gray-700 font-medium">Log in</a>
-                <a href="/signup" className="font-medium" style={{ color: '#00267F' }}>Sign up</a>
-              </>
-            )}
-          </div>
-        )}
-      </nav>
 
       {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-100 px-8 py-2.5">
@@ -731,7 +662,7 @@ export default function FreelancerProfile() {
                     <div className="flex items-center justify-between mt-auto pt-3">
                       <span className="text-lg font-bold" style={{ color: '#00267F' }}>{s.price}</span>
                       {s.duration && (
-                        <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">{s.duration}</span>
+                        <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">⏱ {s.duration}</span>
                       )}
                     </div>
                     {user && user.id !== freelancer.user_id && (
@@ -752,6 +683,153 @@ export default function FreelancerProfile() {
             </div>
           </div>
         )}
+
+        {/* Availability */}
+        {(() => {
+          const mode = availabilitySettings?.mode
+          const showCal = availabilitySettings?.show_on_profile
+
+          // mode = 'available' → green card
+          if (mode === 'available') {
+            return (
+              <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
+                <h2 className="text-base font-bold text-gray-900 mb-4">Availability</h2>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0, marginTop: 5 }} />
+                  <div>
+                    <p style={{ fontWeight: 600, color: '#15803d', fontSize: '0.9rem', marginBottom: '4px' }}>Available</p>
+                    <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.6 }}>
+                      Available for new projects — contact me to discuss your requirements.
+                    </p>
+                    <button
+                      onClick={() => setContactOpen(true)}
+                      style={{
+                        marginTop: '12px', padding: '9px 20px', borderRadius: '8px',
+                        backgroundColor: '#00267F', color: 'white',
+                        fontFamily: "'Sora', sans-serif", fontWeight: 600,
+                        fontSize: '0.85rem', border: 'none', cursor: 'pointer',
+                      }}
+                    >
+                      Contact
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          // mode = 'calendar' but hidden → show nothing
+          if (mode === 'calendar' && !showCal) return null
+
+          // mode = 'calendar' and showCal → read-only calendar
+          if (mode === 'calendar' && showCal) {
+            const pubWeekDays = getWeekDays(pubWeekStart)
+            const pubNavLabel = pubCalView === 'week'
+              ? `Week of ${pubWeekDays[0].toLocaleDateString('en-BB', { month: 'short', day: 'numeric' })}`
+              : `${MONTHS[pubCalMonth.month]} ${pubCalMonth.year}`
+
+            return (
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div className="px-7 py-6 border-b border-gray-100">
+                  <h2 className="text-base font-bold text-gray-900">Availability</h2>
+                </div>
+
+                {/* Toolbar */}
+                <div style={{
+                  padding: '12px 16px', borderBottom: '1px solid rgba(0,38,127,0.07)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: '10px', flexWrap: 'wrap',
+                }}>
+                  {/* Week / Month toggle */}
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {['week', 'month'].map(v => (
+                      <button
+                        key={v}
+                        onClick={() => setPubCalView(v)}
+                        style={{
+                          padding: '5px 13px', borderRadius: '7px', fontSize: '0.78rem',
+                          fontWeight: 600, cursor: 'pointer', border: 'none',
+                          backgroundColor: pubCalView === v ? '#00267F' : '#f3f4f6',
+                          color: pubCalView === v ? 'white' : '#6B7280',
+                        }}
+                      >
+                        {v.charAt(0).toUpperCase() + v.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Navigation */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={() => {
+                        if (pubCalView === 'week') {
+                          const d = new Date(pubWeekStart); d.setDate(d.getDate() - 7); setPubWeekStart(d)
+                        } else {
+                          setPubCalMonth(p => p.month === 0 ? { year: p.year - 1, month: 11 } : { year: p.year, month: p.month - 1 })
+                        }
+                      }}
+                      style={{ width: 28, height: 28, borderRadius: '7px', border: '1.5px solid #e5e7eb', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#374151' }}
+                    >←</button>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', minWidth: '140px', textAlign: 'center' }}>
+                      {pubNavLabel}
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (pubCalView === 'week') {
+                          const d = new Date(pubWeekStart); d.setDate(d.getDate() + 7); setPubWeekStart(d)
+                        } else {
+                          setPubCalMonth(p => p.month === 11 ? { year: p.year + 1, month: 0 } : { year: p.year, month: p.month + 1 })
+                        }
+                      }}
+                      style={{ width: 28, height: 28, borderRadius: '7px', border: '1.5px solid #e5e7eb', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#374151' }}
+                    >→</button>
+                  </div>
+
+                  {/* Legend */}
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '2px', backgroundColor: 'white', border: '1px solid #e5e7eb' }} />
+                      <span style={{ fontSize: '0.7rem', color: '#9CA3AF' }}>Available</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '2px', backgroundColor: '#9CA3AF' }} />
+                      <span style={{ fontSize: '0.7rem', color: '#9CA3AF' }}>Busy</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Grid (read-only) */}
+                {pubCalView === 'week' ? (
+                  <WeekView
+                    weekDays={pubWeekDays}
+                    blocks={availabilityBlocks}
+                    isPublic={true}
+                  />
+                ) : (
+                  <MonthView
+                    year={pubCalMonth.year}
+                    month={pubCalMonth.month}
+                    blocks={availabilityBlocks}
+                    isPublic={true}
+                    onDayClick={day => { setPubWeekStart(getWeekStart(day)); setPubCalView('week') }}
+                  />
+                )}
+
+                {/* Footer note */}
+                <p style={{
+                  fontSize: '0.72rem', color: '#9CA3AF',
+                  padding: '10px 20px 14px', textAlign: 'center',
+                }}>
+                  {availabilityBlocks.length === 0
+                    ? 'No blocks set — likely available. Contact to confirm.'
+                    : 'Availability is updated by the professional. Contact them to confirm.'}
+                </p>
+              </div>
+            )
+          }
+
+          return null
+        })()}
 
         {/* Reviews */}
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -791,7 +869,17 @@ export default function FreelancerProfile() {
                           <p className="text-xs text-gray-400">{review.date}</p>
                         </div>
                       </div>
-                      <StarRating rating={review.rating} />
+                      <div className="flex items-center gap-3">
+                        <StarRating rating={review.rating} />
+                        {user?.id === freelancer?.user_id && (
+                          <button
+                            onClick={() => { setReportingReview(review); setReportReason(''); setReportDetail('') }}
+                            className="text-xs text-gray-400 hover:text-red-500 transition-colors underline underline-offset-2"
+                          >
+                            Report
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {review.service_name && (
                       <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full mb-2" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
@@ -892,18 +980,6 @@ export default function FreelancerProfile() {
         )}
 
       </div>
-
-      <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-4">
-        <p>© 2026 Vetted.bb · Connecting Barbados</p>
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 text-xs">
-          <a href="/search" className="hover:text-gray-600 transition-colors">Browse freelancers</a>
-          <a href="/signup" className="hover:text-gray-600 transition-colors">List your services</a>
-          <a href="/about" className="hover:text-gray-600 transition-colors">About</a>
-          <a href="/faq" className="hover:text-gray-600 transition-colors">FAQ</a>
-          <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
-          <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
-        </div>
-      </footer>
 
       {/* Contact modal */}
       {/* Estimate cart */}
@@ -1215,6 +1291,66 @@ export default function FreelancerProfile() {
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
             </svg>
           </a>
+        </div>
+      )}
+
+      {/* Report review modal */}
+      {reportingReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setReportingReview(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-7" onClick={e => e.stopPropagation()}>
+            <h2 className="text-base font-bold text-gray-900 mb-5">Report this review</h2>
+            <form onSubmit={submitReport} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Reason <span className="text-red-500">*</span></label>
+                <select
+                  required
+                  value={reportReason}
+                  onChange={e => setReportReason(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-400 bg-white text-sm"
+                >
+                  <option value="">Select a reason</option>
+                  <option value="This review is fake or spam">This review is fake or spam</option>
+                  <option value="This reviewer never hired me">This reviewer never hired me</option>
+                  <option value="This contains offensive language">This contains offensive language</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Additional detail <span className="text-gray-400 font-normal">(optional)</span></label>
+                <textarea
+                  value={reportDetail}
+                  onChange={e => setReportDetail(e.target.value)}
+                  rows={3}
+                  placeholder="Any extra context for our team..."
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-400 bg-white resize-none text-sm"
+                />
+              </div>
+              <div className="flex gap-3 mt-1">
+                <button
+                  type="submit"
+                  disabled={reportSubmitting || !reportReason}
+                  className="flex-1 py-3 rounded-lg text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportingReview(null)}
+                  className="flex-1 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:border-gray-400 transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Report toast */}
+      {reportToast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm font-medium shadow-lg text-white ${reportToast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`}>
+          {reportToast.message}
         </div>
       )}
     </main>

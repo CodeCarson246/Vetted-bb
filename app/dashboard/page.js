@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getPriceIndicator } from '@/lib/priceIndicator'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
+import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -44,7 +46,6 @@ export default function Dashboard() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [role, setRole] = useState(null)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [profile, setProfile] = useState(null)
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
@@ -69,6 +70,7 @@ export default function Dashboard() {
   const [servicePriceOption, setServicePriceOption] = useState('')
   const [serviceDescription, setServiceDescription] = useState('')
   const [serviceDuration, setServiceDuration] = useState('')
+  const [serviceDurationMinutes, setServiceDurationMinutes] = useState(null)
   const [serviceSaving, setServiceSaving] = useState(false)
   const [serviceError, setServiceError] = useState(null)
   const [serviceImages, setServiceImages] = useState([])
@@ -404,6 +406,7 @@ export default function Dashboard() {
     setServiceName(svc?.name || '')
     setServiceDescription(svc?.description || '')
     setServiceDuration(svc?.duration || '')
+    setServiceDurationMinutes(svc?.duration_minutes ?? null)
     setServiceError(null)
     setServiceImages([])
     setExistingServiceImages([])
@@ -435,6 +438,7 @@ export default function Dashboard() {
     setServicePriceOption('')
     setServiceDescription('')
     setServiceDuration('')
+    setServiceDurationMinutes(null)
     setServiceError(null)
     setServiceImages([])
     setExistingServiceImages([])
@@ -519,6 +523,7 @@ export default function Dashboard() {
       price: servicePrice,
       description: serviceDescription,
       duration: serviceDuration || null,
+      duration_minutes: serviceDurationMinutes,
     }
 
     let error
@@ -614,20 +619,92 @@ export default function Dashboard() {
 
   async function handleDeleteProfile() {
     setDeleting(true)
-    await supabase.from('services').delete().eq('freelancer_id', profile.id)
-    await supabase.from('reviews').delete().eq('freelancer_id', profile.id)
-    await supabase.from('freelancers').delete().eq('user_id', user.id)
-    window.location.reload()
+    const freelancerId = profile.id
+    console.log('[delete-profile] starting deletion for freelancer_id:', freelancerId)
+    try {
+      // Step 1: Delete storage files (portfolio images + display picture) — non-fatal, log and continue
+      const allImages = services.flatMap(s => s.service_images || [])
+      if (allImages.length > 0) {
+        const paths = allImages
+          .map(img => {
+            const parts = img.url.split('/public/service-images/')
+            return parts.length > 1 ? decodeURIComponent(parts[1]) : null
+          })
+          .filter(Boolean)
+        if (paths.length > 0) {
+          const { error: storageErr } = await supabase.storage.from('service-images').remove(paths)
+          if (storageErr) console.error('[delete-profile] step 1 portfolio storage error (non-fatal):', storageErr)
+          else console.log('[delete-profile] step 1 complete: removed', paths.length, 'portfolio image(s) from storage')
+        }
+      } else {
+        console.log('[delete-profile] step 1 complete: no portfolio images in storage')
+      }
+      if (profile.avatar_url) {
+        const parts = profile.avatar_url.split('/public/avatars/')
+        if (parts.length > 1) {
+          const avatarPath = decodeURIComponent(parts[1])
+          const { error: avatarErr } = await supabase.storage.from('avatars').remove([avatarPath])
+          if (avatarErr) console.error('[delete-profile] step 1 display picture storage error (non-fatal):', avatarErr)
+          else console.log('[delete-profile] step 1 complete: display picture removed from storage')
+        }
+      }
+
+      // Step 2: Delete service_images rows
+      const serviceIds = services.map(s => s.id)
+      if (serviceIds.length > 0) {
+        const { error: siErr } = await supabase.from('service_images').delete().in('service_id', serviceIds)
+        if (siErr) throw new Error(`step 2 service_images: ${siErr.message}`)
+      }
+      console.log('[delete-profile] step 2 complete: service_images rows deleted')
+
+      // Step 3: Delete services rows
+      const { error: svcErr } = await supabase.from('services').delete().eq('freelancer_id', freelancerId)
+      if (svcErr) throw new Error(`step 3 services: ${svcErr.message}`)
+      console.log('[delete-profile] step 3 complete: services rows deleted')
+
+      // Step 4: Fetch message IDs, then delete message_replies (child must go before parent)
+      const { data: msgs, error: msgFetchErr } = await supabase.from('messages').select('id').eq('freelancer_id', freelancerId)
+      if (msgFetchErr) throw new Error(`step 4 messages fetch: ${msgFetchErr.message}`)
+      const msgIds = (msgs || []).map(m => m.id)
+      if (msgIds.length > 0) {
+        const { error: repErr } = await supabase.from('message_replies').delete().in('message_id', msgIds)
+        if (repErr) throw new Error(`step 4 message_replies: ${repErr.message}`)
+      }
+      console.log('[delete-profile] step 4 complete: message_replies deleted (', msgIds.length, 'thread(s))')
+
+      // Step 5: Delete quotes rows
+      const { error: quotesErr } = await supabase.from('quotes').delete().eq('freelancer_id', freelancerId)
+      if (quotesErr) throw new Error(`step 5 quotes: ${quotesErr.message}`)
+      console.log('[delete-profile] step 5 complete: quotes deleted')
+
+      // Step 6: Delete messages rows
+      const { error: msgsErr } = await supabase.from('messages').delete().eq('freelancer_id', freelancerId)
+      if (msgsErr) throw new Error(`step 6 messages: ${msgsErr.message}`)
+      console.log('[delete-profile] step 6 complete: messages deleted')
+
+      // Step 7: Delete the freelancers row — reviews are handled automatically by ON DELETE SET NULL
+      const { error: profileErr } = await supabase.from('freelancers').delete().eq('user_id', user.id)
+      if (profileErr) throw new Error(`step 7 freelancers: ${profileErr.message}`)
+      console.log('[delete-profile] step 7 complete: freelancer profile deleted')
+
+      // Clear local state — dashboard will show the create-profile onboarding automatically
+      setProfile(null)
+      setServices([])
+      setReviews([])
+      setShowDeleteConfirm(false)
+      setDeleting(false)
+      setToast({ message: 'Your profile has been deleted. You can create a new one any time.', type: 'success' })
+    } catch (err) {
+      console.error('[delete-profile] FAILED —', err.message)
+      setDeleting(false)
+      setShowDeleteConfirm(false)
+      setToast({ message: 'Something went wrong deleting your profile. Please contact us at hello@vetted.bb', type: 'error' })
+    }
   }
 
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <nav className="bg-white border-b border-gray-100">
-          <div className="flex items-center justify-between px-8 py-5">
-            <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
-          </div>
-        </nav>
         <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
           <div className="rounded-2xl overflow-hidden shadow-sm animate-pulse">
             <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start" style={{ backgroundColor: '#00267F' }}>
@@ -670,103 +747,6 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="relative bg-white border-b border-gray-100">
-        <div className="flex items-center justify-between px-8 py-5">
-          <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
-          <div className="hidden sm:flex gap-4 items-center">
-            {role === 'client' ? (
-              <a href="/dashboard" className="text-gray-600 text-sm font-medium hover:text-gray-900">
-                {user?.user_metadata?.full_name?.trim() || user?.email}
-              </a>
-            ) : profile ? (
-              <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                  {profile.avatar_url
-                    ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
-                    : profile.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <span className="text-gray-600 text-sm font-medium">{profile.name}</span>
-              </a>
-            ) : (
-              <a href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
-                  {(user?.user_metadata?.full_name?.trim() || user?.email || '')
-                    .split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
-                </div>
-                <span className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name?.trim() || user?.email}</span>
-              </a>
-            )}
-            {role !== 'client' && profile && (
-              <a href="/inbox" className="relative p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-0.5 leading-none">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </a>
-            )}
-            <button
-              onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
-              className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: '#00267F' }}
-            >
-              Log out
-            </button>
-          </div>
-          <button className="sm:hidden p-2 text-gray-600" onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />}
-            </svg>
-          </button>
-        </div>
-        {menuOpen && (
-          <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
-            {role === 'client' ? (
-              <a href="/dashboard" className="text-gray-600 text-sm font-medium">
-                {user?.user_metadata?.full_name?.trim() || user?.email}
-              </a>
-            ) : profile ? (
-              <a href="/dashboard" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                  {profile.avatar_url
-                    ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
-                    : profile.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <span className="text-gray-600 text-sm font-medium">{profile.name}</span>
-              </a>
-            ) : (
-              <a href="/dashboard" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
-                  {(user?.user_metadata?.full_name?.trim() || user?.email || '')
-                    .split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
-                </div>
-                <span className="text-gray-600 text-sm font-medium">{user?.user_metadata?.full_name?.trim() || user?.email}</span>
-              </a>
-            )}
-            {role !== 'client' && profile && (
-              <a href="/inbox" className="flex items-center gap-2 text-gray-700 font-medium">
-                Inbox
-                {unreadCount > 0 && (
-                  <span className="min-w-[18px] h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold px-1 leading-none">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </a>
-            )}
-            <button
-              onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
-              className="text-left text-red-500 font-medium"
-            >
-              Log out
-            </button>
-          </div>
-        )}
-      </nav>
-
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
 
         {role === 'client' ? (
@@ -1301,19 +1281,16 @@ export default function Dashboard() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Duration <span className="text-gray-400 font-normal">(optional)</span></label>
                       <select
                         value={serviceDuration}
-                        onChange={e => setServiceDuration(e.target.value)}
+                        onChange={e => {
+                          const opt = DURATION_OPTIONS.find(o => o.text === e.target.value)
+                          setServiceDuration(e.target.value)
+                          setServiceDurationMinutes(opt?.minutes ?? null)
+                        }}
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                       >
-                        <option value="">Select duration</option>
-                        <option>30 minutes</option>
-                        <option>1 hour</option>
-                        <option>1.5 hours</option>
-                        <option>2 hours</option>
-                        <option>3 hours</option>
-                        <option>Half day</option>
-                        <option>Full day</option>
-                        <option>2-3 days</option>
-                        <option>1 week</option>
+                        {DURATION_OPTIONS.map(opt => (
+                          <option key={opt.label} value={opt.text}>{opt.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -1405,6 +1382,23 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Availability */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
+              <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
+                <h2 className="font-semibold text-gray-900">Availability calendar</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Manage your busy blocks and control what clients see on your profile.</p>
+              </div>
+              <div className="px-6 sm:px-8 py-6">
+                {profile && (
+                  <AvailabilitySettings
+                    freelancerId={profile.id}
+                    services={services}
+                    onToast={setToast}
+                  />
+                )}
+              </div>
             </div>
 
             {/* Tabs */}
@@ -2098,8 +2092,8 @@ export default function Dashboard() {
                       </button>
                     ) : (
                       <div className="border border-red-200 rounded-xl p-5 bg-red-50">
-                        <p className="text-sm font-semibold text-red-700 mb-1">Are you sure?</p>
-                        <p className="text-sm text-red-600 mb-4">This will permanently delete your profile, services and reviews. This cannot be undone.</p>
+                        <p className="text-sm font-semibold text-red-700 mb-1">Are you sure you want to delete your profile?</p>
+                        <p className="text-sm text-red-600 mb-4">This cannot be undone. Your profile, services, messages, quotes, and reviews will all be permanently removed.</p>
                         <div className="flex gap-3">
                           <button
                             type="button"
@@ -2114,7 +2108,7 @@ export default function Dashboard() {
                             disabled={deleting}
                             className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {deleting ? 'Deleting...' : 'Yes, delete everything'}
+                            {deleting ? 'Deleting...' : 'Yes, delete my profile'}
                           </button>
                         </div>
                       </div>
@@ -2129,17 +2123,6 @@ export default function Dashboard() {
 
       </div>
 
-      <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-12">
-        <p>© 2026 Vetted.bb · Connecting Barbados</p>
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 text-xs">
-          <a href="/search" className="hover:text-gray-600 transition-colors">Browse freelancers</a>
-          <a href="/signup" className="hover:text-gray-600 transition-colors">List your services</a>
-          <a href="/about" className="hover:text-gray-600 transition-colors">About</a>
-          <a href="/faq" className="hover:text-gray-600 transition-colors">FAQ</a>
-          <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
-          <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
-        </div>
-      </footer>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Client quote viewer modal */}

@@ -12,10 +12,11 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('freelancers')
-    .select('id, name, trade, avatar_url, location, rating, review_count, available, verified, skills')
-    .eq('is_active', true)
+    .select('id, name, trade, avatar_url, location, rating, review_count, available, skills, bio')
+    .eq('available', true)
     .order('rating', { ascending: false })
     .order('review_count', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(3)
 
   if (error) return Response.json({ error: error.message }, { status: 500 })

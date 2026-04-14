@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/redma/Desktop/vetted-bb/app -type f -name *.tsx -o -name *.ts -o -name *.jsx -o -name *.js)",
+      "Bash(find /c/Users/redma/Desktop/vetted-bb/app/api -type f -name *.js -o -name *.ts)",
+      "Bash(find /c/Users/redma/Desktop/vetted-bb/components -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.jsx -o -name *.js \\\\\\))",
+      "Bash(find /c/Users/redma/Desktop/vetted-bb/lib -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.jsx -o -name *.js \\\\\\))",
+      "Bash(wc:*)",
+      "Bash(find /c/Users/redma/Desktop/vetted-bb -type f \\\\\\(-name *.sql -o -name schema.sql \\\\\\))",
+      "Bash(grep -r \"DELETE\\\\|delete.*review\\\\|review.*delete\\\\|review_reports\" /c/Users/redma/Desktop/vetted-bb/app --include=*.js)",
+      "Bash(grep -r \"review_reports\\\\|report.*review\\\\|flag.*review\" /c/Users/redma/Desktop/vetted-bb --include=*.js --include=*.jsx --include=*.ts --include=*.sql)"
+    ]
+  }
+}
