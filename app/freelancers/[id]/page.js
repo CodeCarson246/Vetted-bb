@@ -206,6 +206,7 @@ export default function FreelancerProfile() {
       const { error: replyError } = await supabase.from('message_replies').insert({
         message_id: existingThread.id,
         sender_name: senderName,
+        sender_user_id: user?.id ?? null,
         body: `${inquiryLabel}\n\n${contactMessage}`,
       })
       error = replyError
@@ -220,6 +221,7 @@ export default function FreelancerProfile() {
         freelancer_id: freelancer.id,
         sender_name: senderName,
         sender_email: senderEmail,
+        sender_user_id: user?.id ?? null,
         subject,
         message: contactMessage,
         created_at: new Date().toISOString(),

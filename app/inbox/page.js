@@ -37,8 +37,29 @@ export default function Inbox() {
   const [quoteClientName, setQuoteClientName] = useState('')
   const [quoteClientEmail, setQuoteClientEmail] = useState('')
   const [quoteToast, setQuoteToast] = useState(null)
+  const [replyMenuOpen, setReplyMenuOpen] = useState(null)
+  const [replyDeleteConfirm, setReplyDeleteConfirm] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [confirmDeleteReplyId, setConfirmDeleteReplyId] = useState(null)
+  const [deleteConfirmMsg, setDeleteConfirmMsg] = useState(null)
+  const [deletingThread, setDeletingThread] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [confirmDeleteQuoteId, setConfirmDeleteQuoteId] = useState(null)
 
   const unreadCount = messages.filter(m => !m.read).length
+
+  useEffect(() => {
+    if (!replyMenuOpen) return
+    function close() { setReplyMenuOpen(null) }
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [replyMenuOpen])
+
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null)
+    if (openMenuId) document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [openMenuId])
 
   useEffect(() => {
     async function init() {
@@ -361,6 +382,7 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
     await supabase.from('message_replies').insert({
       message_id: quoteMsg.id,
       sender_name: profile.name,
+      sender_user_id: user?.id,
       body: `__QUOTE__${savedQuote.id}`,
     })
 
@@ -407,6 +429,7 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
       .insert({
         message_id: msg.id,
         sender_name: profile.name,
+        sender_user_id: user?.id,
         body: text,
       })
       .select()
@@ -450,6 +473,112 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
     }
   }
 
+  function showToast(msg, isError = false) {
+    setToast({ msg, isError })
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  async function deleteReply(replyId, msgId) {
+    // Supabase: DELETE FROM message_replies WHERE id = replyId
+    const { error } = await supabase
+      .from('message_replies')
+      .delete()
+      .eq('id', replyId)
+    if (error) {
+      showToast('Failed to delete. Please try again.', true)
+      return
+    }
+    setReplies(prev => ({
+      ...prev,
+      [msgId]: (prev[msgId] || []).map(r => r.id === replyId ? { ...r, _deleted: true } : r),
+    }))
+    setReplyDeleteConfirm(null)
+    setReplyMenuOpen(null)
+    showToast('Message deleted')
+  }
+
+  async function handleDeleteReply(replyId) {
+    setConfirmDeleteReplyId(null)
+    // Optimistic update — mark deleted across all loaded threads
+    setReplies(prev => {
+      const updated = { ...prev }
+      for (const msgId of Object.keys(updated)) {
+        updated[msgId] = updated[msgId].map(r =>
+          r.id === replyId ? { ...r, _deleted: true } : r
+        )
+      }
+      return updated
+    })
+    const { error } = await supabase
+      .from('message_replies')
+      .delete()
+      .eq('id', replyId)
+    if (error) {
+      console.error('Delete reply error:', error)
+      // Revert optimistic update
+      setReplies(prev => {
+        const updated = { ...prev }
+        for (const msgId of Object.keys(updated)) {
+          updated[msgId] = updated[msgId].map(r =>
+            r.id === replyId ? { ...r, _deleted: false } : r
+          )
+        }
+        return updated
+      })
+      showToast('Failed to delete. Try again.', true)
+    } else {
+      showToast('Message deleted')
+    }
+  }
+
+  async function handleDeleteQuote(quoteId, replyId) {
+    setConfirmDeleteQuoteId(null)
+    // Optimistic: remove quote from threadQuotes and the stub reply from replies
+    setThreadQuotes(prev => { const u = { ...prev }; delete u[quoteId]; return u })
+    setReplies(prev => {
+      const updated = { ...prev }
+      for (const msgId of Object.keys(updated)) {
+        updated[msgId] = updated[msgId].filter(r => r.id !== replyId)
+      }
+      return updated
+    })
+    const { error } = await supabase.from('quotes').delete().eq('id', quoteId)
+    if (error) {
+      console.error('Delete quote error:', error)
+      showToast('Failed to delete quote. Try again.', true)
+    } else {
+      showToast('Quote deleted')
+    }
+  }
+
+  async function deleteConversation(msg) {
+    setDeletingThread(true)
+    setDeleteConfirmMsg(null)
+    // Optimistic remove from list
+    setMessages(prev => prev.filter(m => m.id !== msg.id))
+    if (expandedId === msg.id) setExpandedId(null)
+
+    // Supabase: DELETE FROM quotes WHERE message_id = msg.id
+    await supabase.from('quotes').delete().eq('message_id', msg.id)
+    // Supabase: DELETE FROM message_replies WHERE message_id = msg.id
+    await supabase.from('message_replies').delete().eq('message_id', msg.id)
+    // Supabase: DELETE FROM messages WHERE id = msg.id
+    const { error } = await supabase.from('messages').delete().eq('id', msg.id)
+
+    if (error) {
+      // Restore on failure
+      setMessages(prev =>
+        [...prev, msg].sort((a, b) =>
+          new Date(b.last_activity_at || b.created_at) - new Date(a.last_activity_at || a.created_at)
+        )
+      )
+      showToast('Failed to delete conversation. Please try again.', true)
+    } else {
+      showToast('Conversation deleted')
+    }
+    setDeletingThread(false)
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -485,7 +614,7 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
               <div
                 key={msg.id}
                 onClick={() => handleExpand(msg)}
-                className={`bg-white rounded-2xl border transition-all cursor-pointer ${expandedId === msg.id ? 'border-gray-200 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
+                className={`group bg-white rounded-2xl border transition-all cursor-pointer ${expandedId === msg.id ? 'border-gray-200 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
               >
                 <div className="p-5 sm:p-6">
                   <div className="flex items-start gap-4">
@@ -506,9 +635,21 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-gray-400 flex-shrink-0">
-                          {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className="text-xs text-gray-400">
+                            {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                          <button
+                            onClick={e => { e.stopPropagation(); setDeleteConfirmMsg(msg) }}
+                            className="p-1.5 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors sm:opacity-0 sm:group-hover:opacity-100 opacity-100"
+                            title="Delete conversation"
+                            aria-label="Delete conversation"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
 
                       <p className="text-xs text-gray-400 mt-0.5">{msg.sender_email}</p>
@@ -526,6 +667,17 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
 
                   {expandedId === msg.id && (
                     <div className="mt-4 pt-4 border-t border-gray-100 ml-14">
+                      <div className="flex justify-end mb-3">
+                        <button
+                          onClick={e => { e.stopPropagation(); setDeleteConfirmMsg(msg) }}
+                          className="text-xs text-red-400 hover:text-red-600 transition-colors flex items-center gap-1 py-1"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+                          </svg>
+                          Delete conversation
+                        </button>
+                      </div>
                       <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                       {/* Previous replies */}
                       {(replies[msg.id] || []).length > 0 && (
@@ -561,23 +713,65 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
                                         <p className="text-sm font-semibold text-gray-700">{new Date(quoteData.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                                       </div>
                                     </div>
-                                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                                      {quoteData.status}
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                                        {quoteData.status}
+                                      </span>
+                                      {confirmDeleteQuoteId === quoteData.id ? (
+                                        <span className="text-xs text-gray-500 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                          Delete?{' '}
+                                          <button onClick={e => { e.stopPropagation(); handleDeleteQuote(quoteData.id, r.id) }} className="text-red-600 font-semibold hover:text-red-800">Yes</button>
+                                          {' · '}
+                                          <button onClick={e => { e.stopPropagation(); setConfirmDeleteQuoteId(null) }} className="text-gray-500 font-semibold hover:text-gray-700">No</button>
+                                        </span>
+                                      ) : (
+                                        <button onClick={e => { e.stopPropagation(); setConfirmDeleteQuoteId(quoteData.id) }} className="text-xs text-red-500 hover:text-red-700">
+                                          Delete quote
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               )
                             }
+                            // Primary: UUID match (new replies). Fallback: name match (old replies where sender_user_id is NULL).
+                            const isOwnReply = !!(
+                              (r.sender_user_id && user?.id && r.sender_user_id === user.id) ||
+                              (!r.sender_user_id && r.sender_name === profile?.name)
+                            )
                             return (
-                              <div key={r.id} className="flex items-start gap-3">
-                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
-                                  {r.sender_name[0]?.toUpperCase()}
-                                </div>
-                                <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
-                                  <p className="text-xs font-semibold text-gray-700 mb-1">{r.sender_name}</p>
-                                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
-                                  <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                                </div>
+                              <div key={r.id} className="flex items-start gap-3 group/reply">
+                                {r._deleted ? (
+                                  <>
+                                    <div className="w-7 h-7 flex-shrink-0" />
+                                    <p className="text-sm italic text-gray-400 py-1">Message deleted</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
+                                      {r.sender_name[0]?.toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
+                                      <p className="text-xs font-semibold text-gray-700 mb-1">{r.sender_name}</p>
+                                      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
+                                      <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                                      {isOwnReply && (
+                                        confirmDeleteReplyId === r.id ? (
+                                          <span className="text-xs text-gray-500 mt-1.5 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                            Delete this reply?{' '}
+                                            <button onClick={e => { e.stopPropagation(); handleDeleteReply(r.id) }} className="text-red-600 font-semibold hover:text-red-800">Yes</button>
+                                            {' · '}
+                                            <button onClick={e => { e.stopPropagation(); setConfirmDeleteReplyId(null) }} className="text-gray-500 font-semibold hover:text-gray-700">No</button>
+                                          </span>
+                                        ) : (
+                                          <button onClick={e => { e.stopPropagation(); setConfirmDeleteReplyId(r.id) }} className="text-xs text-red-500 hover:text-red-700 mt-1.5 block">
+                                            Delete
+                                          </button>
+                                        )
+                                      )}
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             )
                           })}
@@ -619,6 +813,38 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
           </div>
         )}
       </div>
+
+      {/* Delete conversation confirmation modal */}
+      {deleteConfirmMsg && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setDeleteConfirmMsg(null)}
+        >
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-gray-900 text-base mb-2">Delete this conversation?</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              This will permanently delete the entire conversation with <span className="font-semibold text-gray-700">{deleteConfirmMsg.sender_name}</span>. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmMsg(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteConversation(deleteConfirmMsg)}
+                disabled={deletingThread}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: '#DC2626' }}
+              >
+                {deletingThread ? 'Deleting…' : 'Delete conversation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quote builder */}
       {quoteMsg && (
@@ -1035,10 +1261,13 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
         </div>
       )}
 
-      {/* Quote sent toast */}
-      {quoteToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-full text-sm font-semibold text-white shadow-lg pointer-events-none" style={{ backgroundColor: '#00267F' }}>
-          {quoteToast}
+      {/* Toasts */}
+      {(quoteToast || toast) && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[400] px-5 py-3 rounded-full text-sm font-semibold text-white shadow-lg pointer-events-none"
+          style={{ backgroundColor: toast?.isError ? '#DC2626' : '#00267F' }}
+        >
+          {quoteToast || toast?.msg}
         </div>
       )}
     </main>
