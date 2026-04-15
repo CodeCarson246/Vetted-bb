@@ -113,28 +113,50 @@ export const MONTHS = [
 
 // ── Block overlap helpers ─────────────────────────────────────
 
-/** True if block overlaps a 1-hour cell (cellDay at cellHour:00–cellHour+1:00 AST). */
+/**
+ * True if block overlaps a 1-hour cell (cellDay at cellHour:00–cellHour+1:00 AST).
+ *
+ * Bug fix: the old code called toAST() on block times (subtracting 4 h, producing a
+ * "fake-UTC" value equal to the AST wall-clock) and then used setHours() for the cell
+ * time.  setHours() uses the *browser's* local timezone, so in an AST browser
+ * (UTC-4) it produced a UTC value 4 h *ahead* of the toAST() result — the
+ * comparisons always failed and no cells lit up.
+ *
+ * Fix: keep block times as genuine UTC ms and convert the AST cell time to real UTC
+ * by adding AST_OFFSET_MS (4 h).  Date.UTC() is used for the cell so no local
+ * timezone leaks in.
+ */
 export function blockCoversCell(block, cellDay, cellHour) {
-  const start = toAST(new Date(block.start_time))
-  const end = toAST(new Date(block.end_time))
+  const blockStart = new Date(block.start_time).getTime()
+  const blockEnd   = new Date(block.end_time).getTime()
 
-  const cellStart = new Date(cellDay)
-  cellStart.setHours(cellHour, 0, 0, 0)
-  const cellEnd = new Date(cellDay)
-  cellEnd.setHours(cellHour + 1, 0, 0, 0)
+  // cellDay's year/month/date parts represent an AST calendar date.
+  // AST + 4 h → UTC.
+  const y  = cellDay.getFullYear()
+  const mo = cellDay.getMonth()
+  const d  = cellDay.getDate()
+  const cellStartUTC = Date.UTC(y, mo, d, cellHour, 0, 0) + AST_OFFSET_MS
+  const cellEndUTC   = cellStartUTC + 60 * 60 * 1000 // one hour later
 
-  return start < cellEnd && end > cellStart
+  return blockStart < cellEndUTC && blockEnd > cellStartUTC
 }
 
-/** True if block overlaps any part of a day (AST midnight–23:59). */
+/**
+ * True if block overlaps any part of a day (AST midnight–23:59:59).
+ * Same UTC-based approach as blockCoversCell — avoids toAST() + setHours() mismatch.
+ */
 export function blockCoversDay(block, day) {
-  const start = toAST(new Date(block.start_time))
-  const end = toAST(new Date(block.end_time))
+  const blockStart = new Date(block.start_time).getTime()
+  const blockEnd   = new Date(block.end_time).getTime()
 
-  const dayStart = new Date(day); dayStart.setHours(0, 0, 0, 0)
-  const dayEnd = new Date(day); dayEnd.setHours(23, 59, 59, 999)
+  const y  = day.getFullYear()
+  const mo = day.getMonth()
+  const d  = day.getDate()
+  // AST midnight = UTC 04:00; AST 23:59:59.999 = UTC next day 03:59:59.999
+  const dayStartUTC = Date.UTC(y, mo, d,  0,  0,  0,   0) + AST_OFFSET_MS
+  const dayEndUTC   = Date.UTC(y, mo, d, 23, 59, 59, 999) + AST_OFFSET_MS
 
-  return start <= dayEnd && end >= dayStart
+  return blockStart <= dayEndUTC && blockEnd >= dayStartUTC
 }
 
 // ── Service duration options ──────────────────────────────────

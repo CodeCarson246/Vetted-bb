@@ -43,29 +43,29 @@ export default function MonthView({ year, month, blocks, isPublic, onDayClick })
             return (
               <div
                 key={di}
-                onClick={() => !isPublic && onDayClick && onDayClick(day)}
+                onClick={() => onDayClick && onDayClick(day)}
                 style={{
                   minHeight: '68px',
                   border: '1px solid rgba(0,38,127,0.06)',
                   backgroundColor: today
                     ? 'rgba(249,192,0,0.07)'
-                    : hasBlocks ? 'rgba(156,163,175,0.08)' : 'white',
+                    : hasBlocks ? 'rgba(239,68,68,0.06)' : 'white',
                   padding: '6px',
-                  cursor: isPublic ? 'default' : 'pointer',
+                  cursor: onDayClick ? 'pointer' : 'default',
                   opacity: inMonth ? 1 : 0.35,
                   transition: 'background-color 0.1s',
                 }}
                 onMouseEnter={e => {
-                  if (!isPublic)
+                  if (onDayClick)
                     e.currentTarget.style.backgroundColor = today
                       ? 'rgba(249,192,0,0.12)'
                       : 'rgba(0,38,127,0.04)'
                 }}
                 onMouseLeave={e => {
-                  if (!isPublic)
+                  if (onDayClick)
                     e.currentTarget.style.backgroundColor = today
                       ? 'rgba(249,192,0,0.07)'
-                      : hasBlocks ? 'rgba(156,163,175,0.08)' : 'white'
+                      : hasBlocks ? 'rgba(239,68,68,0.06)' : 'white'
                 }}
               >
                 {/* Day number */}
@@ -96,7 +96,7 @@ export default function MonthView({ year, month, blocks, isPublic, onDayClick })
                           flex: '1 1 auto',
                           minWidth: 5,
                           maxWidth: 16,
-                          backgroundColor: '#9CA3AF',
+                          backgroundColor: '#EF4444',
                           borderRadius: '2px',
                         }}
                       />

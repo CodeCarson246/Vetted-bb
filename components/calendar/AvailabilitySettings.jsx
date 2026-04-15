@@ -59,6 +59,7 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
         .select('*')
         .eq('freelancer_id', freelancerId)
         .order('start_time', { ascending: true })
+      console.log('[AvailabilitySettings] blocks fetched:', b)
       setBlocks(b || [])
 
       setLoading(false)
@@ -346,11 +347,11 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
             display: 'flex', gap: '16px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ width: 12, height: 12, borderRadius: '3px', backgroundColor: 'white', border: '1px solid #e5e7eb' }} />
+              <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22C55E', flexShrink: 0 }} />
               <span style={{ fontSize: '0.72rem', color: '#9CA3AF' }}>Available</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ width: 12, height: 12, borderRadius: '3px', backgroundColor: '#9CA3AF' }} />
+              <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#EF4444', flexShrink: 0 }} />
               <span style={{ fontSize: '0.72rem', color: '#9CA3AF' }}>Busy</span>
             </div>
           </div>

@@ -2,7 +2,6 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { getPriceIndicator } from '@/lib/priceIndicator'
 import SearchEmptyState from '@/components/SearchEmptyState'
 import Tooltip from '@/components/Tooltip'
 
@@ -41,14 +40,14 @@ function SearchPage() {
 
   const [sortBy, setSortBy] = useState('rating')
   const [availability, setAvailability] = useState('all')
-  const [priceRange, setPriceRange] = useState('all')
+  const [budget, setBudget] = useState('all')
   const [location, setLocation] = useState('')
 
   const locations = [...new Set(freelancers.map(f => f.location).filter(Boolean))].sort()
 
   const activeFilterCount = [
     availability !== 'all',
-    priceRange !== 'all',
+    budget !== 'all',
     location !== '',
   ].filter(Boolean).length
 
@@ -56,7 +55,7 @@ function SearchPage() {
     setQuery('')
     setCategory('')
     setAvailability('all')
-    setPriceRange('all')
+    setBudget('all')
     setLocation('')
   }
 
@@ -68,20 +67,21 @@ function SearchPage() {
         if (!words.some(w => haystack.includes(w))) return false
       }
       if (availability === 'available' && !f.available) return false
-      if (priceRange !== 'all') {
-        const rate = parseFloat(f.hourly_rate)
-        if (priceRange === '$' && rate >= 30) return false
-        if (priceRange === '$$' && (rate < 30 || rate >= 60)) return false
-        if (priceRange === '$$$' && (rate < 60 || rate >= 100)) return false
-        if (priceRange === '$$$$' && rate < 100) return false
+      if (budget !== 'all' && f.min_price != null) {
+        const p = parseFloat(f.min_price)
+        if (budget === 'u100'  && p >= 100)  return false
+        if (budget === 'u250'  && p >= 250)  return false
+        if (budget === 'u500'  && p >= 500)  return false
+        if (budget === 'u1000' && p >= 1000) return false
+        if (budget === 'o1000' && p < 1000)  return false
       }
       if (location && f.location !== location) return false
       return true
     })
     .sort((a, b) => {
       if (sortBy === 'rating') return b.rating - a.rating
-      if (sortBy === 'price_low') return parseFloat(a.hourly_rate) - parseFloat(b.hourly_rate)
-      if (sortBy === 'price_high') return parseFloat(b.hourly_rate) - parseFloat(a.hourly_rate)
+      if (sortBy === 'price_low')  return (a.min_price ?? Infinity) - (b.min_price ?? Infinity)
+      if (sortBy === 'price_high') return (b.min_price ?? -Infinity) - (a.min_price ?? -Infinity)
       if (sortBy === 'reviews') return b.review_count - a.review_count
       return 0
     })
@@ -99,7 +99,7 @@ function SearchPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8">
 
         {/* Search + filter card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-3">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="relative flex-1">
               <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -146,17 +146,18 @@ function SearchPage() {
 
             <div className="w-px h-4 bg-gray-200 hidden sm:block" />
 
-            {/* Price range */}
+            {/* Budget filter */}
             <select
-              value={priceRange}
-              onChange={e => setPriceRange(e.target.value)}
+              value={budget}
+              onChange={e => setBudget(e.target.value)}
               className="px-3 py-1.5 border border-gray-200 rounded-full text-xs text-gray-700 outline-none focus:border-gray-400 bg-white"
             >
-              <option value="all">All prices</option>
-              <option value="$">$ Budget (under $30)</option>
-              <option value="$$">$$ Moderate ($30–$60)</option>
-              <option value="$$$">$$$ Premium ($60–$100)</option>
-              <option value="$$$$">$$$$ High end ($100+)</option>
+              <option value="all">Any budget</option>
+              <option value="u100">Under $100</option>
+              <option value="u250">Under $250</option>
+              <option value="u500">Under $500</option>
+              <option value="u1000">Under $1,000</option>
+              <option value="o1000">$1,000+</option>
             </select>
 
             <div className="w-px h-4 bg-gray-200 hidden sm:block" />
@@ -192,10 +193,6 @@ function SearchPage() {
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 mb-6">
-          <span className="font-medium" style={{ color: '#00267F' }}>$</span> = Under $30&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$</span> = $30–$60&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$</span> = $60–$100&nbsp;&nbsp;·&nbsp;&nbsp;<span className="font-medium" style={{ color: '#00267F' }}>$$$$</span> = $100+
-        </p>
-
         {loading ? (
           <div className="flex flex-col gap-3">
             {[...Array(6)].map((_, i) => (
@@ -220,7 +217,7 @@ function SearchPage() {
                         </div>
                       </div>
                       <div className="flex-shrink-0 flex flex-col items-end gap-2">
-                        <div className="h-6 bg-gray-200 rounded-full w-8" />
+                        <div className="h-5 bg-gray-200 rounded w-16" />
                         <div className="h-4 bg-gray-200 rounded w-20" />
                       </div>
                     </div>
@@ -268,6 +265,10 @@ function SearchPage() {
                                 </span>
                               </span>
                             </div>
+                            {/* Company name */}
+                            {f.company_name && f.company_name.trim().length > 3 && (
+                              <p className="text-sm text-gray-500">{f.company_name}</p>
+                            )}
                             {/* Trade + location */}
                             <p className="text-sm font-medium mt-0.5 capitalize" style={{ color: '#00267F' }}>
                               {f.trade}
@@ -275,10 +276,10 @@ function SearchPage() {
                             </p>
                           </div>
 
-                          {/* Price indicator pill */}
-                          {getPriceIndicator(f.hourly_rate) && (
-                            <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border" style={{ color: '#00267F', borderColor: '#00267F' }}>
-                              {getPriceIndicator(f.hourly_rate)}
+                          {/* From $X price indicator */}
+                          {f.min_price != null && (
+                            <span className="flex-shrink-0 text-xs font-medium text-gray-400 whitespace-nowrap">
+                              From ${Number.isInteger(f.min_price) ? f.min_price : parseFloat(f.min_price).toFixed(0)}
                             </span>
                           )}
                         </div>

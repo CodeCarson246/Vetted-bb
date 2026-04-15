@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { getPriceIndicator } from '@/lib/priceIndicator'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
 import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
@@ -61,13 +60,25 @@ export default function Dashboard() {
   const [topFreelancers, setTopFreelancers] = useState([])
   const [copied, setCopied] = useState(false)
 
+  // Portfolio state
+  const [portfolioItems, setPortfolioItems] = useState([])
+  const [showPortfolioForm, setShowPortfolioForm] = useState(false)
+  const [editingPortfolio, setEditingPortfolio] = useState(null)
+  const [portfolioTitle, setPortfolioTitle] = useState('')
+  const [portfolioDescription, setPortfolioDescription] = useState('')
+  const [portfolioImageUrl, setPortfolioImageUrl] = useState('')
+  const [portfolioImageUploading, setPortfolioImageUploading] = useState(false)
+  const [portfolioSaving, setPortfolioSaving] = useState(false)
+  const [portfolioError, setPortfolioError] = useState(null)
+  const [portfolioLightbox, setPortfolioLightbox] = useState(null)
+
   // Services state
   const [services, setServices] = useState([])
   const [showServiceForm, setShowServiceForm] = useState(false)
   const [editingService, setEditingService] = useState(null)
   const [serviceName, setServiceName] = useState('')
   const [servicePrice, setServicePrice] = useState('')
-  const [servicePriceOption, setServicePriceOption] = useState('')
+  const [servicePriceType, setServicePriceType] = useState('fixed')
   const [serviceDescription, setServiceDescription] = useState('')
   const [serviceDuration, setServiceDuration] = useState('')
   const [serviceDurationMinutes, setServiceDurationMinutes] = useState(null)
@@ -95,6 +106,8 @@ export default function Dashboard() {
   const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [bio, setBio] = useState('')
+  const [yearsExperience, setYearsExperience] = useState('')
+  const [qualifications, setQualifications] = useState('')
   const [hourlyRate, setHourlyRate] = useState('')
   const [available, setAvailable] = useState(false)
   const [skillsInput, setSkillsInput] = useState('')
@@ -130,27 +143,11 @@ export default function Dashboard() {
   const [showCreateSvcForm, setShowCreateSvcForm] = useState(false)
   const [createSvcName, setCreateSvcName] = useState('')
   const [createSvcPrice, setCreateSvcPrice] = useState('')
-  const [createSvcPriceOption, setCreateSvcPriceOption] = useState('')
+  const [createSvcPriceType, setCreateSvcPriceType] = useState('fixed')
   const [createSvcDescription, setCreateSvcDescription] = useState('')
   const [createSvcDuration, setCreateSvcDuration] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState(null)
-
-  const PRICE_TIERS = [
-    { symbol: '$',    label: 'Budget friendly', value: 20 },
-    { symbol: '$$',   label: 'Mid-range',        value: 50 },
-    { symbol: '$$$',  label: 'Premium',           value: 80 },
-    { symbol: '$$$$', label: 'High end',          value: 150 },
-  ]
-
-  function rateToTierValue(rate) {
-    const r = parseFloat(rate)
-    if (!r) return null
-    if (r < 30)  return 20
-    if (r < 60)  return 50
-    if (r < 100) return 80
-    return 150
-  }
 
   useEffect(() => {
     async function init() {
@@ -169,7 +166,7 @@ export default function Dashboard() {
         const [{ data: msgs }, { data: rLeft }, { data: topF }] = await Promise.all([
           supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location)').eq('sender_email', user.email).order('created_at', { ascending: false }),
           supabase.from('reviews').select('*').eq('author_email', user.email).order('date', { ascending: false }),
-          supabase.from('freelancers').select('id, name, trade, avatar_url, rating, hourly_rate').order('rating', { ascending: false }).limit(3),
+          supabase.from('freelancers').select('id, name, trade, avatar_url, rating, min_price').order('rating', { ascending: false }).limit(3),
         ])
         setClientMessages(msgs || [])
         setClientReviewsLeft(rLeft || [])
@@ -184,6 +181,8 @@ export default function Dashboard() {
         if (p) {
           setProfile(p)
           setBio(p.bio || '')
+          setYearsExperience(p.years_experience ?? '')
+          setQualifications(p.qualifications || '')
           setHourlyRate(p.hourly_rate || '')
           setAvailable(p.available || false)
           setSkillsInput((p.skills || []).join(', '))
@@ -197,12 +196,14 @@ export default function Dashboard() {
             .order('date', { ascending: false })
           setReviews(r || [])
 
-          const [{ count }, { data: svc }] = await Promise.all([
+          const [{ count }, { data: svc }, { data: portfolio }] = await Promise.all([
             supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false),
             supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
+            supabase.from('portfolio_items').select('*').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
           ])
           setUnreadCount(count || 0)
           setServices(svc || [])
+          setPortfolioItems(portfolio || [])
         }
       }
 
@@ -249,13 +250,30 @@ export default function Dashboard() {
 
     const { error } = await supabase
       .from('freelancers')
-      .update({ bio, hourly_rate: hourlyRate, available, skills, category })
+      .update({
+        bio,
+        years_experience: yearsExperience === '' ? null : Number(yearsExperience),
+        qualifications: qualifications.trim() || null,
+        hourly_rate: hourlyRate,
+        available,
+        skills,
+        category,
+      })
       .eq('user_id', user.id)
 
     if (error) {
       setToast({ message: 'Something went wrong. Please try again.', type: 'error' })
     } else {
-      setProfile(prev => ({ ...prev, bio, hourly_rate: hourlyRate, available, skills, category }))
+      setProfile(prev => ({
+        ...prev,
+        bio,
+        years_experience: yearsExperience === '' ? null : Number(yearsExperience),
+        qualifications: qualifications.trim() || null,
+        hourly_rate: hourlyRate,
+        available,
+        skills,
+        category,
+      }))
       setShowEditForm(false)
       setToast({ message: 'Profile updated successfully', type: 'success' })
     }
@@ -307,6 +325,7 @@ export default function Dashboard() {
             freelancer_id: newProfileId,
             name: svc.name,
             price: svc.price,
+            price_type: svc.price_type || 'fixed',
             description: svc.description || null,
             duration: svc.duration || null,
           }).select().single()
@@ -330,12 +349,13 @@ export default function Dashboard() {
     setCreateServices(prev => [...prev, {
       name: createSvcName.trim(),
       price: createSvcPrice.trim(),
+      price_type: createSvcPriceType,
       description: createSvcDescription.trim(),
       duration: createSvcDuration.trim(),
     }])
     setCreateSvcName('')
     setCreateSvcPrice('')
-    setCreateSvcPriceOption('')
+    setCreateSvcPriceType('fixed')
     setCreateSvcDescription('')
     setCreateSvcDuration('')
     setShowCreateSvcForm(false)
@@ -399,8 +419,6 @@ export default function Dashboard() {
     setClientReviewSubmitting(false)
   }
 
-  const STANDARD_PRICES = ['$25', '$50', '$75', '$100', '$150', '$200', '$250', '$300', '$500', 'Price on request']
-
   function openServiceForm(svc = null) {
     setEditingService(svc)
     setServiceName(svc?.name || '')
@@ -410,18 +428,10 @@ export default function Dashboard() {
     setServiceError(null)
     setServiceImages([])
     setExistingServiceImages([])
-    if (svc?.price) {
-      if (STANDARD_PRICES.includes(svc.price)) {
-        setServicePriceOption(svc.price)
-        setServicePrice(svc.price)
-      } else {
-        setServicePriceOption('Custom amount')
-        setServicePrice(svc.price)
-      }
-    } else {
-      setServicePriceOption('')
-      setServicePrice('')
-    }
+    // Strip any legacy formatting ($, +) to get the raw number
+    const rawPrice = svc?.price ? String(svc.price).replace(/[$+]/g, '') : ''
+    setServicePrice(rawPrice)
+    setServicePriceType(svc?.price_type || 'fixed')
     if (svc?.id) {
       supabase.from('service_images').select('*').eq('service_id', svc.id).then(({ data }) => {
         setExistingServiceImages(data || [])
@@ -435,7 +445,7 @@ export default function Dashboard() {
     setEditingService(null)
     setServiceName('')
     setServicePrice('')
-    setServicePriceOption('')
+    setServicePriceType('fixed')
     setServiceDescription('')
     setServiceDuration('')
     setServiceDurationMinutes(null)
@@ -521,6 +531,7 @@ export default function Dashboard() {
     const payload = {
       name: serviceName,
       price: servicePrice,
+      price_type: servicePriceType,
       description: serviceDescription,
       duration: serviceDuration || null,
       duration_minutes: serviceDurationMinutes,
@@ -573,6 +584,15 @@ export default function Dashboard() {
       .eq('freelancer_id', profile.id)
       .order('created_at', { ascending: true })
     setServices(updatedSvc || [])
+
+    // Recalculate min_price on the freelancer row
+    const prices = (updatedSvc || [])
+      .map(s => parseFloat(String(s.price).replace(/[^0-9.]/g, '')))
+      .filter(n => !isNaN(n) && n > 0)
+    if (prices.length > 0) {
+      await supabase.from('freelancers').update({ min_price: Math.min(...prices) }).eq('id', profile.id)
+    }
+
     closeServiceForm()
     setToast({ message: editingService ? 'Service updated' : 'Service added', type: 'success' })
     setServiceSaving(false)
@@ -580,7 +600,97 @@ export default function Dashboard() {
 
   async function handleServiceDelete(id) {
     await supabase.from('services').delete().eq('id', id)
-    setServices(prev => prev.filter(s => s.id !== id))
+    const remaining = services.filter(s => s.id !== id)
+    setServices(remaining)
+    const prices = remaining
+      .map(s => parseFloat(String(s.price).replace(/[^0-9.]/g, '')))
+      .filter(n => !isNaN(n) && n > 0)
+    const newMin = prices.length > 0 ? Math.min(...prices) : null
+    await supabase.from('freelancers').update({ min_price: newMin }).eq('id', profile.id)
+  }
+
+  function openPortfolioForm(item = null) {
+    setEditingPortfolio(item)
+    setPortfolioTitle(item?.title || '')
+    setPortfolioDescription(item?.description || '')
+    setPortfolioImageUrl(item?.image_url || '')
+    setPortfolioError(null)
+    setShowPortfolioForm(true)
+  }
+
+  function closePortfolioForm() {
+    setShowPortfolioForm(false)
+    setEditingPortfolio(null)
+    setPortfolioTitle('')
+    setPortfolioDescription('')
+    setPortfolioImageUrl('')
+    setPortfolioError(null)
+  }
+
+  async function handlePortfolioImageUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!validateImageFile(file)) {
+      setPortfolioError('Please upload a JPG or PNG image, max 5MB.')
+      return
+    }
+    const dimsOk = await checkImageDimensions(file)
+    if (!dimsOk) {
+      setPortfolioError('Image must be at least 200×200px.')
+      return
+    }
+    setPortfolioImageUploading(true)
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('portfolio')
+      .upload(path, file, { upsert: false })
+    if (uploadError) {
+      setPortfolioError('Upload failed. Please try again.')
+    } else {
+      const { data: { publicUrl } } = supabase.storage.from('portfolio').getPublicUrl(path)
+      setPortfolioImageUrl(publicUrl)
+    }
+    setPortfolioImageUploading(false)
+  }
+
+  async function handlePortfolioSubmit(e) {
+    e.preventDefault()
+    if (!portfolioImageUrl) { setPortfolioError('Please upload a photo.'); return }
+    if (!portfolioTitle.trim()) { setPortfolioError('Please enter a title.'); return }
+    setPortfolioSaving(true)
+    setPortfolioError(null)
+
+    const payload = {
+      freelancer_id: profile.id,
+      title: portfolioTitle.trim(),
+      description: portfolioDescription.trim() || null,
+      image_url: portfolioImageUrl,
+    }
+
+    if (editingPortfolio) {
+      const { error } = await supabase.from('portfolio_items').update(payload).eq('id', editingPortfolio.id)
+      if (error) {
+        setPortfolioError('Failed to save. Please try again.')
+      } else {
+        setPortfolioItems(prev => prev.map(p => p.id === editingPortfolio.id ? { ...p, ...payload } : p))
+        closePortfolioForm()
+      }
+    } else {
+      const { data, error } = await supabase.from('portfolio_items').insert(payload).select().single()
+      if (error) {
+        setPortfolioError('Failed to save. Please try again.')
+      } else {
+        setPortfolioItems(prev => [...prev, data])
+        closePortfolioForm()
+      }
+    }
+    setPortfolioSaving(false)
+  }
+
+  async function handlePortfolioDelete(id) {
+    await supabase.from('portfolio_items').delete().eq('id', id)
+    setPortfolioItems(prev => prev.filter(p => p.id !== id))
   }
 
   async function handleEmailUpdate(e) {
@@ -809,8 +919,10 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      {getPriceIndicator(f.hourly_rate) && (
-                        <span className="text-sm font-bold" style={{ color: '#00267F' }}>{getPriceIndicator(f.hourly_rate)}</span>
+                      {f.min_price != null && (
+                        <span className="text-xs font-medium text-gray-400">
+                          From ${Number.isInteger(f.min_price) ? f.min_price : parseFloat(f.min_price).toFixed(0)}
+                        </span>
                       )}
                       <a
                         href={`/freelancers/${f.id}`}
@@ -1103,6 +1215,37 @@ export default function Dashboard() {
                     />
                   </div>
 
+                  {/* Experience & Qualifications */}
+                  <div className="flex flex-col gap-4 pt-1 pb-1">
+                    <p className="text-sm font-semibold text-gray-700 -mb-1">Experience &amp; Qualifications</p>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Years of experience <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={60}
+                        value={yearsExperience}
+                        onChange={e => setYearsExperience(e.target.value)}
+                        placeholder="e.g. 8"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Qualifications <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <textarea
+                        value={qualifications}
+                        onChange={e => setQualifications(e.target.value)}
+                        rows={3}
+                        maxLength={500}
+                        placeholder={"e.g. City & Guilds Electrical Installation, BSc Computer Science, Certified Personal Trainer (ACE)"}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
+                      />
+                      <p className="text-xs text-gray-400 mt-1.5">List any relevant certifications, diplomas, or degrees. Leave blank if not applicable.</p>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                     <select
@@ -1116,25 +1259,6 @@ export default function Dashboard() {
                       ))}
                     </select>
                     <p className="text-xs text-gray-400 mt-1.5">This helps clients find you when browsing categories.</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Price tier</label>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {PRICE_TIERS.map(tier => (
-                        <button
-                          key={tier.symbol}
-                          type="button"
-                          onClick={() => setHourlyRate(String(tier.value))}
-                          className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border-2 transition-all ${rateToTierValue(hourlyRate) === tier.value ? 'bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                          style={rateToTierValue(hourlyRate) === tier.value ? { borderColor: '#00267F', backgroundColor: '#EEF2FF' } : {}}
-                        >
-                          <span className="text-lg font-bold" style={{ color: '#00267F' }}>{tier.symbol}</span>
-                          <span className="text-xs text-gray-500 mt-0.5">{tier.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-2">This helps clients find you in search. Your actual service prices are always shown on your profile.</p>
                   </div>
 
                   <div>
@@ -1231,40 +1355,46 @@ export default function Dashboard() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-                      <select
+                      {/* Price type toggle */}
+                      <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-3">
+                        <button
+                          type="button"
+                          onClick={() => setServicePriceType('fixed')}
+                          className="flex-1 py-2.5 text-sm font-medium transition-colors"
+                          style={servicePriceType === 'fixed'
+                            ? { backgroundColor: '#00267F', color: 'white' }
+                            : { backgroundColor: 'white', color: '#6b7280' }}
+                        >
+                          Fixed price
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setServicePriceType('starting_from')}
+                          className="flex-1 py-2.5 text-sm font-medium transition-colors border-l border-gray-200"
+                          style={servicePriceType === 'starting_from'
+                            ? { backgroundColor: '#00267F', color: 'white' }
+                            : { backgroundColor: 'white', color: '#6b7280' }}
+                        >
+                          Starting from
+                        </button>
+                      </div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {servicePriceType === 'fixed' ? 'Price (BBD $)' : 'Starting from (BBD $)'}
+                      </label>
+                      <input
+                        type="number"
                         required
-                        value={servicePriceOption}
-                        onChange={e => {
-                          const v = e.target.value
-                          setServicePriceOption(v)
-                          if (v !== 'Custom amount') setServicePrice(v)
-                          else setServicePrice('')
-                        }}
+                        min="0"
+                        step="0.01"
+                        value={servicePrice}
+                        onChange={e => setServicePrice(e.target.value)}
+                        placeholder="0.00"
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
-                      >
-                        <option value="">Select price</option>
-                        <option>$25</option>
-                        <option>$50</option>
-                        <option>$75</option>
-                        <option>$100</option>
-                        <option>$150</option>
-                        <option>$200</option>
-                        <option>$250</option>
-                        <option>$300</option>
-                        <option>$500</option>
-                        <option>Price on request</option>
-                        <option>Custom amount</option>
-                      </select>
-                      {servicePriceOption === 'Custom amount' && (
-                        <input
-                          type="text"
-                          required
-                          value={servicePrice}
-                          onChange={e => setServicePrice(e.target.value)}
-                          placeholder='e.g. From $80, $45 per sq ft, $120 + materials'
-                          className="w-full mt-2 px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
-                        />
+                      />
+                      {servicePriceType === 'starting_from' && (
+                        <p className="text-xs text-gray-500 mt-1.5">
+                          This tells clients your base price. The final cost may be higher depending on the job.
+                        </p>
                       )}
                     </div>
                     <div>
@@ -1360,7 +1490,14 @@ export default function Dashboard() {
                           <p className="text-xs text-gray-400 mt-1">📷 {svc.service_images.length} photo{svc.service_images.length > 1 ? 's' : ''}</p>
                         )}
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="text-sm font-bold" style={{ color: '#00267F' }}>{svc.price}</span>
+                          <span className="text-sm font-bold" style={{ color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>
+                            {(() => {
+                              const n = parseFloat(String(svc.price).replace(/[^0-9.]/g, ''))
+                              if (isNaN(n)) return svc.price
+                              const fmt = `$${Number.isInteger(n) ? n : n.toFixed(2)}`
+                              return svc.price_type === 'starting_from' ? `${fmt}+` : fmt
+                            })()}
+                          </span>
                           {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
                         </div>
                       </div>
@@ -1373,6 +1510,135 @@ export default function Dashboard() {
                         </button>
                         <button
                           onClick={() => handleServiceDelete(svc.id)}
+                          className="px-3 py-1.5 rounded-lg border border-red-100 text-sm font-medium text-red-500 hover:border-red-300 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Previous Work */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
+              <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-gray-900">Previous Work</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Show examples of your past work to attract clients.</p>
+                </div>
+                {!showPortfolioForm && portfolioItems.length < 8 && (
+                  <button
+                    onClick={() => openPortfolioForm()}
+                    className="text-white px-4 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#00267F' }}
+                  >
+                    + Add previous work
+                  </button>
+                )}
+              </div>
+
+              {/* Add / edit form */}
+              {showPortfolioForm && (
+                <div className="px-6 sm:px-8 py-6 border-b border-gray-100">
+                  <h3 className="font-semibold text-gray-900 mb-4">{editingPortfolio ? 'Edit item' : 'New item'}</h3>
+                  <form onSubmit={handlePortfolioSubmit} className="flex flex-col gap-4">
+
+                    {/* Image upload */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Photo <span className="text-red-400">*</span></label>
+                      {portfolioImageUrl ? (
+                        <div className="relative inline-block">
+                          <img src={portfolioImageUrl} alt="Preview" className="w-32 h-24 object-cover rounded-xl border border-gray-200" />
+                          <button
+                            type="button"
+                            onClick={() => setPortfolioImageUrl('')}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                          >×</button>
+                        </div>
+                      ) : (
+                        <label className={`flex items-center gap-2 cursor-pointer w-full px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-gray-400 transition-colors ${portfolioImageUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                          {portfolioImageUploading ? 'Uploading...' : 'Upload a photo of your work'}
+                          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={portfolioImageUploading} onChange={handlePortfolioImageUpload} />
+                        </label>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Title <span className="text-red-400">*</span></label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={80}
+                        value={portfolioTitle}
+                        onChange={e => setPortfolioTitle(e.target.value)}
+                        placeholder="e.g. Kitchen renovation, St. James"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <textarea
+                        maxLength={300}
+                        value={portfolioDescription}
+                        onChange={e => setPortfolioDescription(e.target.value)}
+                        rows={2}
+                        placeholder="e.g. Full kitchen fit-out including tiling, cabinets and electrical"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
+                      />
+                    </div>
+
+                    {portfolioError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{portfolioError}</p>}
+
+                    <div className="flex gap-3">
+                      <button
+                        type="submit"
+                        disabled={portfolioSaving || portfolioImageUploading}
+                        className="flex-1 text-white py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: '#00267F' }}
+                      >
+                        {portfolioSaving ? 'Saving...' : editingPortfolio ? 'Save changes' : 'Add item'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={closePortfolioForm}
+                        className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Item list */}
+              {portfolioItems.length === 0 && !showPortfolioForm ? (
+                <div className="px-6 sm:px-8 py-8 text-center">
+                  <p className="text-sm text-gray-400">No items yet. Add photos of your past work to help clients trust you.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {portfolioItems.map(item => (
+                    <div key={item.id} className="px-6 sm:px-8 py-4 flex items-center gap-4">
+                      <img src={item.image_url} alt={item.title} className="w-16 h-12 object-cover rounded-lg border border-gray-100 flex-shrink-0 cursor-pointer" onClick={() => setPortfolioLightbox(item)} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm truncate">{item.title}</p>
+                        {item.description && <p className="text-xs text-gray-400 mt-0.5 truncate">{item.description}</p>}
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => openPortfolioForm(item)}
+                          className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handlePortfolioDelete(item.id)}
                           className="px-3 py-1.5 rounded-lg border border-red-100 text-sm font-medium text-red-500 hover:border-red-300 transition-colors"
                         >
                           Delete
@@ -1441,9 +1707,9 @@ export default function Dashboard() {
                       <div className="bg-white rounded-xl p-5 text-center border border-gray-100" style={{ borderTop: '3px solid #00267F' }}>
                         <svg className="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#00267F' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <p className="text-3xl font-bold text-gray-900">
-                          {profile.hourly_rate ? `$${profile.hourly_rate}` : '—'}
+                          {profile.min_price != null ? `$${Number.isInteger(profile.min_price) ? profile.min_price : parseFloat(profile.min_price).toFixed(0)}` : '—'}
                         </p>
-                        <p className="text-sm text-gray-500 mt-2">Hourly rate</p>
+                        <p className="text-sm text-gray-500 mt-2">Starting from</p>
                       </div>
                     </div>
 
@@ -1779,26 +2045,6 @@ export default function Dashboard() {
                         />
                       </div>
 
-                      {/* Price tier */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Price tier</label>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {PRICE_TIERS.map(tier => (
-                            <button
-                              key={tier.symbol}
-                              type="button"
-                              onClick={() => setCreateRate(String(tier.value))}
-                              className={`flex flex-col items-center justify-center py-3 px-2 rounded-lg border-2 transition-all ${rateToTierValue(createRate) === tier.value ? 'bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                              style={rateToTierValue(createRate) === tier.value ? { borderColor: '#00267F', backgroundColor: '#EEF2FF' } : {}}
-                            >
-                              <span className="text-lg font-bold" style={{ color: '#00267F' }}>{tier.symbol}</span>
-                              <span className="text-xs text-gray-500 mt-0.5">{tier.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-2">This helps clients find you in search. Your actual service prices are always shown on your profile.</p>
-                      </div>
-
                       {/* Skills */}
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Skills <span className="text-gray-400 font-normal">(comma separated)</span></label>
@@ -1890,7 +2136,14 @@ export default function Dashboard() {
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-gray-900 text-sm capitalize">{svc.name}</p>
                                   <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-sm font-semibold" style={{ color: '#00267F' }}>{svc.price}</span>
+                                    <span className="text-sm font-semibold" style={{ color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>
+                                      {(() => {
+                                        const n = parseFloat(String(svc.price).replace(/[^0-9.]/g, ''))
+                                        if (isNaN(n)) return svc.price
+                                        const fmt = `$${Number.isInteger(n) ? n : n.toFixed(2)}`
+                                        return svc.price_type === 'starting_from' ? `${fmt}+` : fmt
+                                      })()}
+                                    </span>
                                     {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
                                   </div>
                                   {svc.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{svc.description}</p>}
@@ -1914,33 +2167,46 @@ export default function Dashboard() {
                               <input type="text" value={createSvcName} onChange={e => setCreateSvcName(e.target.value)} placeholder="e.g. Full house rewire" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
                             </div>
                             <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Price</label>
-                              <select
-                                value={createSvcPriceOption}
-                                onChange={e => {
-                                  const v = e.target.value
-                                  setCreateSvcPriceOption(v)
-                                  if (v !== 'Custom amount') setCreateSvcPrice(v)
-                                  else setCreateSvcPrice('')
-                                }}
+                              {/* Price type toggle */}
+                              <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setCreateSvcPriceType('fixed')}
+                                  className="flex-1 py-2 text-xs font-medium transition-colors"
+                                  style={createSvcPriceType === 'fixed'
+                                    ? { backgroundColor: '#00267F', color: 'white' }
+                                    : { backgroundColor: 'white', color: '#6b7280' }}
+                                >
+                                  Fixed price
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCreateSvcPriceType('starting_from')}
+                                  className="flex-1 py-2 text-xs font-medium transition-colors border-l border-gray-200"
+                                  style={createSvcPriceType === 'starting_from'
+                                    ? { backgroundColor: '#00267F', color: 'white' }
+                                    : { backgroundColor: 'white', color: '#6b7280' }}
+                                >
+                                  Starting from
+                                </button>
+                              </div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                {createSvcPriceType === 'fixed' ? 'Price (BBD $)' : 'Starting from (BBD $)'}
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={createSvcPrice}
+                                onChange={e => setCreateSvcPrice(e.target.value)}
+                                placeholder="0.00"
                                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white"
                                 onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''}
-                              >
-                                <option value="">Select price</option>
-                                <option>$25</option>
-                                <option>$50</option>
-                                <option>$75</option>
-                                <option>$100</option>
-                                <option>$150</option>
-                                <option>$200</option>
-                                <option>$250</option>
-                                <option>$300</option>
-                                <option>$500</option>
-                                <option>Price on request</option>
-                                <option>Custom amount</option>
-                              </select>
-                              {createSvcPriceOption === 'Custom amount' && (
-                                <input type="text" value={createSvcPrice} onChange={e => setCreateSvcPrice(e.target.value)} placeholder="e.g. From $80, $45 per sq ft, $120 + materials" className="w-full mt-2 px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
+                              />
+                              {createSvcPriceType === 'starting_from' && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  This tells clients your base price. The final cost may be higher depending on the job.
+                                </p>
                               )}
                             </div>
                             <div>
@@ -1963,7 +2229,7 @@ export default function Dashboard() {
                               </select>
                             </div>
                             <div className="flex gap-2">
-                              <button type="button" onClick={() => { setShowCreateSvcForm(false); setCreateSvcName(''); setCreateSvcPrice(''); setCreateSvcPriceOption(''); setCreateSvcDescription(''); setCreateSvcDuration('') }} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-300 transition-colors bg-white">Cancel</button>
+                              <button type="button" onClick={() => { setShowCreateSvcForm(false); setCreateSvcName(''); setCreateSvcPrice(''); setCreateSvcPriceType('fixed'); setCreateSvcDescription(''); setCreateSvcDuration('') }} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-300 transition-colors bg-white">Cancel</button>
                               <button type="button" onClick={addCreateService} disabled={!createSvcName.trim() || !createSvcPrice.trim()} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: '#00267F' }}>Add service</button>
                             </div>
                           </div>
@@ -2124,6 +2390,31 @@ export default function Dashboard() {
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Portfolio lightbox */}
+      {portfolioLightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+          onClick={() => setPortfolioLightbox(null)}
+        >
+          <div className="relative max-w-3xl w-full" onClick={e => e.stopPropagation()}>
+            <img
+              src={portfolioLightbox.image_url}
+              alt={portfolioLightbox.title}
+              className="w-full rounded-xl object-contain max-h-[80vh]"
+            />
+            <div className="mt-3 text-center">
+              <p className="text-white font-semibold">{portfolioLightbox.title}</p>
+              {portfolioLightbox.description && <p className="text-gray-300 text-sm mt-1">{portfolioLightbox.description}</p>}
+            </div>
+            <button
+              onClick={() => setPortfolioLightbox(null)}
+              className="absolute -top-4 -right-4 w-9 h-9 rounded-full bg-white text-gray-700 flex items-center justify-center text-lg font-bold hover:bg-gray-100"
+            >×</button>
+          </div>
+        </div>
+      )}
 
       {/* Client quote viewer modal */}
       {viewingClientQuote && (

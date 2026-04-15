@@ -9,9 +9,7 @@ export default function SiteNav() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      const u = data.user
-      setUser(u)
+    async function loadProfile(u) {
       if (u && u.user_metadata?.role !== 'client') {
         const { data: fp } = await supabase
           .from('freelancers')
@@ -27,8 +25,27 @@ export default function SiteNav() {
             .eq('read', false)
           setUnreadCount(count || 0)
         }
+      } else {
+        setFreelancerProfile(null)
+        setUnreadCount(0)
       }
+    }
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data }) => {
+      const u = data.session?.user ?? null
+      setUser(u)
+      loadProfile(u)
     })
+
+    // Keep nav in sync on every auth change (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const u = session?.user ?? null
+      setUser(u)
+      loadProfile(u)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   return (

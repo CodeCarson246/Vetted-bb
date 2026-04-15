@@ -27,13 +27,18 @@ export default function Login() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push('/search')
+      const { data: freelancer } = await supabase
+        .from('freelancers')
+        .select('id')
+        .eq('user_id', data.user.id)
+        .single()
+      router.push(freelancer ? '/dashboard' : '/search')
     }
   }
 

@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { getPriceIndicator } from '@/lib/priceIndicator'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import Tooltip from '@/components/Tooltip'
 import WeekView from '@/components/calendar/WeekView'
@@ -31,6 +30,9 @@ export default function FreelancerProfile() {
   const [reviewHover, setReviewHover] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
   const [reviewService, setReviewService] = useState('')
+  const [reviewImageUrl, setReviewImageUrl] = useState('')
+  const [reviewImageUploading, setReviewImageUploading] = useState(false)
+  const [reviewPhotoLightbox, setReviewPhotoLightbox] = useState(null)
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
   const [reviewError, setReviewError] = useState(null)
   const [reviewSuccess, setReviewSuccess] = useState(false)
@@ -62,6 +64,8 @@ export default function FreelancerProfile() {
   })
 
   const [services, setServices] = useState([])
+  const [portfolioItems, setPortfolioItems] = useState([])
+  const [portfolioLightbox, setPortfolioLightbox] = useState(null)
   const [cart, setCart] = useState([])
   const [cartOpen, setCartOpen] = useState(false)
   const [lightboxService, setLightboxService] = useState(null)
@@ -105,12 +109,13 @@ export default function FreelancerProfile() {
         .single()
 
       if (f) {
-        const [{ data: r }, { data: s }, { count: msgCount }, { data: ab }, { data: as }] = await Promise.all([
+        const [{ data: r }, { data: s }, { count: msgCount }, { data: ab }, { data: as }, { data: portfolio }] = await Promise.all([
           supabase.from('reviews').select('*').eq('freelancer_id', f.id),
           supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
           supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', f.id),
           supabase.from('availability_blocks').select('*').eq('freelancer_id', f.id).order('start_time', { ascending: true }),
           supabase.from('availability_settings').select('*').eq('freelancer_id', f.id).single(),
+          supabase.from('portfolio_items').select('*').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
         ])
 
         const allReviews = r || []
@@ -132,7 +137,9 @@ export default function FreelancerProfile() {
         setFreelancer({ ...f, rating: avgRating, review_count: reviewCount, client_rating: clientRating })
         setReviews(allReviews)
         setServices(s || [])
+        setPortfolioItems(portfolio || [])
         setMessageCount(msgCount || 0)
+        console.log('[FreelancerProfile] availability blocks fetched:', ab)
         setAvailabilityBlocks(ab || [])
         setAvailabilitySettings(as || null)
       }
@@ -260,6 +267,30 @@ export default function FreelancerProfile() {
 
   const REVIEW_MIN_CHARS = 30
 
+  async function handleReviewImageUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowed.includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setReviewError('Photo must be a JPG or PNG under 5MB.')
+      return
+    }
+    setReviewImageUploading(true)
+    setReviewError(null)
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = `${freelancer.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('review-photos')
+      .upload(path, file, { upsert: false })
+    if (uploadError) {
+      setReviewError('Photo upload failed. You can still submit without a photo.')
+    } else {
+      const { data: { publicUrl } } = supabase.storage.from('review-photos').getPublicUrl(path)
+      setReviewImageUrl(publicUrl)
+    }
+    setReviewImageUploading(false)
+  }
+
   async function submitReview(e) {
     e.preventDefault()
 
@@ -294,6 +325,7 @@ export default function FreelancerProfile() {
         service_name: reviewService || null,
         type: 'client',
         date: new Date().toISOString().split('T')[0],
+        image_url: reviewImageUrl || null,
       }),
     })
 
@@ -315,6 +347,7 @@ export default function FreelancerProfile() {
       setReviewRating(0)
       setReviewComment('')
       setReviewService('')
+      setReviewImageUrl('')
       setReviewSuccess(true)
       setTimeout(() => setReviewSuccess(false), 3000)
     }
@@ -421,8 +454,6 @@ export default function FreelancerProfile() {
 
   const clientReviewsList = reviews.filter(r => r.type === 'client')
   const freelancerReviewsList = reviews.filter(r => r.type === 'freelancer')
-  const priceIndicator = getPriceIndicator(freelancer.hourly_rate)
-
   const whatsappShareUrl = (() => {
     const profileUrl = `https://vetted-bb.vercel.app/freelancers/${id}`
     const loc = freelancer.location ? `based in ${freelancer.location}` : 'in Barbados'
@@ -499,6 +530,9 @@ export default function FreelancerProfile() {
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
                   <h1 className="text-2xl font-bold text-white capitalize">{freelancer.name}</h1>
+                  {freelancer.company_name && freelancer.company_name.trim().length > 3 && (
+                    <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>{freelancer.company_name}</p>
+                  )}
                   <p className="font-semibold mt-0.5 capitalize" style={{ color: '#F9C000' }}>{freelancer.trade}</p>
                   {freelancer.location && (
                     <p className="text-sm mt-0.5 capitalize" style={{ color: '#93b8ff' }}>📍 {freelancer.location}</p>
@@ -563,13 +597,29 @@ export default function FreelancerProfile() {
                   </div>
                 </div>
 
-                {/* Right: price + CTAs */}
+                {/* Right: services-from pill + CTAs */}
                 <div className="flex flex-col items-stretch sm:items-end gap-2 flex-shrink-0">
-                  {priceIndicator && (
-                    <span className="text-sm font-bold px-3 py-1 rounded-full border-2 self-center sm:self-end" style={{ color: '#F9C000', borderColor: '#F9C000' }}>
-                      {priceIndicator}
-                    </span>
-                  )}
+                  {services.length > 0 && (() => {
+                    const minSvc = services.reduce((acc, s) => {
+                      const n = parseFloat(String(s.price).replace(/[^0-9.]/g, ''))
+                      if (isNaN(n)) return acc
+                      if (!acc) return s
+                      return n < parseFloat(String(acc.price).replace(/[^0-9.]/g, '')) ? s : acc
+                    }, null)
+                    if (!minSvc) return null
+                    const n = parseFloat(String(minSvc.price).replace(/[^0-9.]/g, ''))
+                    if (isNaN(n)) return null
+                    const fmt = `$${Number.isInteger(n) ? n : n.toFixed(0)}`
+                    const isStarting = minSvc.price_type === 'starting_from'
+                    return (
+                      <span
+                        className="text-xs font-semibold px-3 py-1 rounded-full border self-center sm:self-end"
+                        style={{ color: '#00267F', borderColor: '#00267F' }}
+                      >
+                        Services from {isStarting ? `${fmt}+` : fmt}
+                      </span>
+                    )
+                  })()}
                   <button
                     ref={contactBtnRef}
                     onClick={() => user ? setContactOpen(true) : window.location.href = '/login'}
@@ -651,8 +701,21 @@ export default function FreelancerProfile() {
                 ))}
               </div>
             )}
+            {freelancer.years_experience != null && (
+              <p className="text-sm text-gray-400 mt-4">🗓 {freelancer.years_experience} {freelancer.years_experience === 1 ? 'year' : 'years'} of experience</p>
+            )}
           </div>
         </div>
+
+        {/* Qualifications */}
+        {freelancer.qualifications && freelancer.qualifications.trim() && (
+          <div className="bg-white rounded-xl border border-gray-100 border-l-4 overflow-hidden" style={{ borderLeftColor: '#00267F' }}>
+            <div className="px-7 py-6">
+              <h2 className="text-base font-bold text-gray-900 mb-3">Qualifications</h2>
+              <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-wrap">{freelancer.qualifications}</p>
+            </div>
+          </div>
+        )}
 
         {/* Services */}
         {services.length > 0 && (
@@ -703,7 +766,24 @@ export default function FreelancerProfile() {
                       <p className="text-xs text-gray-500 leading-relaxed flex-1">{s.description}</p>
                     )}
                     <div className="flex items-center justify-between mt-auto pt-3">
-                      <span className="text-lg font-bold" style={{ color: '#00267F' }}>{s.price}</span>
+                      {(() => {
+                        const n = parseFloat(String(s.price).replace(/[^0-9.]/g, ''))
+                        const fmt = isNaN(n) ? s.price : `$${Number.isInteger(n) ? n : n.toFixed(2)}`
+                        if (s.price_type === 'starting_from') {
+                          return (
+                            <span
+                              className="text-lg font-bold relative group cursor-help"
+                              style={{ color: '#F59E0B' }}
+                            >
+                              {isNaN(n) ? fmt : `${fmt}+`}
+                              <span className="absolute bottom-full left-0 mb-1.5 w-56 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 leading-snug opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                                Base price — final cost depends on the job scope
+                              </span>
+                            </span>
+                          )
+                        }
+                        return <span className="text-lg font-bold" style={{ color: '#00267F' }}>{fmt}</span>
+                      })()}
                       {s.duration && (
                         <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">⏱ {s.duration}</span>
                       )}
@@ -831,11 +911,11 @@ export default function FreelancerProfile() {
                   {/* Legend */}
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '2px', backgroundColor: 'white', border: '1px solid #e5e7eb' }} />
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22C55E', flexShrink: 0 }} />
                       <span style={{ fontSize: '0.7rem', color: '#9CA3AF' }}>Available</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '2px', backgroundColor: '#9CA3AF' }} />
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#EF4444', flexShrink: 0 }} />
                       <span style={{ fontSize: '0.7rem', color: '#9CA3AF' }}>Busy</span>
                     </div>
                   </div>
@@ -873,6 +953,43 @@ export default function FreelancerProfile() {
 
           return null
         })()}
+
+        {/* Previous Work */}
+        {portfolioItems.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
+            <h2 className="text-base font-bold text-gray-900 mb-5">Previous Work</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {portfolioItems.map(item => (
+                <div
+                  key={item.id}
+                  className="group rounded-xl border border-gray-100 overflow-hidden cursor-pointer hover:border-gray-300 transition-colors"
+                  onClick={() => setPortfolioLightbox(item)}
+                >
+                  {/* 4:3 image */}
+                  <div className="relative w-full overflow-hidden" style={{ paddingTop: '75%' }}>
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                  {/* Text */}
+                  <div className="px-4 py-3">
+                    <p className="text-sm font-semibold text-gray-900 leading-tight">{item.title}</p>
+                    {item.description && (
+                      <>
+                        {/* Mobile: always show */}
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed line-clamp-2 sm:hidden">{item.description}</p>
+                        {/* Desktop: fade in on hover (reserves space to prevent layout shift) */}
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed line-clamp-2 hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity duration-200">{item.description}</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Reviews */}
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -924,12 +1041,32 @@ export default function FreelancerProfile() {
                         )}
                       </div>
                     </div>
-                    {review.service_name && (
-                      <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full mb-2" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                        {review.service_name}
-                      </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {review.service_name && (
+                        <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                          {review.service_name}
+                        </span>
+                      )}
+                      {review.image_url && (
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          Photo
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-600 text-sm leading-relaxed mt-2">{review.comment}</p>
+                    {review.image_url && (
+                      <img
+                        src={review.image_url}
+                        alt="Review photo"
+                        className="mt-3 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-100"
+                        style={{ maxHeight: '200px', width: 'auto' }}
+                        onClick={() => setReviewPhotoLightbox(review.image_url)}
+                      />
                     )}
-                    <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
                   </div>
                 ))}
               </div>
@@ -974,7 +1111,7 @@ export default function FreelancerProfile() {
                   >
                     <option value="">Select the service you used</option>
                     {services.map(s => (
-                      <option key={s.id} value={s.name}>{s.name} ({s.price})</option>
+                      <option key={s.id} value={s.name}>{s.name} ({(() => { const n = parseFloat(String(s.price).replace(/[^0-9.]/g, '')); const fmt = isNaN(n) ? s.price : `$${Number.isInteger(n) ? n : n.toFixed(2)}`; return s.price_type === 'starting_from' ? `${fmt}+` : fmt })()})</option>
                     ))}
                   </select>
                 </div>
@@ -992,6 +1129,38 @@ export default function FreelancerProfile() {
                 <p className="text-xs mt-1.5" style={{ color: reviewComment.trim().length >= REVIEW_MIN_CHARS ? '#16a34a' : '#6b7280' }}>
                   {reviewComment.trim().length}/{REVIEW_MIN_CHARS} characters minimum
                 </p>
+              </div>
+
+              {/* Photo upload — optional */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Add a photo <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                {reviewImageUrl ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={reviewImageUrl}
+                      alt="Review photo preview"
+                      className="h-28 rounded-lg object-cover border border-gray-200 cursor-pointer"
+                      onClick={() => setReviewPhotoLightbox(reviewImageUrl)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setReviewImageUrl('')}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                    >×</button>
+                  </div>
+                ) : (
+                  <label className={`flex items-center gap-2 cursor-pointer w-full px-4 py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-gray-400 transition-colors ${reviewImageUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {reviewImageUploading ? 'Uploading...' : 'Upload a photo of the work done'}
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={reviewImageUploading} onChange={handleReviewImageUpload} />
+                  </label>
+                )}
+                <p className="text-xs text-gray-400 mt-1.5">Show the work that was done — this helps other clients and builds trust.</p>
               </div>
 
               {reviewError && (
@@ -1050,7 +1219,9 @@ export default function FreelancerProfile() {
                       {item.duration && <p className="text-xs text-gray-400">{item.duration}</p>}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-sm font-bold" style={{ color: '#00267F' }}>{item.price}</span>
+                      <span className="text-sm font-bold" style={{ color: item.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>
+                        {(() => { const n = parseFloat(String(item.price).replace(/[^0-9.]/g, '')); const fmt = isNaN(n) ? item.price : `$${Number.isInteger(n) ? n : n.toFixed(2)}`; return item.price_type === 'starting_from' ? `${fmt}+` : fmt })()}
+                      </span>
                       <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-red-400 text-base leading-none transition-colors">×</button>
                     </div>
                   </div>
@@ -1295,6 +1466,56 @@ export default function FreelancerProfile() {
           </div>
         )
       })()}
+
+      {/* Review photo lightbox */}
+      {reviewPhotoLightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+          onClick={() => setReviewPhotoLightbox(null)}
+        >
+          <div className="relative max-w-3xl w-full" onClick={e => e.stopPropagation()}>
+            <img
+              src={reviewPhotoLightbox}
+              alt="Review photo"
+              className="w-full rounded-xl object-contain"
+              style={{ maxHeight: 'calc(100vh - 120px)' }}
+            />
+            <button
+              onClick={() => setReviewPhotoLightbox(null)}
+              className="absolute -top-4 -right-4 w-9 h-9 rounded-full bg-white text-gray-700 flex items-center justify-center text-lg font-bold hover:bg-gray-100"
+            >×</button>
+          </div>
+        </div>
+      )}
+
+      {/* Portfolio lightbox */}
+      {portfolioLightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+          onClick={() => setPortfolioLightbox(null)}
+        >
+          <div className="relative max-w-3xl w-full" onClick={e => e.stopPropagation()}>
+            <img
+              src={portfolioLightbox.image_url}
+              alt={portfolioLightbox.title}
+              className="w-full rounded-xl object-contain"
+              style={{ maxHeight: 'calc(100vh - 160px)' }}
+            />
+            <div className="mt-3 text-center">
+              <p className="text-white font-semibold">{portfolioLightbox.title}</p>
+              {portfolioLightbox.description && (
+                <p className="text-gray-300 text-sm mt-1">{portfolioLightbox.description}</p>
+              )}
+            </div>
+            <button
+              onClick={() => setPortfolioLightbox(null)}
+              className="absolute -top-4 -right-4 w-9 h-9 rounded-full bg-white text-gray-700 flex items-center justify-center text-lg font-bold hover:bg-gray-100"
+            >×</button>
+          </div>
+        </div>
+      )}
 
       {/* Sticky bottom action bar — mobile only, shown when header Contact is out of view */}
       {stickyVisible && (

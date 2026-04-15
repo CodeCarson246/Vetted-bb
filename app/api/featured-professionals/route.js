@@ -12,7 +12,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('freelancers')
-    .select('id, name, trade, avatar_url, location, rating, review_count, available, skills, bio')
+    .select('id, name, trade, avatar_url, location, rating, review_count, available, skills, bio, min_price')
     .eq('available', true)
     .order('rating', { ascending: false })
     .order('review_count', { ascending: false })

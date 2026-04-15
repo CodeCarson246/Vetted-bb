@@ -4,7 +4,7 @@ export const REVIEW_MIN_CHARS = 30
 
 export async function POST(request) {
   try {
-    const { freelancer_id, author, rating, comment, service_name, type, date } = await request.json()
+    const { freelancer_id, author, rating, comment, service_name, type, date, image_url } = await request.json()
 
     // Server-side validation — cannot be bypassed by the client
     if (!rating || rating < 1 || rating > 5) {
@@ -30,6 +30,7 @@ export async function POST(request) {
       service_name: service_name || null,
       type,
       date,
+      image_url: image_url || null,
     })
 
     if (insertError) return Response.json({ error: insertError.message }, { status: 500 })

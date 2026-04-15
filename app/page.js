@@ -332,11 +332,18 @@ export default function Home() {
                   paddingTop: '16px',
                   marginTop: 'auto',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: f.available ? '#22c55e' : '#f97316', flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: f.available ? '#16a34a' : '#ea580c' }}>
-                      {f.available ? 'Available now' : 'Busy this week'}
-                    </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: f.available ? '#22c55e' : '#f97316', flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: f.available ? '#16a34a' : '#ea580c' }}>
+                        {f.available ? 'Available now' : 'Busy this week'}
+                      </span>
+                    </div>
+                    {f.min_price != null && (
+                      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                        From ${Number.isInteger(f.min_price) ? f.min_price : parseFloat(f.min_price).toFixed(0)}
+                      </span>
+                    )}
                   </div>
                   <span style={{
                     backgroundColor: '#00267F',
