@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import Tooltip from '@/components/Tooltip'
 import WeekView from '@/components/calendar/WeekView'
@@ -83,22 +84,23 @@ export default function FreelancerProfile() {
     setLightboxSlide(0)
   }
 
+  const { user: authUser, loading: authLoading } = useAuth()
+
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      const u = data.user
-      setUser(u)
-      if (u) {
-        setSenderEmail(u.email)
-        if (u.user_metadata?.role !== 'client') {
-          const { data: fp } = await supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single()
-          setFreelancerProfile(fp || null)
-          setSenderName(fp?.name || u.user_metadata?.full_name || u.email.split('@')[0])
-        } else {
-          setSenderName(u.user_metadata?.full_name || u.email.split('@')[0])
-        }
-      }
-    })
-  }, [])
+    if (authLoading) return
+    const u = authUser
+    setUser(u)
+    if (!u) return
+    setSenderEmail(u.email)
+    if (u.user_metadata?.role !== 'client') {
+      supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single().then(({ data: fp }) => {
+        setFreelancerProfile(fp || null)
+        setSenderName(fp?.name || u.user_metadata?.full_name || u.email.split('@')[0])
+      })
+    } else {
+      setSenderName(u.user_metadata?.full_name || u.email.split('@')[0])
+    }
+  }, [authUser, authLoading])
 
   useEffect(() => {
     async function fetchData() {
@@ -422,7 +424,7 @@ export default function FreelancerProfile() {
               </div>
               <div className="flex flex-col gap-4">
                 {[...Array(2)].map((_, i) => (
-                  <div key={i} className="border border-gray-100 rounded-xl p-5">
+                  <div key={i} className="rounded-2xl p-5" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                     <div className="flex gap-3 mb-3">
                       <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
                       <div className="flex-1">
@@ -485,7 +487,7 @@ export default function FreelancerProfile() {
   } : null
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen" style={{ background: '#F3F4F8' }}>
       {jsonLd && (
         <script
           type="application/ld+json"
@@ -519,7 +521,7 @@ export default function FreelancerProfile() {
                   : freelancer.name.split(' ').map(n => n[0]).join('')}
               </div>
               {!freelancer.avatar_url && user?.id === freelancer.user_id && (
-                <a href="/dashboard" className="text-xs font-medium underline underline-offset-2 opacity-80 hover:opacity-100 transition-opacity" style={{ color: '#F9C000' }}>
+                <a href="/dashboard?edit=true" className="text-xs font-medium underline underline-offset-2 opacity-80 hover:opacity-100 transition-opacity" style={{ color: '#F9C000' }}>
                   Add a photo
                 </a>
               )}
@@ -690,7 +692,7 @@ export default function FreelancerProfile() {
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
 
         {/* About */}
-        <div className="bg-white rounded-xl border border-gray-100 border-l-4 overflow-hidden" style={{ borderLeftColor: '#00267F' }}>
+        <div className="bg-white rounded-2xl overflow-hidden" style={{ borderLeft: '4px solid #00267F', borderTop: '4px solid #00267F', borderRight: '1px solid rgba(0,38,127,0.15)', borderBottom: '1px solid rgba(0,38,127,0.15)', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
           <div className="px-7 py-6">
             <h2 className="text-base font-bold text-gray-900 mb-3">About</h2>
             <p className="text-gray-600 leading-relaxed text-sm">{freelancer.bio}</p>
@@ -709,7 +711,7 @@ export default function FreelancerProfile() {
 
         {/* Qualifications */}
         {freelancer.qualifications && freelancer.qualifications.trim() && (
-          <div className="bg-white rounded-xl border border-gray-100 border-l-4 overflow-hidden" style={{ borderLeftColor: '#00267F' }}>
+          <div className="bg-white rounded-2xl overflow-hidden" style={{ borderLeft: '4px solid #00267F', borderTop: '4px solid #00267F', borderRight: '1px solid rgba(0,38,127,0.15)', borderBottom: '1px solid rgba(0,38,127,0.15)', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
             <div className="px-7 py-6">
               <h2 className="text-base font-bold text-gray-900 mb-3">Qualifications</h2>
               <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-wrap">{freelancer.qualifications}</p>
@@ -718,16 +720,17 @@ export default function FreelancerProfile() {
         )}
 
         {/* Services */}
-        {services.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
+        {services.length > 0 ? (
+          <div className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
             <h2 className="text-base font-bold text-gray-900 mb-5">Services</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {services.map(s => (
                 <div
                   key={s.id}
-                  className={`border border-gray-100 rounded-xl overflow-hidden flex flex-col transition-colors ${s.service_images?.length > 0 ? 'cursor-pointer hover:border-gray-400' : 'hover:border-gray-300'}`}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = ''}
+                  className="rounded-2xl overflow-hidden flex flex-col"
+                  style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)', transition: 'all 0.2s ease', cursor: s.service_images?.length > 0 ? 'pointer' : 'default' }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,38,127,0.14)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,38,127,0.08)'; e.currentTarget.style.transform = 'translateY(0)' }}
                   onClick={() => s.service_images?.length > 0 && openLightbox(s)}
                 >
                   {s.service_images?.length > 0 && (
@@ -805,7 +808,17 @@ export default function FreelancerProfile() {
               ))}
             </div>
           </div>
-        )}
+        ) : user?.id === freelancer.user_id ? (
+          <div className="bg-white rounded-2xl px-7 py-10 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+            <h2 className="text-base font-bold text-gray-900 mb-2">Services</h2>
+            <p className="text-sm mb-4" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
+              Add your services so clients know what you offer.
+            </p>
+            <a href="/dashboard?edit=true" className="text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>
+              Add a Service →
+            </a>
+          </div>
+        ) : null}
 
         {/* Availability */}
         {(() => {
@@ -815,7 +828,7 @@ export default function FreelancerProfile() {
           // mode = 'available' → green card
           if (mode === 'available') {
             return (
-              <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
+              <div className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                 <h2 className="text-base font-bold text-gray-900 mb-4">Availability</h2>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                   <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0, marginTop: 5 }} />
@@ -852,7 +865,7 @@ export default function FreelancerProfile() {
               : `${MONTHS[pubCalMonth.month]} ${pubCalMonth.year}`
 
             return (
-              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                 <div className="px-7 py-6 border-b border-gray-100">
                   <h2 className="text-base font-bold text-gray-900">Availability</h2>
                 </div>
@@ -955,14 +968,17 @@ export default function FreelancerProfile() {
         })()}
 
         {/* Previous Work */}
-        {portfolioItems.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
+        {portfolioItems.length > 0 ? (
+          <div className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
             <h2 className="text-base font-bold text-gray-900 mb-5">Previous Work</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {portfolioItems.map(item => (
                 <div
                   key={item.id}
-                  className="group rounded-xl border border-gray-100 overflow-hidden cursor-pointer hover:border-gray-300 transition-colors"
+                  className="group rounded-2xl overflow-hidden cursor-pointer"
+                  style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)', transition: 'all 0.2s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,38,127,0.14)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,38,127,0.08)'; e.currentTarget.style.transform = 'translateY(0)' }}
                   onClick={() => setPortfolioLightbox(item)}
                 >
                   {/* 4:3 image */}
@@ -989,10 +1005,20 @@ export default function FreelancerProfile() {
               ))}
             </div>
           </div>
-        )}
+        ) : user?.id === freelancer.user_id ? (
+          <div className="bg-white rounded-2xl px-7 py-10 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+            <h2 className="text-base font-bold text-gray-900 mb-2">Previous Work</h2>
+            <p className="text-sm mb-4" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
+              Add previous work to show clients what you can do.
+            </p>
+            <a href="/dashboard?edit=true" className="text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>
+              Add to Portfolio →
+            </a>
+          </div>
+        ) : null}
 
         {/* Reviews */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
           <div className="px-7 pt-6 pb-0">
             <h2 className="text-base font-bold text-gray-900 mb-4">Reviews</h2>
             <div className="flex gap-2">
@@ -1014,11 +1040,22 @@ export default function FreelancerProfile() {
 
           <div className="px-7 py-6">
             {reviews.filter(r => r.type === activeTab).length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">No reviews yet.</p>
+              <div className="text-center py-8 flex flex-col items-center gap-4">
+                <p className="text-sm leading-relaxed max-w-sm" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
+                  No reviews yet. Be the first — send {freelancer.name.split(' ')[0]} a message to get started.
+                </p>
+                <button
+                  onClick={() => user ? setContactOpen(true) : window.location.href = '/login'}
+                  className="px-5 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  Send a Message
+                </button>
+              </div>
             ) : (
               <div className="flex flex-col gap-4">
                 {reviews.filter(r => r.type === activeTab).map((review, i) => (
-                  <div key={i} className="border border-gray-100 rounded-xl p-5">
+                  <div key={i} className="rounded-2xl p-5" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
@@ -1076,7 +1113,7 @@ export default function FreelancerProfile() {
 
         {/* Leave a review */}
         {user && freelancer && user.id !== freelancer.user_id && (
-          <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
+          <div className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
             <h2 className="text-base font-bold text-gray-900 mb-1">Leave a review</h2>
             <p className="text-sm text-gray-500 mb-6">Share your experience working with <span className="capitalize">{freelancer.name.split(' ')[0]}</span>.</p>
 

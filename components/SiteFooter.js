@@ -44,6 +44,7 @@ export default function SiteFooter() {
       heading: 'Company',
       links: [
         { label: 'About', href: '/about' },
+        { label: 'Roadmap', href: '/roadmap' },
         { label: 'FAQ', href: '/faq' },
         { label: 'Contact', href: 'mailto:hello@vetted.bb' },
         { label: 'Privacy Policy', href: '/privacy' },

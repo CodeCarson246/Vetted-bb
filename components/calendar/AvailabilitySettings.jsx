@@ -171,8 +171,9 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
 
       {/* ── Mode switcher ────────────────────────────────────── */}
       <div style={{
-        backgroundColor: 'white', borderRadius: '12px',
-        border: '1px solid rgba(0,38,127,0.08)', padding: '20px',
+        backgroundColor: 'white', borderRadius: '16px',
+        border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F',
+        boxShadow: '0 2px 12px rgba(0,38,127,0.08)', padding: '20px',
       }}>
         <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
           Availability mode
@@ -187,10 +188,12 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
               onClick={() => updateSettings({ mode: opt.id })}
               style={{
                 display: 'flex', alignItems: 'flex-start', gap: '12px',
-                padding: '14px 16px', borderRadius: '10px', cursor: 'pointer',
-                border: settings?.mode === opt.id ? '2px solid #00267F' : '1.5px solid #e5e7eb',
+                padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
+                border: settings?.mode === opt.id ? '1px solid rgba(0,38,127,0.15)' : '1px solid rgba(0,38,127,0.15)',
+                borderTop: settings?.mode === opt.id ? '4px solid #00267F' : '4px solid #00267F',
                 backgroundColor: settings?.mode === opt.id ? '#EEF2FF' : 'white',
-                textAlign: 'left', width: '100%',
+                boxShadow: settings?.mode === opt.id ? '0 2px 12px rgba(0,38,127,0.12)' : '0 2px 12px rgba(0,38,127,0.06)',
+                textAlign: 'left', width: '100%', transition: 'all 0.2s ease',
               }}
             >
               <div style={{
@@ -230,8 +233,9 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
       {/* ── Show on profile toggle ───────────────────────────── */}
       {settings?.mode === 'calendar' && (
         <div style={{
-          backgroundColor: 'white', borderRadius: '12px',
-          border: '1px solid rgba(0,38,127,0.08)',
+          backgroundColor: 'white', borderRadius: '16px',
+          border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F',
+          boxShadow: '0 2px 12px rgba(0,38,127,0.08)',
           padding: '14px 20px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
         }}>

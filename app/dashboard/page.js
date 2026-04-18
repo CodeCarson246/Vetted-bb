@@ -1,8 +1,10 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import Tooltip from '@/components/Tooltip'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
 import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
 
@@ -41,8 +43,9 @@ function StarRating({ rating }) {
   )
 }
 
-export default function Dashboard() {
+function DashboardInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [user, setUser] = useState(null)
   const [role, setRole] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -50,6 +53,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [showEditForm, setShowEditForm] = useState(false)
+  const [highlightPhoto, setHighlightPhoto] = useState(false)
+  const [confirmRemovePhoto, setConfirmRemovePhoto] = useState(false)
+  const avatarFileInputRef = useRef(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [clientMessages, setClientMessages] = useState([])
   const [clientThreadReplies, setClientThreadReplies] = useState({})
@@ -71,6 +77,7 @@ export default function Dashboard() {
   const [portfolioSaving, setPortfolioSaving] = useState(false)
   const [portfolioError, setPortfolioError] = useState(null)
   const [portfolioLightbox, setPortfolioLightbox] = useState(null)
+  const portfolioFileInputRef = useRef(null)
 
   // Services state
   const [services, setServices] = useState([])
@@ -112,6 +119,7 @@ export default function Dashboard() {
   const [available, setAvailable] = useState(false)
   const [skillsInput, setSkillsInput] = useState('')
   const [category, setCategory] = useState('')
+  const [location, setLocation] = useState('')
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -149,9 +157,12 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState(null)
 
+  const { user: authUser, loading: authLoading } = useAuth()
+
   useEffect(() => {
+    if (authLoading) return
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = authUser
       if (!user) {
         router.push('/login')
         return
@@ -187,6 +198,7 @@ export default function Dashboard() {
           setAvailable(p.available || false)
           setSkillsInput((p.skills || []).join(', '))
           setCategory(p.category || '')
+          setLocation(p.location || '')
           setAvatarUrl(p.avatar_url || '')
 
           const { data: r } = await supabase
@@ -210,7 +222,7 @@ export default function Dashboard() {
       setLoading(false)
     }
     init()
-  }, [router])
+  }, [authUser, authLoading, router])
 
   async function expandClientMessage(msg) {
     if (expandedClientMsg === msg.id) {
@@ -240,6 +252,17 @@ export default function Dashboard() {
     }
   }
 
+  useEffect(() => {
+    if (searchParams.get('edit') !== 'true') return
+    setShowEditForm(true)
+    setHighlightPhoto(true)
+    setTimeout(() => {
+      document.getElementById('edit-profile-section')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 300)
+    router.replace('/dashboard', { scroll: false })
+  }, [searchParams])
+
   async function handleSave(e) {
     e.preventDefault()
     setSaving(true)
@@ -258,6 +281,7 @@ export default function Dashboard() {
         available,
         skills,
         category,
+        location,
       })
       .eq('user_id', user.id)
 
@@ -273,6 +297,7 @@ export default function Dashboard() {
         available,
         skills,
         category,
+        location,
       }))
       setShowEditForm(false)
       setToast({ message: 'Profile updated successfully', type: 'success' })
@@ -364,9 +389,17 @@ export default function Dashboard() {
   async function handleAvatarUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setToast({ message: 'Please upload a JPG, PNG or WebP image.', type: 'error' })
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setToast({ message: 'Image must be under 5MB.', type: 'error' })
+      return
+    }
     setAvatarUploading(true)
 
-    const ext = file.name.split('.').pop()
+    const ext = file.name.split('.').pop().toLowerCase()
     const path = `${user.id}.${ext}`
 
     const { error: uploadError } = await supabase.storage
@@ -374,17 +407,31 @@ export default function Dashboard() {
       .upload(path, file, { upsert: true })
 
     if (uploadError) {
-      setSaveError(uploadError.message)
+      setToast({ message: 'Failed to upload photo. Please try again.', type: 'error' })
       setAvatarUploading(false)
       return
     }
 
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-
     await supabase.from('freelancers').update({ avatar_url: publicUrl }).eq('user_id', user.id)
     setAvatarUrl(publicUrl)
     setProfile(prev => ({ ...prev, avatar_url: publicUrl }))
     setAvatarUploading(false)
+    setToast({ message: 'Profile photo updated', type: 'success' })
+  }
+
+  async function handleRemovePhoto() {
+    if (avatarUrl) {
+      const parts = avatarUrl.split('/public/avatars/')
+      if (parts.length > 1) {
+        await supabase.storage.from('avatars').remove([decodeURIComponent(parts[1])])
+      }
+    }
+    await supabase.from('freelancers').update({ avatar_url: null }).eq('user_id', user.id)
+    setAvatarUrl('')
+    setProfile(prev => ({ ...prev, avatar_url: null }))
+    setConfirmRemovePhoto(false)
+    setToast({ message: 'Profile photo removed', type: 'success' })
   }
 
   async function submitClientReview(e) {
@@ -585,13 +632,11 @@ export default function Dashboard() {
       .order('created_at', { ascending: true })
     setServices(updatedSvc || [])
 
-    // Recalculate min_price on the freelancer row
-    const prices = (updatedSvc || [])
-      .map(s => parseFloat(String(s.price).replace(/[^0-9.]/g, '')))
-      .filter(n => !isNaN(n) && n > 0)
-    if (prices.length > 0) {
-      await supabase.from('freelancers').update({ min_price: Math.min(...prices) }).eq('id', profile.id)
-    }
+    // Recalculate min_price on the freelancer row — price is stored as text so parseInt is required
+    const minPrice = updatedSvc?.length > 0
+      ? Math.min(...updatedSvc.map(s => parseInt(s.price, 10)))
+      : null
+    await supabase.from('freelancers').update({ min_price: minPrice }).eq('id', profile.id)
 
     closeServiceForm()
     setToast({ message: editingService ? 'Service updated' : 'Service added', type: 'success' })
@@ -602,11 +647,11 @@ export default function Dashboard() {
     await supabase.from('services').delete().eq('id', id)
     const remaining = services.filter(s => s.id !== id)
     setServices(remaining)
-    const prices = remaining
-      .map(s => parseFloat(String(s.price).replace(/[^0-9.]/g, '')))
-      .filter(n => !isNaN(n) && n > 0)
-    const newMin = prices.length > 0 ? Math.min(...prices) : null
-    await supabase.from('freelancers').update({ min_price: newMin }).eq('id', profile.id)
+    // Recalculate min_price — price is stored as text so parseInt is required
+    const minPrice = remaining.length > 0
+      ? Math.min(...remaining.map(s => parseInt(s.price, 10)))
+      : null
+    await supabase.from('freelancers').update({ min_price: minPrice }).eq('id', profile.id)
   }
 
   function openPortfolioForm(item = null) {
@@ -647,6 +692,7 @@ export default function Dashboard() {
       .upload(path, file, { upsert: false })
     if (uploadError) {
       setPortfolioError('Upload failed. Please try again.')
+      setToast({ message: 'Failed to upload image. Check your connection and try again.', type: 'error' })
     } else {
       const { data: { publicUrl } } = supabase.storage.from('portfolio').getPublicUrl(path)
       setPortfolioImageUrl(publicUrl)
@@ -675,14 +721,20 @@ export default function Dashboard() {
       } else {
         setPortfolioItems(prev => prev.map(p => p.id === editingPortfolio.id ? { ...p, ...payload } : p))
         closePortfolioForm()
+        setToast({ message: 'Previous work updated', type: 'success' })
       }
     } else {
       const { data, error } = await supabase.from('portfolio_items').insert(payload).select().single()
       if (error) {
-        setPortfolioError('Failed to save. Please try again.')
+        // Clean up the uploaded image so storage doesn't accumulate orphans
+        const uploadedPath = portfolioImageUrl.split('/public/portfolio/').pop()
+        if (uploadedPath) await supabase.storage.from('portfolio').remove([decodeURIComponent(uploadedPath)])
+        setPortfolioError('Failed to save. Try again.')
+        setToast({ message: 'Failed to save. Try again.', type: 'error' })
       } else {
         setPortfolioItems(prev => [...prev, data])
         closePortfolioForm()
+        setToast({ message: 'Previous work added', type: 'success' })
       }
     }
     setPortfolioSaving(false)
@@ -852,11 +904,22 @@ export default function Dashboard() {
     : completenessScore >= 40 ? 'Getting there, a few more steps'
     : 'Incomplete: clients may not contact you'
 
+  const COMPLETENESS_TIPS = [
+    "Freelancers with a profile photo receive significantly more contact requests",
+    "A clear bio helps clients understand who you are before they reach out",
+    "Add at least one service so clients know what you offer and at what price",
+    "Clients filter by parish — add your location to appear in local searches",
+    "Skills tags improve how you appear in search results",
+    "Setting your availability helps clients know when to contact you",
+  ]
+  const completenessTipIndex = completenessItems.findIndex(i => !i.done)
+  const completenessTip = completenessTipIndex >= 0 ? COMPLETENESS_TIPS[completenessTipIndex] : null
+
   const clientReviews = reviews.filter(r => r.type === 'client')
   const freelancerReviews = reviews.filter(r => r.type === 'freelancer')
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen" style={{ background: '#F3F4F8' }}>
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
 
         {role === 'client' ? (
@@ -1084,18 +1147,33 @@ export default function Dashboard() {
           <>
             {/* Profile completeness — first thing freelancers see */}
             {completenessScore < 100 && (
-              <div className="bg-white rounded-2xl border border-gray-100 px-6 py-5 mb-6">
+              <div className="bg-white rounded-2xl px-6 py-5 mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                 <div className="flex items-start justify-between gap-4 mb-1">
                   <p className="text-sm font-semibold text-gray-900">Profile strength</p>
                   <p className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: completenessBarColor }}>{completenessScore}%</p>
                 </div>
                 <p className="text-xs mb-3 font-medium" style={{ color: completenessBarColor }}>{completenessLabel}</p>
-                <div className="w-full bg-gray-100 rounded-full h-2 mb-5">
+                <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
                   <div
                     className="h-2 rounded-full transition-all duration-500"
                     style={{ width: `${completenessScore}%`, backgroundColor: completenessBarColor }}
                   />
                 </div>
+                {completenessTip && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(245,158,11,0.08)',
+                    border: '1px solid rgba(245,158,11,0.3)',
+                    marginBottom: '20px',
+                  }}>
+                    <span style={{ fontSize: '0.8rem', color: '#F59E0B', flexShrink: 0, lineHeight: 1.6 }}>💡</span>
+                    <p style={{ fontSize: '0.78rem', color: '#92400e', lineHeight: 1.55, margin: 0 }}>{completenessTip}</p>
+                  </div>
+                )}
                 <div className="flex flex-col gap-2.5">
                   {completenessItems.filter(i => !i.done).map(item => (
                     <button
@@ -1118,7 +1196,7 @@ export default function Dashboard() {
             )}
 
             {/* Profile card - navy hero */}
-            <div className="rounded-2xl mb-6 overflow-hidden shadow-sm">
+            <div id="edit-profile-section" className="rounded-2xl mb-6 overflow-hidden" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start" style={{ backgroundColor: '#00267F' }}>
                 {/* Avatar */}
                 <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 overflow-hidden" style={{ boxShadow: '0 0 0 4px rgba(255,255,255,0.2)' }}>
@@ -1189,18 +1267,58 @@ export default function Dashboard() {
               {/* Edit form */}
               {showEditForm && (
                 <form onSubmit={handleSave} className="bg-white px-6 sm:px-10 pt-6 pb-8 flex flex-col gap-5">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Profile photo</label>
+                  {highlightPhoto && (
+                    <style>{`
+                      @keyframes pulse-yellow {
+                        0%   { box-shadow: 0 0 0 0 rgba(249,192,0,0.6); }
+                        70%  { box-shadow: 0 0 0 10px rgba(249,192,0,0); }
+                        100% { box-shadow: 0 0 0 0 rgba(249,192,0,0); }
+                      }
+                      .photo-pulse { animation: pulse-yellow 1s ease-out 1; border-radius: 8px; }
+                    `}</style>
+                  )}
+                  <div className={highlightPhoto ? 'photo-pulse' : ''}>
+                    <p className="block text-sm font-medium text-gray-700 mb-2">Profile photo</p>
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
                         {avatarUrl
                           ? <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                           : profile.name.split(' ').map(n => n[0]).join('')}
                       </div>
-                      <label className={`cursor-pointer px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors ${avatarUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        {avatarUploading ? 'Uploading...' : 'Change photo'}
-                        <input type="file" accept="image/jpeg,image/png" className="hidden" disabled={avatarUploading} onChange={handleAvatarUpload} />
-                      </label>
+                      <div className="flex flex-col gap-1.5">
+                        <input
+                          ref={avatarFileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          style={{ display: 'none' }}
+                          disabled={avatarUploading}
+                          onChange={handleAvatarUpload}
+                        />
+                        <button
+                          type="button"
+                          disabled={avatarUploading}
+                          onClick={() => avatarFileInputRef.current?.click()}
+                          className={`px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors ${avatarUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                          {avatarUploading ? 'Uploading...' : 'Change photo'}
+                        </button>
+                        {avatarUrl && !confirmRemovePhoto && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmRemovePhoto(true)}
+                            className="text-xs text-red-500 hover:text-red-700 transition-colors text-left"
+                          >
+                            Remove photo
+                          </button>
+                        )}
+                        {confirmRemovePhoto && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600">Remove your profile photo?</span>
+                            <button type="button" onClick={handleRemovePhoto} className="text-xs font-semibold text-red-600 hover:text-red-800">Yes</button>
+                            <button type="button" onClick={() => setConfirmRemovePhoto(false)} className="text-xs text-gray-500 hover:text-gray-700">No</button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1262,7 +1380,28 @@ export default function Dashboard() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Skills <span className="text-gray-400 font-normal">(comma separated)</span></label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">📍 Parish</label>
+                    <select
+                      value={location}
+                      onChange={e => setLocation(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                    >
+                      <option value="" disabled>Select your parish</option>
+                      {['Christ Church','Saint Andrew','Saint George','Saint James','Saint John','Saint Joseph','Saint Lucy','Saint Michael','Saint Peter','Saint Philip','Saint Thomas'].map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                    <p style={{ fontSize: '0.78rem', color: '#6B7280', marginTop: 4 }}>Select the parish you are based in. Clients will use this to find professionals near them.</p>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                      Skills <span className="text-gray-400 font-normal">(comma separated)</span>
+                      <Tooltip text="Skills are NOT the same as your trade. They are the specific services or specialities you offer within your trade. A Web Developer might add: React, WordPress, E-Commerce, Mobile-Friendly Design. Add 3–8 skills for best results.">
+                        <span style={{ fontSize: '0.875rem', color: '#9CA3AF', cursor: 'help', lineHeight: 1 }}>ⓘ</span>
+                      </Tooltip>
+                    </label>
+                    <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Add specific things you can do or tools you use — these help clients find you when they search. e.g. if you are a Plumber: Pipe Repair, Leak Detection, Bathroom Fitting, Drain Cleaning</p>
                     <input
                       type="text"
                       value={skillsInput}
@@ -1325,7 +1464,7 @@ export default function Dashboard() {
             </div>
 
             {/* My services */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
+            <div className="bg-white rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900">My services</h2>
                 {!showServiceForm && (
@@ -1480,9 +1619,9 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-400">No services yet. Add one to show clients what you offer.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-50">
+                <div className="flex flex-col gap-3 px-4 sm:px-6 py-4">
                   {services.map(svc => (
-                    <div key={svc.id} className="px-6 sm:px-8 py-5 flex items-start justify-between gap-4">
+                    <div key={svc.id} className="bg-white rounded-2xl p-5 flex items-start justify-between gap-4" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F' }}>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 capitalize">{svc.name}</p>
                         {svc.description && <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{svc.description}</p>}
@@ -1522,7 +1661,7 @@ export default function Dashboard() {
             </div>
 
             {/* Previous Work */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
+            <div className="bg-white rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                 <div>
                   <h2 className="font-semibold text-gray-900">Previous Work</h2>
@@ -1548,6 +1687,14 @@ export default function Dashboard() {
                     {/* Image upload */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Photo <span className="text-red-400">*</span></label>
+                      <input
+                        ref={portfolioFileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        style={{ display: 'none' }}
+                        disabled={portfolioImageUploading}
+                        onChange={handlePortfolioImageUpload}
+                      />
                       {portfolioImageUrl ? (
                         <div className="relative inline-block">
                           <img src={portfolioImageUrl} alt="Preview" className="w-32 h-24 object-cover rounded-xl border border-gray-200" />
@@ -1558,11 +1705,17 @@ export default function Dashboard() {
                           >×</button>
                         </div>
                       ) : (
-                        <label className={`flex items-center gap-2 cursor-pointer w-full px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-gray-400 transition-colors ${portfolioImageUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                          {portfolioImageUploading ? 'Uploading...' : 'Upload a photo of your work'}
-                          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={portfolioImageUploading} onChange={handlePortfolioImageUpload} />
-                        </label>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => !portfolioImageUploading && portfolioFileInputRef.current?.click()}
+                          onKeyDown={e => e.key === 'Enter' && !portfolioImageUploading && portfolioFileInputRef.current?.click()}
+                          className={`flex flex-col items-center justify-center gap-2 w-full py-8 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 transition-colors ${portfolioImageUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-gray-400 hover:bg-gray-50'}`}
+                        >
+                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                          <span>{portfolioImageUploading ? 'Uploading...' : 'Click to upload or drag & drop'}</span>
+                          <span className="text-xs text-gray-400">JPG or PNG · Max 5MB</span>
+                        </div>
                       )}
                     </div>
 
@@ -1622,9 +1775,9 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-400">No items yet. Add photos of your past work to help clients trust you.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-50">
+                <div className="flex flex-col gap-3 px-4 sm:px-6 py-4">
                   {portfolioItems.map(item => (
-                    <div key={item.id} className="px-6 sm:px-8 py-4 flex items-center gap-4">
+                    <div key={item.id} className="bg-white rounded-2xl p-4 flex items-center gap-4" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F' }}>
                       <img src={item.image_url} alt={item.title} className="w-16 h-12 object-cover rounded-lg border border-gray-100 flex-shrink-0 cursor-pointer" onClick={() => setPortfolioLightbox(item)} />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 text-sm truncate">{item.title}</p>
@@ -1651,7 +1804,7 @@ export default function Dashboard() {
             </div>
 
             {/* Availability */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
+            <div className="bg-white rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
                 <h2 className="font-semibold text-gray-900">Availability calendar</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Manage your busy blocks and control what clients see on your profile.</p>
@@ -1668,7 +1821,7 @@ export default function Dashboard() {
             </div>
 
             {/* Tabs */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="flex border-b border-gray-100 px-2">
                 {['overview', 'reviews', 'leave-a-review'].map(tab => (
                   <button
@@ -1691,7 +1844,7 @@ export default function Dashboard() {
                 {activeTab === 'overview' && (
                   <div className="flex flex-col gap-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="bg-white rounded-xl p-5 text-center border border-gray-100" style={{ borderTop: '3px solid #00267F' }}>
+                      <div className="bg-white rounded-2xl p-5 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                         <svg className="w-5 h-5 mx-auto mb-2 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                         <p className="text-3xl font-bold text-gray-900">{profile.rating}</p>
                         <div className="flex justify-center mt-1 mb-1">
@@ -1699,12 +1852,12 @@ export default function Dashboard() {
                         </div>
                         <p className="text-sm text-gray-500">Average rating</p>
                       </div>
-                      <div className="bg-white rounded-xl p-5 text-center border border-gray-100" style={{ borderTop: '3px solid #00267F' }}>
+                      <div className="bg-white rounded-2xl p-5 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                         <svg className="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#00267F' }}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                         <p className="text-3xl font-bold text-gray-900">{profile.review_count}</p>
                         <p className="text-sm text-gray-500 mt-2">Total reviews</p>
                       </div>
-                      <div className="bg-white rounded-xl p-5 text-center border border-gray-100" style={{ borderTop: '3px solid #00267F' }}>
+                      <div className="bg-white rounded-2xl p-5 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                         <svg className="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#00267F' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <p className="text-3xl font-bold text-gray-900">
                           {profile.min_price != null ? `$${Number.isInteger(profile.min_price) ? profile.min_price : parseFloat(profile.min_price).toFixed(0)}` : '—'}
@@ -1938,6 +2091,13 @@ export default function Dashboard() {
                   {/* ── Step 1 ── */}
                   {createStep === 1 && (
                     <>
+                      {/* Profile completion guidance — create flow only */}
+                      <div style={{ backgroundColor: 'rgba(147,184,255,0.15)', borderLeft: '3px solid #00267F', borderRadius: '8px', padding: '14px 16px' }}>
+                        <p style={{ fontSize: '0.82rem', color: '#374151', lineHeight: 1.55 }}>
+                          💡 <strong>Take 5 minutes to complete your profile fully.</strong> Profiles with a photo, a bio, and at least 3 services get significantly more enquiries. Use the ⓘ icons next to each field if you need guidance on what to add.
+                        </p>
+                      </div>
+
                       {/* Full name */}
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full name</label>
@@ -1976,7 +2136,13 @@ export default function Dashboard() {
 
                       {/* Trade */}
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Trade / profession</label>
+                        <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                          Trade / profession
+                          <Tooltip text="This is your professional title — the one-word or short description of what you do. Clients will see this as your main category. Example: Electrician, Photographer, Baker, Football Coach">
+                            <span style={{ fontSize: '0.875rem', color: '#9CA3AF', cursor: 'help', lineHeight: 1 }}>ⓘ</span>
+                          </Tooltip>
+                        </label>
+                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Your main job title — what you do. e.g. Plumber, Graphic Designer, Personal Trainer, Web Developer</p>
                         <div className="relative">
                           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">🔧</span>
                           <input
@@ -2012,20 +2178,21 @@ export default function Dashboard() {
 
                       {/* Location */}
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Location</label>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">📍</span>
-                          <input
-                            type="text"
-                            value={createLocation}
-                            onChange={e => { setCreateLocation(e.target.value); setCreateErrors(prev => ({ ...prev, location: '' })) }}
-                            placeholder="e.g. Bridgetown, Barbados"
-                            className={`w-full pl-10 pr-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.location ? 'border-red-400' : 'border-gray-200'}`}
-                            onFocus={e => { if (!createErrors.location) e.target.style.borderColor = '#00267F' }}
-                            onBlur={e => { if (!createErrors.location) e.target.style.borderColor = '' }}
-                          />
-                        </div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">📍 Parish</label>
+                        <select
+                          value={createLocation}
+                          onChange={e => { setCreateLocation(e.target.value); setCreateErrors(prev => ({ ...prev, location: '' })) }}
+                          className={`w-full px-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.location ? 'border-red-400' : 'border-gray-200'}`}
+                          onFocus={e => { if (!createErrors.location) e.target.style.borderColor = '#00267F' }}
+                          onBlur={e => { if (!createErrors.location) e.target.style.borderColor = '' }}
+                        >
+                          <option value="" disabled>Select your parish</option>
+                          {['Christ Church','Saint Andrew','Saint George','Saint James','Saint John','Saint Joseph','Saint Lucy','Saint Michael','Saint Peter','Saint Philip','Saint Thomas'].map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
                         {createErrors.location && <p className="text-xs text-red-500 mt-1">{createErrors.location}</p>}
+                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginTop: 4 }}>Select the parish you are based in. Clients will use this to find professionals near them.</p>
                       </div>
 
                       {/* Bio */}
@@ -2047,7 +2214,13 @@ export default function Dashboard() {
 
                       {/* Skills */}
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Skills <span className="text-gray-400 font-normal">(comma separated)</span></label>
+                        <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                          Skills <span className="text-gray-400 font-normal">(comma separated)</span>
+                          <Tooltip text="Skills are NOT the same as your trade. They are the specific services or specialities you offer within your trade. A Web Developer might add: React, WordPress, E-Commerce, Mobile-Friendly Design. Add 3–8 skills for best results.">
+                            <span style={{ fontSize: '0.875rem', color: '#9CA3AF', cursor: 'help', lineHeight: 1 }}>ⓘ</span>
+                          </Tooltip>
+                        </label>
+                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Add specific things you can do or tools you use — these help clients find you when they search. e.g. if you are a Plumber: Pipe Repair, Leak Detection, Bathroom Fitting, Drain Cleaning</p>
                         <input
                           type="text"
                           value={createSkills}
@@ -2507,5 +2680,13 @@ export default function Dashboard() {
       )}
 
     </main>
+  )
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense>
+      <DashboardInner />
+    </Suspense>
   )
 }

@@ -63,10 +63,30 @@ function SignupContent() {
 
       {/* Left panel — desktop only */}
       <div className="hidden md:flex md:w-2/5 flex-col" style={{ backgroundColor: '#00267F' }}>
-        <div className="flex-1 flex flex-col justify-center px-12 py-16">
-          {/* Logo */}
-          <a href="/" className="text-3xl font-bold text-white mb-1 hover:opacity-90 transition-opacity">Vetted.bb</a>
-          <p className="text-sm font-medium mb-16" style={{ color: '#93b8ff' }}>Connecting Barbados</p>
+        <div className="flex-1 flex flex-col px-12" style={{ paddingTop: '28%' }}>
+          {/* Logo pill */}
+          <a
+            href="/"
+            className="hover:opacity-90 transition-opacity"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              alignSelf: 'flex-start',
+              backgroundColor: '#ffffff',
+              borderRadius: '999px',
+              padding: '10px 28px',
+              fontFamily: "'Sora', sans-serif",
+              fontWeight: 800,
+              fontSize: '1.5rem',
+              textDecoration: 'none',
+              lineHeight: 1,
+            }}
+          >
+            <span style={{ color: '#00267F' }}>Vetted</span>
+            <span style={{ color: '#F9C000' }}>.</span>
+            <span style={{ color: '#00267F' }}>bb</span>
+          </a>
+          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem', fontWeight: 400, marginTop: '10px', marginBottom: '4rem' }}>Connecting Barbados</p>
 
           {/* Trust bullets */}
           <div className="flex flex-col gap-7">

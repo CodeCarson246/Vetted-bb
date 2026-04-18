@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth-context'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -24,9 +25,12 @@ export default function ClientMessages() {
   const [myReviews, setMyReviews] = useState([])
   const [toast, setToast] = useState(null)
 
+  const { user: authUser, loading: authLoading } = useAuth()
+
   useEffect(() => {
+    if (authLoading) return
     async function init() {
-      const { data: { user: u } } = await supabase.auth.getUser()
+      const u = authUser
       if (!u) { router.push('/login'); return }
       setUser(u)
       const { data: msgs } = await supabase
@@ -46,7 +50,7 @@ export default function ClientMessages() {
       setLoading(false)
     }
     init()
-  }, [router])
+  }, [authUser, authLoading, router])
 
   async function handleExpand(msg) {
     if (expandedId === msg.id) { setExpandedId(null); return }

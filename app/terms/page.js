@@ -118,7 +118,26 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>12. Contact</h2>
+            <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>12. Reviews &amp; Ratings Policy</h2>
+            <p>By submitting a review on Vetted.bb, you confirm that:</p>
+            <ul className="list-disc list-inside mt-2 flex flex-col gap-1.5 text-gray-500">
+              <li>The review is based on a genuine experience with the service provider</li>
+              <li>The content is truthful, fair, and not misleading</li>
+              <li>The review does not contain defamatory, abusive, discriminatory, or unlawful content</li>
+            </ul>
+            <p className="mt-3">Vetted.bb reserves the right to remove any review that, in our sole discretion, violates these standards or is reasonably believed to be false, fraudulent, or submitted in bad faith.</p>
+            <p className="mt-3">Reviews represent the opinions of individual users and do not represent the views of Vetted.bb. Vetted.bb is not liable for the content of user-submitted reviews.</p>
+            <p className="mt-3">Freelancers may dispute a review by contacting <span className="font-medium" style={{ color: '#00267F' }}>support@vetted.bb</span>. Disputes are reviewed within 7 business days. Vetted.bb&apos;s decision on review disputes is final.</p>
+            <p className="mt-3">Verified badges confirm identity only — not the quality or outcome of any service delivered. Vetted.bb makes no guarantee of service quality for any listed professional.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>13. Platform Role</h2>
+            <p>Vetted.bb is a marketplace platform only. We are not a party to any contract, agreement, or transaction between clients and service providers. We do not handle payments, guarantee work quality, or mediate financial disputes. Any agreement made through this platform is solely between the client and the freelancer.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>14. Contact</h2>
             <p>If you have questions about these Terms of Service, please contact us at <span className="font-medium" style={{ color: '#00267F' }}>hello@vetted.bb</span>.</p>
           </section>
 

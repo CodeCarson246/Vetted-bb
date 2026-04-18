@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth-context'
 
 const ADMIN_EMAIL = 'redman.lampard@outlook.com'
 
@@ -26,15 +27,17 @@ export default function AdminPanel() {
   const [activeSection, setActiveSection] = useState('stats')
   const [deletingId, setDeletingId] = useState(null)
 
-  useEffect(() => {
-    async function init() {
-      const { data: { user: u } } = await supabase.auth.getUser()
-      if (!u || u.email !== ADMIN_EMAIL) {
-        router.replace('/')
-        return
-      }
-      setUser(u)
+  const { user: authUser, loading: authLoading } = useAuth()
 
+  useEffect(() => {
+    if (authLoading) return
+    if (!authUser || authUser.email !== ADMIN_EMAIL) {
+      router.replace('/')
+      return
+    }
+    setUser(authUser)
+
+    async function fetchData() {
       const [
         { count: fCount },
         { count: cCount },
@@ -62,8 +65,8 @@ export default function AdminPanel() {
       setMessages(mData || [])
       setLoading(false)
     }
-    init()
-  }, [router])
+    fetchData()
+  }, [authUser, authLoading, router])
 
   async function deleteFreelancer(id) {
     if (!confirm('Delete this freelancer and all their data? This cannot be undone.')) return

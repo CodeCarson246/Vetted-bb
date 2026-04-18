@@ -1,6 +1,7 @@
 import "./globals.css";
 import SiteNav from '@/components/SiteNav'
 import SiteFooter from '@/components/SiteFooter'
+import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata = {
   title: {
@@ -40,9 +41,11 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <SiteNav />
-        {children}
-        <SiteFooter />
+        <AuthProvider>
+          <SiteNav />
+          {children}
+          <SiteFooter />
+        </AuthProvider>
       </body>
     </html>
   );

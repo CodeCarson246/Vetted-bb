@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth-context'
 
 export default function SiteNav() {
-  const [user, setUser] = useState(null)
+  const { user } = useAuth()
   const [freelancerProfile, setFreelancerProfile] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -31,22 +32,8 @@ export default function SiteNav() {
       }
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data }) => {
-      const u = data.session?.user ?? null
-      setUser(u)
-      loadProfile(u)
-    })
-
-    // Keep nav in sync on every auth change (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user ?? null
-      setUser(u)
-      loadProfile(u)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+    loadProfile(user)
+  }, [user])
 
   return (
     <header style={{

@@ -71,6 +71,19 @@ export default function Home() {
   const [featuredReviews, setFeaturedReviews] = useState([])
   const [featuredFreelancers, setFeaturedFreelancers] = useState([])
   const [categoryCounts, setCategoryCounts] = useState({})
+  const [platformStats, setPlatformStats] = useState({ professionals: null, categories: null, parishes: null })
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('freelancers').select('*', { count: 'exact', head: true }).not('avatar_url', 'is', null),
+      supabase.from('freelancers').select('category').not('category', 'is', null),
+      supabase.from('freelancers').select('location').not('location', 'is', null),
+    ]).then(([{ count: professionals }, { data: cats }, { data: locs }]) => {
+      const categories = new Set((cats || []).map(r => r.category).filter(Boolean)).size
+      const parishes = new Set((locs || []).map(r => r.location).filter(Boolean)).size
+      setPlatformStats({ professionals: professionals || 0, categories, parishes })
+    })
+  }, [])
 
   // Lightweight fetch: just enough to compute per-category provider counts
   // for the subtle "Coming soon" badge on empty category tiles.
@@ -178,6 +191,51 @@ export default function Home() {
           >
             <path d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" fill="#00267F" />
           </svg>
+        </div>
+      </section>
+
+      {/* Stats bar */}
+      <section className="px-4 sm:px-8 py-10" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
+        <div className="max-w-2xl mx-auto">
+          <div style={{
+            backgroundColor: 'white',
+            borderTop: '4px solid #00267F',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            padding: '32px 24px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '16px',
+            textAlign: 'center',
+          }}>
+            {[
+              { value: platformStats.professionals, label: 'Verified Professionals' },
+              { value: platformStats.categories, label: 'Service Categories' },
+              { value: platformStats.parishes, label: 'Parishes Covered' },
+            ].map(({ value, label }, i) => (
+              <div key={label} style={i < 2 ? { borderRight: '1px solid rgba(0,38,127,0.08)' } : {}}>
+                <p style={{
+                  fontFamily: "'Sora', sans-serif",
+                  fontWeight: 800,
+                  fontSize: 'clamp(2rem, 5vw, 2.75rem)',
+                  color: '#00267F',
+                  lineHeight: 1,
+                  marginBottom: '8px',
+                }}>
+                  {value === null ? '—' : value}
+                </p>
+                <p style={{
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: '0.8rem',
+                  color: '#6B7280',
+                  fontWeight: 500,
+                  lineHeight: 1.4,
+                }}>
+                  {label}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
