@@ -12,7 +12,8 @@
       "Bash(ls:*)",
       "Bash(xargs grep:*)",
       "Bash(grep -n \"sender_name\\\\|sender_email\\\\|freelancer_id\\\\|read\\\\|created_at\" /c/Users/redma/Desktop/vetted-bb/app/freelancers/[id]/page.js)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm install *)"
     ]
   }
 }

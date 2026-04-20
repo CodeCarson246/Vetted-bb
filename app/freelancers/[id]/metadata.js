@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { formatParish } from '@/lib/formatParish'
 
 export async function generateMetadata({ params }) {
   const { id } = await params
@@ -20,11 +21,11 @@ export async function generateMetadata({ params }) {
   // First line of bio (up to first newline or sentence break), capped at 160 chars
   const firstLine = f.bio
     ? (f.bio.split(/\n|(?<=\.)\s/)[0] || f.bio).slice(0, 160)
-    : `${f.trade} based in ${f.location || 'Barbados'}. Rated ${f.rating}/5 on Vetted.bb.`
+    : `${f.trade} based in ${formatParish(f.location) || 'Barbados'}. Rated ${f.rating}/5 on Vetted.bb.`
   const ogDescription = firstLine.length === 160 ? firstLine + '…' : firstLine
 
   return {
-    title: `${f.name} — ${f.trade} in ${f.location || 'Barbados'}`,
+    title: `${f.name} — ${f.trade} in ${formatParish(f.location) || 'Barbados'}`,
     description: ogDescription,
     openGraph: {
       title: ogTitle,

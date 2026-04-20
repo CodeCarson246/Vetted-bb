@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import SearchEmptyState from '@/components/SearchEmptyState'
 import Tooltip from '@/components/Tooltip'
+import { formatParish } from '@/lib/formatParish'
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #00267F, #1a3f9e)',
@@ -129,7 +130,7 @@ function FreelancerCard({ f, getMinPrice, sortBy }) {
             <p style={{ fontSize: '0.85rem', fontWeight: 500, color: '#6B7280', marginTop: 2, textTransform: 'capitalize' }}>
               {f.trade}
               {f.location && (
-                <span style={{ fontWeight: 400, fontSize: '0.82rem' }}> · 📍 {f.location}</span>
+                <span style={{ fontWeight: 400, fontSize: '0.82rem' }}> · 📍 {formatParish(f.location)}</span>
               )}
             </p>
 
@@ -410,7 +411,7 @@ function SearchPage() {
             >
               <option value="">All locations</option>
               {PARISHES.map(p => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>{formatParish(p)}</option>
               ))}
             </select>
 

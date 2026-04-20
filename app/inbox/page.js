@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { formatParish } from '@/lib/formatParish'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -225,7 +226,7 @@ export default function Inbox() {
               <div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${validCompanyName||profile?.name||''}</div>
               ${validCompanyName?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}
               <div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div>
-              <div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${profile?.location||''}</div>
+              <div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${formatParish(profile?.location)||''}</div>
               ${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}
             </td>
           </tr>
@@ -333,7 +334,7 @@ export default function Inbox() {
       ? `<img src="${profile.avatar_url}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;display:block"/>`
       : `<div style="width:56px;height:56px;border-radius:50%;background:#00267F;color:white;font-size:18px;font-weight:700;text-align:center;line-height:56px">${(profile?.name||'?').split(' ').map(n=>n[0]).join('')}</div>`
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Quote-${q.quote_number}-${q.client_name}</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:white;color:#111827;padding:40px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:1.2cm;size:A4;}table{border-collapse:collapse;}</style></head><body>
-<table width="100%" style="margin-bottom:28px"><tr><td style="vertical-align:top;width:50%"><table><tr><td style="vertical-align:top;padding-right:14px">${avatarHtml}</td><td style="vertical-align:top"><div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${pValidCompanyName||profile?.name||''}</div>${pValidCompanyName?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div><div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${profile?.location||''}</div>${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}</td></tr></table></td><td style="vertical-align:top;text-align:right;width:50%"><div style="font-size:34px;font-weight:800;color:#00267F;letter-spacing:4px;line-height:1">QUOTE</div><div style="font-size:12px;color:#9ca3af;margin-top:6px">${q.quote_number}</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(q.quote_date + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></td></tr></table>
+<table width="100%" style="margin-bottom:28px"><tr><td style="vertical-align:top;width:50%"><table><tr><td style="vertical-align:top;padding-right:14px">${avatarHtml}</td><td style="vertical-align:top"><div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${pValidCompanyName||profile?.name||''}</div>${pValidCompanyName?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div><div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${formatParish(profile?.location)||''}</div>${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}</td></tr></table></td><td style="vertical-align:top;text-align:right;width:50%"><div style="font-size:34px;font-weight:800;color:#00267F;letter-spacing:4px;line-height:1">QUOTE</div><div style="font-size:12px;color:#9ca3af;margin-top:6px">${q.quote_number}</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(q.quote_date + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></td></tr></table>
 <table width="100%" style="margin-bottom:24px"><tr><td style="background:#F9C000;height:3px;font-size:0">&nbsp;</td></tr></table>
 <div style="margin-bottom:24px"><div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Billed to</div><div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:3px">${q.client_name}</div><div style="font-size:13px;color:#6b7280">${q.client_email}</div></div>
 <table width="100%" style="border-collapse:collapse;margin-bottom:20px"><thead><tr style="background:#00267F"><th style="padding:10px 14px;text-align:left;color:white;font-size:12px;font-weight:600">Description</th><th style="padding:10px 14px;text-align:center;color:white;font-size:12px;font-weight:600;width:60px">Qty</th><th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Unit price</th><th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Total</th></tr></thead><tbody>${itemRows}</tbody></table>
@@ -615,7 +616,7 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
             </p>
             {profile && (() => {
               const profileUrl = `https://vetted-bb.vercel.app/freelancers/${profile.id}`
-              const loc = profile.location ? `based in ${profile.location}` : 'in Barbados'
+              const loc = profile.location ? `based in ${formatParish(profile.location)}` : 'in Barbados'
               const text = `Check out ${profile.name} on Vetted.bb — they're a ${profile.trade} ${loc}. ${profileUrl}`
               const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
               return (
@@ -1059,7 +1060,7 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
                     <p className="font-bold text-gray-900 text-base">{(profile?.company_name?.trim().length > 3 ? profile.company_name : null) || profile?.name}</p>
                     {profile?.company_name?.trim().length > 3 && <p className="text-sm text-gray-500">{profile?.name}</p>}
                     <p className="text-sm text-gray-500">{profile?.trade}</p>
-                    <p className="text-xs text-gray-400">{profile?.location}</p>
+                    <p className="text-xs text-gray-400">{formatParish(profile?.location)}</p>
                     {profile?.email && <p className="text-xs text-gray-400">{profile.email}</p>}
                   </div>
                 </div>

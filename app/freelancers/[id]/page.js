@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import { formatParish } from '@/lib/formatParish'
 import Tooltip from '@/components/Tooltip'
 import WeekView from '@/components/calendar/WeekView'
 import MonthView from '@/components/calendar/MonthView'
@@ -458,7 +459,7 @@ export default function FreelancerProfile() {
   const freelancerReviewsList = reviews.filter(r => r.type === 'freelancer')
   const whatsappShareUrl = (() => {
     const profileUrl = `https://vetted-bb.vercel.app/freelancers/${id}`
-    const loc = freelancer.location ? `based in ${freelancer.location}` : 'in Barbados'
+    const loc = freelancer.location ? `based in ${formatParish(freelancer.location)}` : 'in Barbados'
     const reviewPart = freelancer.review_count > 0
       ? ` with ${freelancer.review_count} review${freelancer.review_count === 1 ? '' : 's'}`
       : ''
@@ -470,10 +471,10 @@ export default function FreelancerProfile() {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
     name: freelancer.name,
-    description: freelancer.bio || `${freelancer.trade} based in ${freelancer.location || 'Barbados'}`,
+    description: freelancer.bio || `${freelancer.trade} based in ${formatParish(freelancer.location) || 'Barbados'}`,
     address: {
       '@type': 'PostalAddress',
-      addressLocality: freelancer.location || 'Barbados',
+      addressLocality: formatParish(freelancer.location) || 'Barbados',
       addressCountry: 'BB',
     },
     aggregateRating: freelancer.review_count > 0 ? {
@@ -537,7 +538,7 @@ export default function FreelancerProfile() {
                   )}
                   <p className="font-semibold mt-0.5 capitalize" style={{ color: '#F9C000' }}>{freelancer.trade}</p>
                   {freelancer.location && (
-                    <p className="text-sm mt-0.5 capitalize" style={{ color: '#93b8ff' }}>📍 {freelancer.location}</p>
+                    <p className="text-sm mt-0.5 capitalize" style={{ color: '#93b8ff' }}>📍 {formatParish(freelancer.location)}</p>
                   )}
 
                   {/* Trust signals */}
@@ -1324,7 +1325,7 @@ export default function FreelancerProfile() {
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900">Contact {freelancer.name}</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">{freelancer.trade} · {freelancer.location}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{freelancer.trade} · {formatParish(freelancer.location)}</p>
                   </div>
                   <button
                     onClick={() => setContactOpen(false)}

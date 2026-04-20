@@ -85,18 +85,15 @@ export default function Home() {
     })
   }, [])
 
-  // Lightweight fetch: just enough to compute per-category provider counts
-  // for the subtle "Coming soon" badge on empty category tiles.
+  // Fetch per-category counts by matching the category column exactly.
   useEffect(() => {
-    supabase.from('freelancers').select('name, trade, skills').then(({ data }) => {
+    supabase.from('freelancers').select('category').not('category', 'is', null).then(({ data }) => {
       if (!data) return
       const counts = {}
-      for (const cat of categories) {
-        const words = cat.searchQuery.toLowerCase().split(/\s+/).filter(Boolean)
-        counts[cat.name] = data.filter(f => {
-          const haystack = [f.name, f.trade, ...(f.skills || [])].join(' ').toLowerCase()
-          return words.some(w => haystack.includes(w))
-        }).length
+      for (const cat of categories) counts[cat.name] = 0
+      for (const row of data) {
+        const matched = categories.find(cat => cat.name.toLowerCase() === (row.category || '').toLowerCase())
+        if (matched) counts[matched.name]++
       }
       setCategoryCounts(counts)
     })
@@ -140,7 +137,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto relative">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#F9C000', border: '1px solid rgba(249,192,0,0.3)' }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F9C000', display: 'inline-block' }} />
-            🇧🇧 Barbados&apos; #1 professional marketplace
+            A professional marketplace, for Bajans by Bajans <img src="https://flagcdn.com/bb.svg" alt="Barbados flag" width="18" height="12" style={{display:'inline-block', verticalAlign:'middle', marginLeft:'6px', borderRadius:'2px'}} />
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold text-white mb-6 leading-tight tracking-tight">
             Stop guessing.<br className="hidden sm:block" />
@@ -458,15 +455,28 @@ export default function Home() {
             return (
               <a
                 key={cat.name}
-                href={`/search?q=${encodeURIComponent(cat.searchQuery)}&category=${encodeURIComponent(cat.name)}`}
+                href={isEmpty
+                  ? '/signup?role=freelancer'
+                  : `/search?q=${encodeURIComponent(cat.searchQuery)}&category=${encodeURIComponent(cat.name)}`}
                 className="flex flex-col items-center gap-3 px-4 py-6 bg-white border border-gray-100 rounded-2xl hover:shadow-sm cursor-pointer transition-all group"
-                onMouseEnter={e => e.currentTarget.style.borderColor = '#00267F'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = ''}
+                style={{ borderColor: '' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = isEmpty ? '#F9C000' : '#00267F'; e.currentTarget.style.borderWidth = isEmpty ? '1.5px' : '1px' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.borderWidth = '' }}
               >
                 <span className="text-4xl">{cat.icon}</span>
                 <span className="font-medium text-gray-700 text-sm text-center leading-snug">{cat.name}</span>
                 {isEmpty && (
-                  <span className="text-xs text-gray-400 font-normal -mt-1">Coming soon</span>
+                  <span style={{
+                    backgroundColor: '#FEF3C7',
+                    color: '#92400E',
+                    fontSize: '11px',
+                    padding: '2px 10px',
+                    borderRadius: '20px',
+                    fontWeight: 600,
+                    marginTop: '-4px',
+                  }}>
+                    Be the first →
+                  </span>
                 )}
               </a>
             )

@@ -1,9 +1,11 @@
 'use client'
+import imageCompression from 'browser-image-compression'
 import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import { formatParish } from '@/lib/formatParish'
 import Tooltip from '@/components/Tooltip'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
 import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
@@ -74,6 +76,7 @@ function DashboardInner() {
   const [portfolioDescription, setPortfolioDescription] = useState('')
   const [portfolioImageUrl, setPortfolioImageUrl] = useState('')
   const [portfolioImageUploading, setPortfolioImageUploading] = useState(false)
+  const [portfolioCompressing, setPortfolioCompressing] = useState(false)
   const [portfolioSaving, setPortfolioSaving] = useState(false)
   const [portfolioError, setPortfolioError] = useState(null)
   const [portfolioLightbox, setPortfolioLightbox] = useState(null)
@@ -502,7 +505,7 @@ function DashboardInner() {
   }
 
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-  const MAX_IMAGE_BYTES = 5 * 1024 * 1024  // 5 MB
+  const MAX_IMAGE_BYTES = 20 * 1024 * 1024  // 20 MB
   const MIN_IMAGE_DIM = 200                 // 200×200 px
 
   function validateImageFile(file) {
@@ -676,7 +679,7 @@ function DashboardInner() {
     const file = e.target.files?.[0]
     if (!file) return
     if (!validateImageFile(file)) {
-      setPortfolioError('Please upload a JPG or PNG image, max 5MB.')
+      setPortfolioError('Please upload a JPG, PNG or WebP image, max 20MB.')
       return
     }
     const dimsOk = await checkImageDimensions(file)
@@ -684,12 +687,28 @@ function DashboardInner() {
       setPortfolioError('Image must be at least 200×200px.')
       return
     }
+
+    let fileToUpload = file
+    setPortfolioCompressing(true)
+    try {
+      fileToUpload = await imageCompression(file, {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        preserveExif: false,
+      })
+    } catch (compressionErr) {
+      console.error('Image compression failed, uploading original:', compressionErr)
+      fileToUpload = file
+    }
+    setPortfolioCompressing(false)
+
     setPortfolioImageUploading(true)
     const ext = file.name.split('.').pop().toLowerCase()
     const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('portfolio')
-      .upload(path, file, { upsert: false })
+      .upload(path, fileToUpload, { upsert: false })
     if (uploadError) {
       setPortfolioError('Upload failed. Please try again.')
       setToast({ message: 'Failed to upload image. Check your connection and try again.', type: 'error' })
@@ -1208,7 +1227,7 @@ function DashboardInner() {
                 <div className="flex-1 min-w-0 text-center sm:text-left">
                   <h1 className="text-2xl font-bold text-white leading-tight">{profile.name}</h1>
                   <p className="font-semibold mt-0.5 capitalize" style={{ color: '#F9C000' }}>{profile.trade}</p>
-                  {profile.location && <p className="text-sm mt-1 capitalize" style={{ color: '#93b8ff' }}>📍 {profile.location}</p>}
+                  {profile.location && <p className="text-sm mt-1 capitalize" style={{ color: '#93b8ff' }}>📍 {formatParish(profile.location)}</p>}
                   <div className="flex items-center gap-2 mt-2.5 justify-center sm:justify-start flex-wrap">
                     <div className="flex items-center gap-1">
                       <StarRating rating={profile.rating} />
@@ -1388,7 +1407,7 @@ function DashboardInner() {
                     >
                       <option value="" disabled>Select your parish</option>
                       {['Christ Church','Saint Andrew','Saint George','Saint James','Saint John','Saint Joseph','Saint Lucy','Saint Michael','Saint Peter','Saint Philip','Saint Thomas'].map(p => (
-                        <option key={p} value={p}>{p}</option>
+                        <option key={p} value={p}>{formatParish(p)}</option>
                       ))}
                     </select>
                     <p style={{ fontSize: '0.78rem', color: '#6B7280', marginTop: 4 }}>Select the parish you are based in. Clients will use this to find professionals near them.</p>
@@ -1692,7 +1711,7 @@ function DashboardInner() {
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
                         style={{ display: 'none' }}
-                        disabled={portfolioImageUploading}
+                        disabled={portfolioImageUploading || portfolioCompressing}
                         onChange={handlePortfolioImageUpload}
                       />
                       {portfolioImageUrl ? (
@@ -1708,13 +1727,22 @@ function DashboardInner() {
                         <div
                           role="button"
                           tabIndex={0}
-                          onClick={() => !portfolioImageUploading && portfolioFileInputRef.current?.click()}
-                          onKeyDown={e => e.key === 'Enter' && !portfolioImageUploading && portfolioFileInputRef.current?.click()}
-                          className={`flex flex-col items-center justify-center gap-2 w-full py-8 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 transition-colors ${portfolioImageUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-gray-400 hover:bg-gray-50'}`}
+                          onClick={() => !portfolioImageUploading && !portfolioCompressing && portfolioFileInputRef.current?.click()}
+                          onKeyDown={e => e.key === 'Enter' && !portfolioImageUploading && !portfolioCompressing && portfolioFileInputRef.current?.click()}
+                          className={`flex flex-col items-center justify-center gap-2 w-full py-8 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 transition-colors ${portfolioImageUploading || portfolioCompressing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-gray-400 hover:bg-gray-50'}`}
                         >
-                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                          <span>{portfolioImageUploading ? 'Uploading...' : 'Click to upload or drag & drop'}</span>
-                          <span className="text-xs text-gray-400">JPG or PNG · Max 5MB</span>
+                          {portfolioCompressing ? (
+                            <>
+                              <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg>
+                              <span>Optimising image...</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                              <span>{portfolioImageUploading ? 'Uploading...' : 'Click to upload or drag & drop'}</span>
+                              <span className="text-xs text-gray-400">JPG, PNG or WebP · Max 20MB</span>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1751,7 +1779,7 @@ function DashboardInner() {
                     <div className="flex gap-3">
                       <button
                         type="submit"
-                        disabled={portfolioSaving || portfolioImageUploading}
+                        disabled={portfolioSaving || portfolioImageUploading || portfolioCompressing}
                         className="flex-1 text-white py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ backgroundColor: '#00267F' }}
                       >
@@ -2188,7 +2216,7 @@ function DashboardInner() {
                         >
                           <option value="" disabled>Select your parish</option>
                           {['Christ Church','Saint Andrew','Saint George','Saint James','Saint John','Saint Joseph','Saint Lucy','Saint Michael','Saint Peter','Saint Philip','Saint Thomas'].map(p => (
-                            <option key={p} value={p}>{p}</option>
+                            <option key={p} value={p}>{formatParish(p)}</option>
                           ))}
                         </select>
                         {createErrors.location && <p className="text-xs text-red-500 mt-1">{createErrors.location}</p>}

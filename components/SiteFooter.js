@@ -60,19 +60,23 @@ export default function SiteFooter() {
 
           {/* Brand column */}
           <div>
-            <a href="/" style={{
-              fontFamily: "'Sora', sans-serif",
-              fontWeight: 800,
-              fontSize: '1.4rem',
-              letterSpacing: '-0.5px',
-              textDecoration: 'none',
-              display: 'inline-block',
-              marginBottom: '14px',
-              lineHeight: 1,
-            }}>
-              <span style={{ color: 'white' }}>Vetted</span>
-              <span style={{ color: '#F9C000' }}>.</span>
-              <span style={{ color: 'white' }}>bb</span>
+            <a href="/" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '14px' }}>
+              <span style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '999px',
+                padding: '6px 14px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '2px',
+                fontFamily: "'Sora', sans-serif",
+                fontWeight: 800,
+                fontSize: '1.1rem',
+                lineHeight: 1,
+              }}>
+                <span style={{ color: '#00267F' }}>Vetted</span>
+                <span style={{ color: '#F9C000' }}>.</span>
+                <span style={{ color: '#00267F' }}>bb</span>
+              </span>
             </a>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem', maxWidth: '220px', lineHeight: 1.6, margin: 0 }}>
               Connecting Barbados — a free marketplace for trusted local professionals and the clients who need them.
