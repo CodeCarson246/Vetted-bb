@@ -238,7 +238,7 @@ function SearchPage() {
   const searchParams = useSearchParams()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
-  const [freelancers, setFreelancers] = useState([])
+  const [allFreelancers, setAllFreelancers] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -257,15 +257,12 @@ function SearchPage() {
   useEffect(() => {
     async function fetchFreelancers() {
       setLoading(true)
-      let q = supabase.from('freelancers').select('*, services(id, name, price, price_type)')
-      if (availability === 'available') q = q.eq('available', true)
-      if (location) q = q.eq('location', location)
-      const { data } = await q
-      setFreelancers(data || [])
+      const { data } = await supabase.from('freelancers').select('*, services(*)')
+      setAllFreelancers(data || [])
       setLoading(false)
     }
     fetchFreelancers()
-  }, [availability, location])
+  }, [])
 
   const activeFilterCount = [
     availability !== 'all',
@@ -291,22 +288,40 @@ function SearchPage() {
     return Math.max(...f.services.map(s => parseInt(s.price, 10)))
   }
 
-  const filtered = freelancers
+  const filtered = allFreelancers
     .filter(f => {
-      if (query) {
-        const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-        const haystack = [f.name, f.trade, f.category || '', ...(f.skills || [])].join(' ').toLowerCase()
-        if (!words.some(w => haystack.includes(w))) return false
+      // a) Search filter
+      if (query.trim()) {
+        const term = query.trim().toLowerCase()
+        const nameMatch = (f.name || '').toLowerCase().includes(term)
+        const tradeMatch = (f.trade || '').toLowerCase().includes(term)
+        const skillMatch = (f.skills || []).some(s => s.toLowerCase().includes(term))
+        const svcTitleMatch = (f.services || []).some(s => (s.title || '').toLowerCase().includes(term))
+        const svcDescMatch = (f.services || []).some(s => (s.description || '').toLowerCase().includes(term))
+        if (!nameMatch && !tradeMatch && !skillMatch && !svcTitleMatch && !svcDescMatch) return false
       }
+
+      // b) Category filter
+      if (category && f.category !== category) return false
+
+      // c) Availability filter
+      if (availability === 'available' && !f.available) return false
+
+      // d) Budget filter
       if (budget !== 'all') {
-        const p = getMinPrice(f)
-        if (p === null) return false
-        if (budget === 'u100'  && p >= 100)  return false
-        if (budget === 'u250'  && p >= 250)  return false
-        if (budget === 'u500'  && p >= 500)  return false
-        if (budget === 'u1000' && p >= 1000) return false
-        if (budget === 'o1000' && p < 1000)  return false
+        const services = f.services || []
+        const thresholds = { u100: 100, u250: 250, u500: 500, u1000: 1000 }
+        if (budget === 'o1000') {
+          if (!services.some(s => parseInt(s.price, 10) >= 1000)) return false
+        } else {
+          const max = thresholds[budget]
+          if (!services.some(s => parseInt(s.price, 10) <= max)) return false
+        }
       }
+
+      // e) Location filter
+      if (location && formatParish(f.location).toLowerCase() !== formatParish(location).toLowerCase()) return false
+
       return true
     })
     .sort((a, b) => {
@@ -357,7 +372,7 @@ function SearchPage() {
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Search by name, trade or skill..."
+                placeholder="Search by name, trade, skill or service..."
                 className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-400 bg-white text-sm"
               />
             </div>
