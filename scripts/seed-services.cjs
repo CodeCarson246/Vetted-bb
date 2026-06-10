@@ -1,5 +1,5 @@
 /**
- * scripts/seed-services.js
+ * scripts/seed-services.cjs
  *
  * One-time seed: inserts realistic services for existing dummy freelancers.
  * Run with:  npm run seed:services

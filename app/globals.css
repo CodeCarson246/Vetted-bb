@@ -17,6 +17,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Brand tokens — use bg-brand / text-brand / bg-accent etc. instead of
+     hardcoding #00267F / #F9C000 in new code */
+  --color-brand: var(--navy);
+  --color-brand-dark: var(--navy-dark);
+  --color-accent: var(--yellow);
+  --color-accent-dark: var(--yellow-dark);
+  --color-brand-blue: var(--blue-accent);
+  --color-cream: var(--cream);
 }
 
 body {

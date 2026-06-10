@@ -1,12 +1,42 @@
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit } from '@/lib/rateLimit'
 
 export const REVIEW_MIN_CHARS = 30
+const COMMENT_MAX_CHARS = 3000
 
+// This route uses the service-role key (bypasses RLS), so it must do
+// its own auth: verify the caller's JWT, derive identity server-side,
+// and never trust author/type/date from the request body.
 export async function POST(request) {
   try {
-    const { freelancer_id, author, rating, comment, service_name, type, date, image_url } = await request.json()
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!serviceKey) {
+      return Response.json({ error: 'Server is not configured for reviews.' }, { status: 500 })
+    }
 
-    // Server-side validation — cannot be bypassed by the client
+    // ── Authenticate the caller ──
+    const authHeader = request.headers.get('authorization') || ''
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+    if (!token) {
+      return Response.json({ error: 'You must be logged in to leave a review.' }, { status: 401 })
+    }
+
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    if (authError || !user) {
+      return Response.json({ error: 'Your session has expired. Please log in again.' }, { status: 401 })
+    }
+
+    if (!rateLimit(`reviews:${user.id}`, { limit: 5, windowMs: 10 * 60_000 })) {
+      return Response.json({ error: 'Too many reviews submitted. Please try again later.' }, { status: 429 })
+    }
+
+    // ── Validate input ──
+    const { freelancer_id, rating, comment, service_name, image_url } = await request.json()
+
+    if (!freelancer_id) {
+      return Response.json({ error: 'freelancer_id is required.' }, { status: 400 })
+    }
     if (!rating || rating < 1 || rating > 5) {
       return Response.json({ error: 'A star rating is required.' }, { status: 400 })
     }
@@ -16,21 +46,63 @@ export async function POST(request) {
         { status: 400 }
       )
     }
+    if (comment.length > COMMENT_MAX_CHARS) {
+      return Response.json({ error: 'Review is too long.' }, { status: 400 })
+    }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-    )
+    const { data: freelancer } = await supabase
+      .from('freelancers')
+      .select('id, user_id')
+      .eq('id', freelancer_id)
+      .maybeSingle()
+    if (!freelancer) {
+      return Response.json({ error: 'Freelancer not found.' }, { status: 404 })
+    }
+    if (freelancer.user_id === user.id) {
+      return Response.json({ error: 'You cannot review your own profile.' }, { status: 403 })
+    }
+
+    // One client review per user per freelancer
+    const { data: existing } = await supabase
+      .from('reviews')
+      .select('id')
+      .eq('freelancer_id', freelancer_id)
+      .eq('author_user_id', user.id)
+      .eq('type', 'client')
+      .maybeSingle()
+    if (existing) {
+      return Response.json({ error: 'You have already reviewed this professional.' }, { status: 409 })
+    }
+
+    // ── Derive identity server-side ──
+    let author = user.user_metadata?.full_name
+    if (!author) {
+      const { data: fp } = await supabase
+        .from('freelancers')
+        .select('name')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      author = fp?.name
+    }
+    if (!author) author = user.email?.split('@')[0] || 'Vetted user'
+
+    // Only accept photos that live in our own review-photos bucket
+    let safeImageUrl = null
+    if (typeof image_url === 'string' && image_url) {
+      const prefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/review-photos/`
+      if (image_url.startsWith(prefix)) safeImageUrl = image_url
+    }
 
     const { error: insertError } = await supabase.from('reviews').insert({
       freelancer_id,
       author,
+      author_user_id: user.id,
       rating,
       comment: comment.trim(),
-      service_name: service_name || null,
-      type,
-      date,
-      image_url: image_url || null,
+      service_name: typeof service_name === 'string' && service_name ? service_name.slice(0, 200) : null,
+      type: 'client',
+      date: new Date().toISOString().split('T')[0],
+      image_url: safeImageUrl,
     })
 
     if (insertError) return Response.json({ error: insertError.message }, { status: 500 })

@@ -2,12 +2,14 @@
   "name": "vetted-bb",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:services": "node scripts/seed-services.js"
+    "test": "node --test \"tests/**/*.test.js\"",
+    "seed:services": "node scripts/seed-services.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.3",

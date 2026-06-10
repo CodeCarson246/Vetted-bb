@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
+import { getQuoteId } from '@/lib/quoteReply'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -44,7 +45,7 @@ export default function ClientMessages() {
       const { data: revs } = await supabase
         .from('reviews')
         .select('*, freelancers(id, name)')
-        .eq('author', u.id)
+        .eq('author_user_id', u.id)
         .order('date', { ascending: false })
       setMyReviews(revs || [])
 
@@ -62,9 +63,7 @@ export default function ClientMessages() {
       .eq('message_id', msg.id)
       .order('created_at', { ascending: true })
     setReplies(prev => ({ ...prev, [msg.id]: r || [] }))
-    const quoteIds = (r || [])
-      .filter(rep => rep.body.startsWith('__QUOTE__'))
-      .map(rep => rep.body.replace('__QUOTE__', ''))
+    const quoteIds = (r || []).map(getQuoteId).filter(Boolean)
     if (quoteIds.length > 0) {
       const { data: qs } = await supabase
         .from('quotes')
@@ -87,7 +86,7 @@ export default function ClientMessages() {
       .from('reviews')
       .delete()
       .eq('id', reviewId)
-      .eq('author', user.id)
+      .eq('author_user_id', user.id)
     if (error) {
       setToast({ message: 'Failed to delete review. Please try again.', type: 'error' })
     } else {
@@ -181,8 +180,8 @@ export default function ClientMessages() {
 
                       {/* Replies */}
                       {(replies[msg.id] || []).map(r => {
-                        const isQuote = r.body.startsWith('__QUOTE__')
-                        const quoteId = isQuote ? r.body.replace('__QUOTE__', '') : null
+                        const quoteId = getQuoteId(r)
+                        const isQuote = !!quoteId
                         const quoteData = quoteId ? (quotes[quoteId] || null) : null
 
                         if (isQuote && quoteData) {

@@ -103,10 +103,10 @@ export default function Home() {
   useEffect(() => {
     fetch('/api/featured-professionals')
       .then(r => r.json())
-      .then(({ data, error }) => {
-        console.log('[Featured Professionals] data:', data, '| error:', error, '| count:', data?.length ?? 0)
+      .then(({ data }) => {
         setFeaturedFreelancers(data || [])
       })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {

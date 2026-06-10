@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 
-const ADMIN_EMAIL = 'redman.lampard@outlook.com'
-
+// Admin access is enforced server-side by /api/admin (ADMIN_EMAILS env
+// var + JWT verification). This page is only a UI shell — it holds no
+// privileged credentials and no admin identity.
 export default function AdminPanel() {
   const router = useRouter()
   const [user, setUser] = useState(null)
@@ -27,76 +28,78 @@ export default function AdminPanel() {
   const [activeSection, setActiveSection] = useState('stats')
   const [deletingId, setDeletingId] = useState(null)
 
-  const { user: authUser, loading: authLoading } = useAuth()
+  const { user: authUser, session, loading: authLoading } = useAuth()
 
   useEffect(() => {
     if (authLoading) return
-    if (!authUser || authUser.email !== ADMIN_EMAIL) {
+    if (!authUser || !session) {
       router.replace('/')
       return
     }
     setUser(authUser)
 
     async function fetchData() {
-      const [
-        { count: fCount },
-        { count: cCount },
-        { count: rCount },
-        { count: mCount },
-        { data: fData },
-        { data: rData },
-        { data: mData },
-      ] = await Promise.all([
-        supabase.from('freelancers').select('*', { count: 'exact', head: true }),
-        supabase.from('clients').select('*', { count: 'exact', head: true }),
-        supabase.from('reviews').select('*', { count: 'exact', head: true }),
-        supabase.from('messages').select('*', { count: 'exact', head: true }),
-        supabase.from('freelancers').select('id, name, trade, category, location, rating, created_at').order('created_at', { ascending: false }),
-        supabase.from('reviews').select('id, author, comment, rating, type, date, created_at').order('created_at', { ascending: false }),
-        supabase.from('messages').select('id, sender_name, sender_email, subject, created_at, read').order('created_at', { ascending: false }),
-      ])
-
-      setFreelancerCount(fCount || 0)
-      setClientCount(cCount || 0)
-      setReviewCount(rCount || 0)
-      setMessageCount(mCount || 0)
-      setFreelancers(fData || [])
-      setReviews(rData || [])
-      setMessages(mData || [])
+      const res = await fetch('/api/admin', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (!res.ok) {
+        // Not an admin (or session expired) — the server decides
+        router.replace('/')
+        return
+      }
+      const data = await res.json()
+      setFreelancerCount(data.stats.freelancers)
+      setClientCount(data.stats.clients)
+      setReviewCount(data.stats.reviews)
+      setMessageCount(data.stats.messages)
+      setFreelancers(data.freelancers)
+      setReviews(data.reviews)
+      setMessages(data.messages)
       setLoading(false)
     }
     fetchData()
-  }, [authUser, authLoading, router])
+  }, [authUser, session, authLoading, router])
+
+  async function adminDelete(type, id) {
+    const res = await fetch(`/api/admin?type=${type}&id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      alert(body.error || 'Delete failed. Please try again.')
+      return false
+    }
+    return true
+  }
 
   async function deleteFreelancer(id) {
     if (!confirm('Delete this freelancer and all their data? This cannot be undone.')) return
     setDeletingId(id)
-    await Promise.all([
-      supabase.from('services').delete().eq('freelancer_id', id),
-      supabase.from('reviews').delete().eq('freelancer_id', id),
-      supabase.from('messages').delete().eq('freelancer_id', id),
-    ])
-    await supabase.from('freelancers').delete().eq('id', id)
-    setFreelancers(prev => prev.filter(f => f.id !== id))
-    setFreelancerCount(prev => prev - 1)
+    if (await adminDelete('freelancer', id)) {
+      setFreelancers(prev => prev.filter(f => f.id !== id))
+      setFreelancerCount(prev => prev - 1)
+    }
     setDeletingId(null)
   }
 
   async function deleteReview(id) {
     if (!confirm('Delete this review?')) return
     setDeletingId(id)
-    await supabase.from('reviews').delete().eq('id', id)
-    setReviews(prev => prev.filter(r => r.id !== id))
-    setReviewCount(prev => prev - 1)
+    if (await adminDelete('review', id)) {
+      setReviews(prev => prev.filter(r => r.id !== id))
+      setReviewCount(prev => prev - 1)
+    }
     setDeletingId(null)
   }
 
   async function deleteMessage(id) {
     if (!confirm('Delete this message?')) return
     setDeletingId(id)
-    await supabase.from('messages').delete().eq('id', id)
-    setMessages(prev => prev.filter(m => m.id !== id))
-    setMessageCount(prev => prev - 1)
+    if (await adminDelete('message', id)) {
+      setMessages(prev => prev.filter(m => m.id !== id))
+      setMessageCount(prev => prev - 1)
+    }
     setDeletingId(null)
   }
 

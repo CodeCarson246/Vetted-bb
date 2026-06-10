@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import SearchEmptyState from '@/components/SearchEmptyState'
 import Tooltip from '@/components/Tooltip'
 import { formatParish } from '@/lib/formatParish'
+import { parsePrice } from '@/lib/price'
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #00267F, #1a3f9e)',
@@ -32,7 +33,9 @@ function StarRating({ rating }) {
 
 function getSortedServices(services, sortOrder) {
   if (!services || services.length === 0) return []
-  const sorted = [...services].sort((a, b) => parseInt(a.price, 10) - parseInt(b.price, 10))
+  // parsePrice handles formatted strings ("$250", "From 100") — a plain
+  // parseInt would return NaN for those and silently break the sort.
+  const sorted = [...services].sort((a, b) => (parsePrice(a.price) ?? Infinity) - (parsePrice(b.price) ?? Infinity))
   return sortOrder === 'price_high' ? sorted.reverse() : sorted
 }
 
@@ -211,7 +214,7 @@ function FreelancerCard({ f, getMinPrice, sortBy }) {
               <div key={svc.id} style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1.8, marginTop: i > 0 ? 4 : 0 }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#00267F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{svc.name}</span>
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F', flexShrink: 0, marginLeft: 6 }}>
-                  · ${Number.isInteger(svc.price) ? svc.price : parseFloat(svc.price).toFixed(0)}{svc.price_type === 'starting_from' ? '+' : ''}
+                  · ${parsePrice(svc.price)?.toFixed(0) ?? '—'}{svc.price_type === 'starting_from' ? '+' : ''}
                 </span>
               </div>
             ))}
@@ -224,7 +227,7 @@ function FreelancerCard({ f, getMinPrice, sortBy }) {
             {displayServices.map(svc => (
               <span key={svc.id} style={{ fontSize: '0.78rem' }}>
                 <span style={{ fontWeight: 500, color: '#00267F' }}>{svc.name}</span>
-                <span style={{ fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>{' · $'}{Number.isInteger(svc.price) ? svc.price : parseFloat(svc.price).toFixed(0)}{svc.price_type === 'starting_from' ? '+' : ''}</span>
+                <span style={{ fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>{' · $'}{parsePrice(svc.price)?.toFixed(0) ?? '—'}{svc.price_type === 'starting_from' ? '+' : ''}</span>
               </span>
             ))}
           </div>
@@ -279,13 +282,13 @@ function SearchPage() {
   }
 
   const getMinPrice = (f) => {
-    if (!f.services || f.services.length === 0) return null
-    return Math.min(...f.services.map(s => parseInt(s.price, 10)))
+    const prices = (f.services || []).map(s => parsePrice(s.price)).filter(p => p !== null)
+    return prices.length > 0 ? Math.min(...prices) : null
   }
 
   const getMaxPrice = (f) => {
-    if (!f.services || f.services.length === 0) return null
-    return Math.max(...f.services.map(s => parseInt(s.price, 10)))
+    const prices = (f.services || []).map(s => parsePrice(s.price)).filter(p => p !== null)
+    return prices.length > 0 ? Math.max(...prices) : null
   }
 
   const filtered = allFreelancers
@@ -312,10 +315,10 @@ function SearchPage() {
         const services = f.services || []
         const thresholds = { u100: 100, u250: 250, u500: 500, u1000: 1000 }
         if (budget === 'o1000') {
-          if (!services.some(s => parseInt(s.price, 10) >= 1000)) return false
+          if (!services.some(s => (parsePrice(s.price) ?? -1) >= 1000)) return false
         } else {
           const max = thresholds[budget]
-          if (!services.some(s => parseInt(s.price, 10) <= max)) return false
+          if (!services.some(s => { const p = parsePrice(s.price); return p !== null && p <= max })) return false
         }
       }
 

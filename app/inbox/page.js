@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
+import { getQuoteId } from '@/lib/quoteReply'
+import { parsePrice } from '@/lib/price'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -39,8 +41,6 @@ export default function Inbox() {
   const [quoteClientName, setQuoteClientName] = useState('')
   const [quoteClientEmail, setQuoteClientEmail] = useState('')
   const [quoteToast, setQuoteToast] = useState(null)
-  const [replyMenuOpen, setReplyMenuOpen] = useState(null)
-  const [replyDeleteConfirm, setReplyDeleteConfirm] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [confirmDeleteReplyId, setConfirmDeleteReplyId] = useState(null)
   const [deleteConfirmMsg, setDeleteConfirmMsg] = useState(null)
@@ -49,13 +49,6 @@ export default function Inbox() {
   const [confirmDeleteQuoteId, setConfirmDeleteQuoteId] = useState(null)
 
   const unreadCount = messages.filter(m => !m.read).length
-
-  useEffect(() => {
-    if (!replyMenuOpen) return
-    function close() { setReplyMenuOpen(null) }
-    document.addEventListener('click', close)
-    return () => document.removeEventListener('click', close)
-  }, [replyMenuOpen])
 
   useEffect(() => {
     const handleClick = () => setOpenMenuId(null)
@@ -160,7 +153,7 @@ export default function Inbox() {
   }
 
   function addServiceToQuote(service) {
-    const price = parseFloat(service.price?.replace(/[^0-9.]/g, '')) || ''
+    const price = parsePrice(service.price) ?? ''
     const newItem = {
       description: service.name + (service.description ? ' — ' + service.description : ''),
       qty: 1,
@@ -384,11 +377,14 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
       return
     }
 
+    // quote_id is the real link; the body is a readable fallback for
+    // any client that doesn't resolve the quote.
     await supabase.from('message_replies').insert({
       message_id: quoteMsg.id,
       sender_name: profile.name,
       sender_user_id: user?.id,
-      body: `__QUOTE__${savedQuote.id}`,
+      body: `Sent quote ${quoteNumber}`,
+      quote_id: savedQuote.id,
     })
 
     const recipientName = quoteClientName
@@ -462,9 +458,7 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
       .eq('message_id', msg.id)
       .order('created_at', { ascending: true })
     setReplies(prev => ({ ...prev, [msg.id]: r || [] }))
-    const quoteIds = (r || [])
-      .filter(rep => rep.body.startsWith('__QUOTE__'))
-      .map(rep => rep.body.replace('__QUOTE__', ''))
+    const quoteIds = (r || []).map(getQuoteId).filter(Boolean)
     if (quoteIds.length > 0) {
       const { data: qs } = await supabase
         .from('quotes')
@@ -710,8 +704,8 @@ ${q.notes?.trim()?`<table width="100%" style="margin-bottom:24px"><tr><td style=
                       {(replies[msg.id] || []).length > 0 && (
                         <div className="mt-4 flex flex-col gap-3">
                           {(replies[msg.id] || []).map(r => {
-                            const isQuote = r.body.startsWith('__QUOTE__')
-                            const quoteId = isQuote ? r.body.replace('__QUOTE__', '') : null
+                            const quoteId = getQuoteId(r)
+                            const isQuote = !!quoteId
                             const quoteData = quoteId ? (threadQuotes[quoteId] || null) : null
                             if (isQuote && quoteData) {
                               return (

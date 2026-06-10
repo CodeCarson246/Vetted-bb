@@ -59,7 +59,6 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
         .select('*')
         .eq('freelancer_id', freelancerId)
         .order('start_time', { ascending: true })
-      console.log('[AvailabilitySettings] blocks fetched:', b)
       setBlocks(b || [])
 
       setLoading(false)

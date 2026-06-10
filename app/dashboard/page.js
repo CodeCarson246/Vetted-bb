@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
+import { getQuoteId } from '@/lib/quoteReply'
 import Tooltip from '@/components/Tooltip'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
 import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
@@ -239,9 +240,7 @@ function DashboardInner() {
       .eq('message_id', msg.id)
       .order('created_at', { ascending: true })
     setClientThreadReplies(prev => ({ ...prev, [msg.id]: r || [] }))
-    const quoteIds = (r || [])
-      .filter(rep => rep.body.startsWith('__QUOTE__'))
-      .map(rep => rep.body.replace('__QUOTE__', ''))
+    const quoteIds = (r || []).map(getQuoteId).filter(Boolean)
     if (quoteIds.length > 0) {
       const { data: qs } = await supabase
         .from('quotes')
@@ -274,34 +273,26 @@ function DashboardInner() {
 
     const skills = skillsInput.split(',').map(s => s.trim()).filter(Boolean)
 
+    const updatePayload = {
+      bio,
+      years_experience: yearsExperience === '' ? null : Number(yearsExperience),
+      qualifications: qualifications.trim() || null,
+      hourly_rate: hourlyRate === '' ? null : Number(hourlyRate),
+      available,
+      skills,
+      category,
+      location,
+    }
+
     const { error } = await supabase
       .from('freelancers')
-      .update({
-        bio,
-        years_experience: yearsExperience === '' ? null : Number(yearsExperience),
-        qualifications: qualifications.trim() || null,
-        hourly_rate: hourlyRate,
-        available,
-        skills,
-        category,
-        location,
-      })
+      .update(updatePayload)
       .eq('user_id', user.id)
 
     if (error) {
       setToast({ message: 'Something went wrong. Please try again.', type: 'error' })
     } else {
-      setProfile(prev => ({
-        ...prev,
-        bio,
-        years_experience: yearsExperience === '' ? null : Number(yearsExperience),
-        qualifications: qualifications.trim() || null,
-        hourly_rate: hourlyRate,
-        available,
-        skills,
-        category,
-        location,
-      }))
+      setProfile(prev => ({ ...prev, ...updatePayload }))
       setShowEditForm(false)
       setToast({ message: 'Profile updated successfully', type: 'success' })
     }
@@ -343,10 +334,8 @@ function DashboardInner() {
     }
 
     const newProfileId = data.id
-    console.log('Freelancer profile created:', newProfileId)
 
     if (createServices.length > 0) {
-      console.log('Inserting services:', createServices)
       const results = await Promise.all(
         createServices.map(svc =>
           supabase.from('services').insert({
@@ -359,14 +348,10 @@ function DashboardInner() {
           }).select().single()
         )
       )
-      console.log('Service insert results:', results)
       const insertErrors = results.filter(r => r.error)
       if (insertErrors.length > 0) {
-        console.error('Service insert errors:', insertErrors)
         setCreateError('Profile created but some services failed to save. You can add them from your dashboard.')
       }
-    } else {
-      console.log('No services to insert')
     }
 
     router.push(`/freelancers/${newProfileId}`)
@@ -402,6 +387,9 @@ function DashboardInner() {
     }
     setAvatarUploading(true)
 
+    // Path must start with the user's uid so the storage RLS policy
+    // ('<uid>.<ext>') allows the write. One file per user — upsert
+    // replaces it instead of orphaning old avatars.
     const ext = file.name.split('.').pop().toLowerCase()
     const path = `${user.id}.${ext}`
 
@@ -445,6 +433,7 @@ function DashboardInner() {
     const { error } = await supabase.from('reviews').insert({
       freelancer_id: profile.id,
       author: clientName,
+      author_user_id: user.id,
       rating: clientRating,
       comment: clientComment,
       type: 'freelancer',
@@ -704,6 +693,9 @@ function DashboardInner() {
     setPortfolioCompressing(false)
 
     setPortfolioImageUploading(true)
+
+    // First folder must be the user's uid for the storage RLS policy;
+    // random sanitized filename — never raw user filenames in paths.
     const ext = file.name.split('.').pop().toLowerCase()
     const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     const { error: uploadError } = await supabase.storage
@@ -801,7 +793,6 @@ function DashboardInner() {
   async function handleDeleteProfile() {
     setDeleting(true)
     const freelancerId = profile.id
-    console.log('[delete-profile] starting deletion for freelancer_id:', freelancerId)
     try {
       // Step 1: Delete storage files (portfolio images + display picture) — non-fatal, log and continue
       const allImages = services.flatMap(s => s.service_images || [])
@@ -814,19 +805,15 @@ function DashboardInner() {
           .filter(Boolean)
         if (paths.length > 0) {
           const { error: storageErr } = await supabase.storage.from('service-images').remove(paths)
-          if (storageErr) console.error('[delete-profile] step 1 portfolio storage error (non-fatal):', storageErr)
-          else console.log('[delete-profile] step 1 complete: removed', paths.length, 'portfolio image(s) from storage')
+          if (storageErr) console.error('[delete-profile] portfolio storage cleanup failed (non-fatal):', storageErr)
         }
-      } else {
-        console.log('[delete-profile] step 1 complete: no portfolio images in storage')
       }
       if (profile.avatar_url) {
         const parts = profile.avatar_url.split('/public/avatars/')
         if (parts.length > 1) {
           const avatarPath = decodeURIComponent(parts[1])
           const { error: avatarErr } = await supabase.storage.from('avatars').remove([avatarPath])
-          if (avatarErr) console.error('[delete-profile] step 1 display picture storage error (non-fatal):', avatarErr)
-          else console.log('[delete-profile] step 1 complete: display picture removed from storage')
+          if (avatarErr) console.error('[delete-profile] avatar storage cleanup failed (non-fatal):', avatarErr)
         }
       }
 
@@ -836,12 +823,10 @@ function DashboardInner() {
         const { error: siErr } = await supabase.from('service_images').delete().in('service_id', serviceIds)
         if (siErr) throw new Error(`step 2 service_images: ${siErr.message}`)
       }
-      console.log('[delete-profile] step 2 complete: service_images rows deleted')
 
       // Step 3: Delete services rows
       const { error: svcErr } = await supabase.from('services').delete().eq('freelancer_id', freelancerId)
       if (svcErr) throw new Error(`step 3 services: ${svcErr.message}`)
-      console.log('[delete-profile] step 3 complete: services rows deleted')
 
       // Step 4: Fetch message IDs, then delete message_replies (child must go before parent)
       const { data: msgs, error: msgFetchErr } = await supabase.from('messages').select('id').eq('freelancer_id', freelancerId)
@@ -851,22 +836,18 @@ function DashboardInner() {
         const { error: repErr } = await supabase.from('message_replies').delete().in('message_id', msgIds)
         if (repErr) throw new Error(`step 4 message_replies: ${repErr.message}`)
       }
-      console.log('[delete-profile] step 4 complete: message_replies deleted (', msgIds.length, 'thread(s))')
 
       // Step 5: Delete quotes rows
       const { error: quotesErr } = await supabase.from('quotes').delete().eq('freelancer_id', freelancerId)
       if (quotesErr) throw new Error(`step 5 quotes: ${quotesErr.message}`)
-      console.log('[delete-profile] step 5 complete: quotes deleted')
 
       // Step 6: Delete messages rows
       const { error: msgsErr } = await supabase.from('messages').delete().eq('freelancer_id', freelancerId)
       if (msgsErr) throw new Error(`step 6 messages: ${msgsErr.message}`)
-      console.log('[delete-profile] step 6 complete: messages deleted')
 
       // Step 7: Delete the freelancers row — reviews are handled automatically by ON DELETE SET NULL
       const { error: profileErr } = await supabase.from('freelancers').delete().eq('user_id', user.id)
       if (profileErr) throw new Error(`step 7 freelancers: ${profileErr.message}`)
-      console.log('[delete-profile] step 7 complete: freelancer profile deleted')
 
       // Clear local state — dashboard will show the create-profile onboarding automatically
       setProfile(null)
@@ -1094,8 +1075,8 @@ function DashboardInner() {
                         {(clientThreadReplies[msg.id] || []).length > 0 && (
                           <div className="mt-3 flex flex-col gap-3">
                             {(clientThreadReplies[msg.id] || []).map(r => {
-                              const isQuote = r.body.startsWith('__QUOTE__')
-                              const quoteId = isQuote ? r.body.replace('__QUOTE__', '') : null
+                              const quoteId = getQuoteId(r)
+                              const isQuote = !!quoteId
                               const quoteData = quoteId ? (clientThreadQuotes[quoteId] || null) : null
 
                               if (isQuote && quoteData) {

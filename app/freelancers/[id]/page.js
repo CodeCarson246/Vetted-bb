@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
+import { parsePrice } from '@/lib/price'
 import Tooltip from '@/components/Tooltip'
 import WeekView from '@/components/calendar/WeekView'
 import MonthView from '@/components/calendar/MonthView'
@@ -79,13 +80,20 @@ export default function FreelancerProfile() {
     return false
   })
   const contactBtnRef = useRef(null)
+  const lightboxRef = useRef(null)
+
+  // Focus the lightbox once when it opens (so Escape works) — a callback
+  // ref would re-steal focus on every render.
+  useEffect(() => {
+    if (reviewPhotoLightbox) lightboxRef.current?.focus()
+  }, [reviewPhotoLightbox])
 
   function openLightbox(s) {
     setLightboxService(s)
     setLightboxSlide(0)
   }
 
-  const { user: authUser, loading: authLoading } = useAuth()
+  const { user: authUser, session, loading: authLoading } = useAuth()
 
   useEffect(() => {
     if (authLoading) return
@@ -112,10 +120,12 @@ export default function FreelancerProfile() {
         .single()
 
       if (f) {
-        const [{ data: r }, { data: s }, { count: msgCount }, { data: ab }, { data: as }, { data: portfolio }] = await Promise.all([
+        // Message contents are private under RLS; the inquiry count used
+        // for social proof comes from a security-definer function instead.
+        const [{ data: r }, { data: s }, { data: msgCount }, { data: ab }, { data: as }, { data: portfolio }] = await Promise.all([
           supabase.from('reviews').select('*').eq('freelancer_id', f.id),
           supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
-          supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', f.id),
+          supabase.rpc('freelancer_message_count', { f_id: f.id }),
           supabase.from('availability_blocks').select('*').eq('freelancer_id', f.id).order('start_time', { ascending: true }),
           supabase.from('availability_settings').select('*').eq('freelancer_id', f.id).single(),
           supabase.from('portfolio_items').select('*').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
@@ -142,7 +152,6 @@ export default function FreelancerProfile() {
         setServices(s || [])
         setPortfolioItems(portfolio || [])
         setMessageCount(msgCount || 0)
-        console.log('[FreelancerProfile] availability blocks fetched:', ab)
         setAvailabilityBlocks(ab || [])
         setAvailabilitySettings(as || null)
       }
@@ -176,10 +185,7 @@ export default function FreelancerProfile() {
   }
 
   function cartTotal() {
-    return cart.reduce((sum, item) => {
-      const num = parseFloat(item.price?.replace(/[^0-9.]/g, ''))
-      return sum + (isNaN(num) ? 0 : num)
-    }, 0)
+    return cart.reduce((sum, item) => sum + (parsePrice(item.price) ?? 0), 0)
   }
 
   async function submitContact(e) {
@@ -247,8 +253,7 @@ export default function FreelancerProfile() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          freelancerEmail: freelancer.email,
-          freelancerName: freelancer.name,
+          freelancer_id: freelancer.id,
           senderName,
           senderEmail,
           subject,
@@ -275,11 +280,12 @@ export default function FreelancerProfile() {
     if (!file) return
     const allowed = ['image/jpeg', 'image/png', 'image/webp']
     if (!allowed.includes(file.type) || file.size > 5 * 1024 * 1024) {
-      setReviewError('Photo must be a JPG or PNG under 5MB.')
+      setReviewError('Photo must be a JPG, PNG or WebP under 5MB.')
       return
     }
     setReviewImageUploading(true)
     setReviewError(null)
+    // Random sanitized filename — never put raw user filenames in storage paths
     const ext = file.name.split('.').pop().toLowerCase()
     const path = `${freelancer.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     const { error: uploadError } = await supabase.storage
@@ -310,24 +316,19 @@ export default function FreelancerProfile() {
     setReviewSubmitting(true)
     setReviewError(null)
 
-    let reviewerName = freelancerProfile?.name
-    if (!reviewerName) {
-      const { data: fp } = await supabase.from('freelancers').select('name').eq('user_id', user.id).single()
-      reviewerName = fp?.name
-    }
-    if (!reviewerName) reviewerName = user.user_metadata?.full_name || user.email.split('@')[0]
-
+    // Identity (author name, user id, date) is derived server-side from
+    // the JWT — the API rejects unauthenticated calls.
     const res = await fetch('/api/reviews', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token || ''}`,
+      },
       body: JSON.stringify({
         freelancer_id: freelancer.id,
-        author: reviewerName,
         rating: reviewRating,
         comment: reviewComment,
         service_name: reviewService || null,
-        type: 'client',
-        date: new Date().toISOString().split('T')[0],
         image_url: reviewImageUrl || null,
       }),
     })
@@ -1099,9 +1100,9 @@ export default function FreelancerProfile() {
                     {review.image_url && (
                       <img
                         src={review.image_url}
-                        alt="Review photo"
-                        className="mt-3 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-100"
-                        style={{ maxHeight: '200px', width: 'auto' }}
+                        alt={`Photo from ${review.reviewer_name || review.author}`}
+                        className="mt-3 rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                        style={{ width: '100%', maxWidth: '320px', height: 'auto', borderRadius: '12px', marginTop: '12px' }}
                         onClick={() => setReviewPhotoLightbox(review.image_url)}
                       />
                     )}
@@ -1174,31 +1175,41 @@ export default function FreelancerProfile() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Add a photo <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
+                <p className="text-xs text-gray-400 mb-2">Show the work that was done — this helps other clients and builds trust.</p>
                 {reviewImageUrl ? (
-                  <div className="relative inline-block">
+                  <div className="flex flex-col items-start gap-2">
                     <img
                       src={reviewImageUrl}
                       alt="Review photo preview"
-                      className="h-28 rounded-lg object-cover border border-gray-200 cursor-pointer"
+                      className="rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                      style={{ maxHeight: '160px', width: 'auto' }}
                       onClick={() => setReviewPhotoLightbox(reviewImageUrl)}
                     />
                     <button
                       type="button"
                       onClick={() => setReviewImageUrl('')}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
-                    >×</button>
+                      className="text-xs text-red-500 hover:text-red-700 underline"
+                    >Remove</button>
                   </div>
                 ) : (
-                  <label className={`flex items-center gap-2 cursor-pointer w-full px-4 py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-gray-400 transition-colors ${reviewImageUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {reviewImageUploading ? 'Uploading...' : 'Upload a photo of the work done'}
+                  <label
+                    className={`flex flex-col items-center justify-center gap-1.5 w-full cursor-pointer transition-colors ${reviewImageUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    style={{
+                      border: '2px dashed rgba(0,38,127,0.2)',
+                      borderRadius: '12px',
+                      padding: '20px',
+                      textAlign: 'center',
+                      background: 'rgba(0,38,127,0.02)',
+                    }}
+                  >
+                    <span style={{ fontSize: '1.5rem' }}>📷</span>
+                    <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>
+                      {reviewImageUploading ? 'Uploading...' : 'Upload a photo of the work done'}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>JPG, PNG or WebP · Max 5MB</span>
                     <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={reviewImageUploading} onChange={handleReviewImageUpload} />
                   </label>
                 )}
-                <p className="text-xs text-gray-400 mt-1.5">Show the work that was done — this helps other clients and builds trust.</p>
               </div>
 
               {reviewError && (
@@ -1511,13 +1522,16 @@ export default function FreelancerProfile() {
           className="fixed inset-0 z-50 flex items-center justify-center px-4"
           style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
           onClick={() => setReviewPhotoLightbox(null)}
+          onKeyDown={e => e.key === 'Escape' && setReviewPhotoLightbox(null)}
+          tabIndex={-1}
+          ref={lightboxRef}
         >
           <div className="relative max-w-3xl w-full" onClick={e => e.stopPropagation()}>
             <img
               src={reviewPhotoLightbox}
               alt="Review photo"
               className="w-full rounded-xl object-contain"
-              style={{ maxHeight: 'calc(100vh - 120px)' }}
+              style={{ maxWidth: '90vw', maxHeight: '90vh' }}
             />
             <button
               onClick={() => setReviewPhotoLightbox(null)}
