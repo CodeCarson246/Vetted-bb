@@ -27,6 +27,47 @@ export default function ClientMessages() {
   const [myReviews, setMyReviews] = useState([])
   const [toast, setToast] = useState(null)
   const [respondingQuoteId, setRespondingQuoteId] = useState(null)
+  const [replySending, setReplySending] = useState(false)
+
+  async function sendReply(msg) {
+    const text = (newReplies[msg.id] || '').trim()
+    if (!text) return
+    setReplySending(true)
+    const senderName = user.user_metadata?.full_name || user.email.split('@')[0]
+    const { data, error } = await supabase
+      .from('message_replies')
+      .insert({
+        message_id: msg.id,
+        sender_name: senderName,
+        sender_user_id: user.id,
+        body: text,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      setToast({ message: 'Could not send your reply. Please try again.', type: 'error' })
+    } else {
+      setReplies(prev => ({ ...prev, [msg.id]: [...(prev[msg.id] || []), data] }))
+      setNewReplies(prev => ({ ...prev, [msg.id]: '' }))
+      // Resurface the thread as unread in the freelancer's inbox
+      supabase.from('messages').update({ read: false }).eq('id', msg.id).then(() => {})
+      // Email + push notification to the freelancer (fire-and-forget)
+      fetch('/api/notify-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          freelancer_id: msg.freelancers?.id || msg.freelancer_id,
+          senderName,
+          senderEmail: user.email,
+          subject: `Re: ${msg.subject || 'your conversation'}`,
+          message: text,
+        }),
+      }).catch(() => {})
+    }
+    setReplySending(false)
+    setTimeout(() => setToast(null), 4000)
+  }
 
   async function respondToQuote(quoteId, status) {
     setRespondingQuoteId(quoteId)
@@ -152,15 +193,28 @@ export default function ClientMessages() {
                   onClick={() => handleExpand(msg)}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+                    <a
+                      href={`/freelancers/${msg.freelancers?.id}`}
+                      onClick={e => e.stopPropagation()}
+                      title={`View ${msg.freelancers?.name || 'freelancer'}'s profile`}
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden hover:opacity-85 transition-opacity"
+                      style={{ backgroundColor: '#00267F' }}
+                    >
                       {msg.freelancers?.avatar_url
                         ? <img src={msg.freelancers.avatar_url} alt={msg.freelancers.name} className="w-full h-full object-cover" />
                         : (msg.freelancers?.name || '?').split(' ').map(n => n[0]).join('')}
-                    </div>
+                    </a>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-900">{msg.freelancers?.name || 'Freelancer'}</span>
+                          <a
+                            href={`/freelancers/${msg.freelancers?.id}`}
+                            onClick={e => e.stopPropagation()}
+                            className="text-sm font-semibold text-gray-900 hover:underline underline-offset-2"
+                            style={{ textDecorationColor: '#00267F' }}
+                          >
+                            {msg.freelancers?.name || 'Freelancer'}
+                          </a>
                           <span className="text-xs text-gray-400">{msg.freelancers?.trade}</span>
                           {(replies[msg.id] || []).length > 0 && (
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
@@ -267,15 +321,18 @@ export default function ClientMessages() {
 
                         if (isQuote && !quoteData) return null
 
+                        const isOwn = r.sender_user_id === user?.id
                         return (
                           <div key={r.id} className="flex items-start gap-3">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                              {msg.freelancers?.avatar_url
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: isOwn ? '#93b8ff' : '#00267F' }}>
+                              {isOwn
+                                ? (user?.user_metadata?.full_name || user?.email || '?')[0].toUpperCase()
+                                : msg.freelancers?.avatar_url
                                 ? <img src={msg.freelancers.avatar_url} alt={msg.freelancers.name} className="w-full h-full object-cover" />
                                 : (msg.freelancers?.name || '?')[0]?.toUpperCase()}
                             </div>
-                            <div className="flex-1 bg-white border border-gray-100 rounded-xl px-4 py-3">
-                              <p className="text-xs font-semibold text-gray-700 mb-1">{r.sender_name}</p>
+                            <div className={`flex-1 rounded-xl px-4 py-3 ${isOwn ? 'bg-gray-50' : 'bg-white border border-gray-100'}`}>
+                              <p className="text-xs font-semibold text-gray-700 mb-1">{isOwn ? 'You' : r.sender_name}</p>
                               <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
                               <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
@@ -286,6 +343,27 @@ export default function ClientMessages() {
                       {(replies[msg.id] || []).length === 0 && (
                         <p className="text-xs text-gray-400 text-center py-2">No replies yet. The freelancer will respond here.</p>
                       )}
+
+                      {/* Reply composer */}
+                      <div className="flex flex-col gap-2">
+                        <textarea
+                          value={newReplies[msg.id] || ''}
+                          onChange={e => setNewReplies(prev => ({ ...prev, [msg.id]: e.target.value }))}
+                          placeholder={`Reply to ${msg.freelancers?.name || 'the freelancer'}...`}
+                          rows={3}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
+                        />
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => sendReply(msg)}
+                            disabled={replySending || !newReplies[msg.id]?.trim()}
+                            className="text-sm font-semibold px-5 py-2 rounded-full hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                          >
+                            {replySending ? 'Sending…' : 'Send reply'}
+                          </button>
+                        </div>
+                      </div>
 
                       <a
                         href={`/freelancers/${msg.freelancers?.id}`}
