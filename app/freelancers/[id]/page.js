@@ -667,6 +667,7 @@ export default function FreelancerProfile() {
                     onClick={async () => {
                       const result = await toggleSaved(freelancer.id)
                       if (result === 'login') window.location.href = '/login'
+                      if (result === 'error') alert('Could not update your saved list. Please try again.')
                     }}
                     className="flex items-center justify-center gap-2 px-5 py-2 rounded-full font-semibold text-sm border-2 transition-colors text-center"
                     style={savedIds.has(freelancer.id)

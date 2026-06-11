@@ -257,6 +257,7 @@ function SearchPage() {
   async function handleToggleSave(freelancerId) {
     const result = await toggleSaved(freelancerId)
     if (result === 'login') router.push('/login')
+    if (result === 'error') alert('Could not update your saved list. Please try again.')
   }
 
   useEffect(() => {

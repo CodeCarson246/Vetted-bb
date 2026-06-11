@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { printSavedQuote } from '@/lib/printQuote'
 
 const STATUS_STYLES = {
   sent:     { backgroundColor: '#EEF2FF', color: '#00267F' },
@@ -42,7 +43,7 @@ export default function QuotesPage() {
     async function load() {
       const { data: p } = await supabase
         .from('freelancers')
-        .select('id, name, company_name')
+        .select('id, name, company_name, trade, location, email, avatar_url')
         .eq('user_id', authUser.id)
         .maybeSingle()
 
@@ -217,6 +218,13 @@ export default function QuotesPage() {
                         Sent to {q.client_email || 'client'}
                       </p>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => printSavedQuote(q, profile)}
+                          className="text-xs font-semibold px-3.5 py-1.5 rounded-full hover:opacity-90 transition-opacity"
+                          style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                        >
+                          Download PDF
+                        </button>
                         {q.status !== 'accepted' && (
                           <button
                             onClick={() => updateStatus(q.id, 'accepted')}
