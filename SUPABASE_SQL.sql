@@ -293,3 +293,24 @@ CREATE POLICY "Clients can respond to quotes"
 --   UPDATE freelancers SET verified = true WHERE id = '<freelancer-id>';
 ALTER TABLE freelancers
   ADD COLUMN IF NOT EXISTS verified boolean DEFAULT false;
+
+-- ============================================================
+-- SECTION 4 — PUSH NOTIFICATIONS (2026-06-11)
+-- Run before deploying the web-push code.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id           uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id      uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  endpoint     text        NOT NULL UNIQUE,
+  subscription jsonb       NOT NULL,
+  created_at   timestamptz DEFAULT now()
+);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own push subscriptions" ON push_subscriptions;
+CREATE POLICY "Users manage own push subscriptions"
+  ON push_subscriptions FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());

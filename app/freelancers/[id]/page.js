@@ -513,13 +513,13 @@ export default function FreelancerProfile() {
       </div>
 
       {/* ── Hero banner ── */}
-      <div className="w-full" style={{ backgroundColor: '#00267F' }}>
+      <div className="w-full" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
         <div className="max-w-4xl mx-auto px-6 sm:px-8 py-10">
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
 
             {/* Avatar */}
             <div className="flex flex-col items-center gap-1.5">
-              <div className="w-24 h-24 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-2xl font-bold border-4 border-white/30" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }}>
+              <div className="w-24 h-24 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-2xl font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', boxShadow: '0 0 0 4px rgba(249,192,0,0.45)' }}>
                 {freelancer.avatar_url
                   ? <img src={freelancer.avatar_url} alt={freelancer.name} className="w-full h-full object-cover" />
                   : freelancer.name.split(' ').map(n => n[0]).join('')}
@@ -535,7 +535,22 @@ export default function FreelancerProfile() {
             <div className="flex-1 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-white capitalize">{freelancer.name}</h1>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-2xl font-bold text-white capitalize">{freelancer.name}</h1>
+                    {freelancer.verified && (
+                      <span
+                        className="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
+                        style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                        title="Identity and work verified by Vetted.bb"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#00267F" />
+                          <path d="M9 12l2 2 4-4" stroke="#F9C000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Vetted
+                      </span>
+                    )}
+                  </div>
                   {freelancer.company_name && freelancer.company_name.trim().length > 3 && (
                     <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>{freelancer.company_name}</p>
                   )}
@@ -607,20 +622,20 @@ export default function FreelancerProfile() {
                 <div className="flex flex-col items-stretch sm:items-end gap-2 flex-shrink-0">
                   {services.length > 0 && (() => {
                     const minSvc = services.reduce((acc, s) => {
-                      const n = parseFloat(String(s.price).replace(/[^0-9.]/g, ''))
-                      if (isNaN(n)) return acc
+                      const n = parsePrice(s.price)
+                      if (n === null) return acc
                       if (!acc) return s
-                      return n < parseFloat(String(acc.price).replace(/[^0-9.]/g, '')) ? s : acc
+                      return n < parsePrice(acc.price) ? s : acc
                     }, null)
                     if (!minSvc) return null
-                    const n = parseFloat(String(minSvc.price).replace(/[^0-9.]/g, ''))
-                    if (isNaN(n)) return null
+                    const n = parsePrice(minSvc.price)
+                    if (n === null) return null
                     const fmt = `$${Number.isInteger(n) ? n : n.toFixed(0)}`
                     const isStarting = minSvc.price_type === 'starting_from'
                     return (
                       <span
                         className="text-xs font-semibold px-3 py-1 rounded-full border self-center sm:self-end"
-                        style={{ color: '#00267F', borderColor: '#00267F' }}
+                        style={{ color: '#F9C000', borderColor: 'rgba(249,192,0,0.5)', backgroundColor: 'rgba(249,192,0,0.1)' }}
                       >
                         Services from {isStarting ? `${fmt}+` : fmt}
                       </span>

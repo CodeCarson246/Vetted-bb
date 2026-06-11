@@ -54,6 +54,11 @@ h1, h2, h3, h4 {
   border-radius: 4px;
 }
 
+/* Anchor targets clear the sticky nav when jumped to */
+[id] {
+  scroll-margin-top: 88px;
+}
+
 /* Soft entry animation — add .animate-rise (+ optional .rise-delay-N) */
 @keyframes rise {
   from { opacity: 0; transform: translateY(14px); }

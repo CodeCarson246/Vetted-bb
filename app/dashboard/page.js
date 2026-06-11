@@ -8,6 +8,7 @@ import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
 import { getQuoteId } from '@/lib/quoteReply'
 import Tooltip from '@/components/Tooltip'
+import PushToggle from '@/components/PushToggle'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
 import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
 
@@ -60,6 +61,7 @@ function DashboardInner() {
   const [confirmRemovePhoto, setConfirmRemovePhoto] = useState(false)
   const avatarFileInputRef = useRef(null)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [quoteCount, setQuoteCount] = useState(0)
   const [clientMessages, setClientMessages] = useState([])
   const [clientThreadReplies, setClientThreadReplies] = useState({})
   const [clientThreadQuotes, setClientThreadQuotes] = useState({})
@@ -180,7 +182,7 @@ function DashboardInner() {
       if (userRole === 'client') {
         const [{ data: msgs }, { data: rLeft }, { data: topF }] = await Promise.all([
           supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location)').eq('sender_email', user.email).order('created_at', { ascending: false }),
-          supabase.from('reviews').select('*').eq('author_email', user.email).order('date', { ascending: false }),
+          supabase.from('reviews').select('*').eq('author_user_id', user.id).order('date', { ascending: false }),
           supabase.from('freelancers').select('id, name, trade, avatar_url, rating, min_price').order('rating', { ascending: false }).limit(3),
         ])
         setClientMessages(msgs || [])
@@ -212,12 +214,14 @@ function DashboardInner() {
             .order('date', { ascending: false })
           setReviews(r || [])
 
-          const [{ count }, { data: svc }, { data: portfolio }] = await Promise.all([
+          const [{ count }, { count: qCount }, { data: svc }, { data: portfolio }] = await Promise.all([
             supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false),
+            supabase.from('quotes').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id),
             supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
             supabase.from('portfolio_items').select('*').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
           ])
           setUnreadCount(count || 0)
+          setQuoteCount(qCount || 0)
           setServices(svc || [])
           setPortfolioItems(portfolio || [])
         }
@@ -927,7 +931,7 @@ function DashboardInner() {
 
             {/* Welcome card - navy hero */}
             <div className="rounded-2xl overflow-hidden shadow-sm">
-              <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5" style={{ backgroundColor: '#00267F' }}>
+              <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
                 <div>
                   <p className="text-sm font-medium mb-1" style={{ color: '#93b8ff' }}>Welcome back</p>
                   <h1 className="text-2xl font-bold text-white leading-tight">
@@ -1195,11 +1199,57 @@ function DashboardInner() {
               </div>
             )}
 
+            {/* At-a-glance stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {[
+                { label: 'Rating', value: profile.review_count > 0 ? `★ ${profile.rating}` : '—', href: '#reviews-section' },
+                { label: 'Reviews', value: profile.review_count || 0, href: '#reviews-section' },
+                { label: 'Unread inquiries', value: unreadCount, href: '/inbox', highlight: unreadCount > 0 },
+                { label: 'Quotes sent', value: quoteCount, href: '/quotes' },
+              ].map(stat => (
+                <a
+                  key={stat.label}
+                  href={stat.href}
+                  className="bg-white rounded-2xl border border-gray-100 p-4 text-center transition-all hover:shadow-md"
+                  style={{ borderTop: `3px solid ${stat.highlight ? '#F9C000' : '#00267F'}`, textDecoration: 'none' }}
+                >
+                  <p className="text-2xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{stat.value}</p>
+                  <p className="text-xs text-gray-500 mt-1">{stat.label}</p>
+                </a>
+              ))}
+            </div>
+
+            {/* Push notifications opt-in */}
+            <div className="mb-6">
+              <PushToggle userId={user.id} />
+            </div>
+
+            {/* Section quick-nav */}
+            <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+              {[
+                ['#edit-profile-section', 'Profile'],
+                ['#services-section', 'Services'],
+                ['#portfolio-section', 'Previous work'],
+                ['#availability-section', 'Availability'],
+                ['#reviews-section', 'Reviews'],
+                ['#account-settings', 'Settings'],
+              ].map(([href, label]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="flex-shrink-0 px-4 py-2 rounded-full text-xs font-semibold bg-white border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors"
+                  style={{ textDecoration: 'none' }}
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+
             {/* Profile card - navy hero */}
             <div id="edit-profile-section" className="rounded-2xl mb-6 overflow-hidden" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
-              <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start" style={{ backgroundColor: '#00267F' }}>
+              <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
                 {/* Avatar */}
-                <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 overflow-hidden" style={{ boxShadow: '0 0 0 4px rgba(255,255,255,0.2)' }}>
+                <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 overflow-hidden" style={{ boxShadow: '0 0 0 4px rgba(249,192,0,0.45)' }}>
                   {profile.avatar_url
                     ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                     : profile.name.split(' ').map(n => n[0]).join('')}
@@ -1464,7 +1514,7 @@ function DashboardInner() {
             </div>
 
             {/* My services */}
-            <div className="bg-white rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+            <div id="services-section" className="bg-white rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900">My services</h2>
                 {!showServiceForm && (
@@ -1661,7 +1711,7 @@ function DashboardInner() {
             </div>
 
             {/* Previous Work */}
-            <div className="bg-white rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+            <div id="portfolio-section" className="bg-white rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                 <div>
                   <h2 className="font-semibold text-gray-900">Previous Work</h2>
@@ -1813,7 +1863,7 @@ function DashboardInner() {
             </div>
 
             {/* Availability */}
-            <div className="bg-white rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+            <div id="availability-section" className="bg-white rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
                 <h2 className="font-semibold text-gray-900">Availability calendar</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Manage your busy blocks and control what clients see on your profile.</p>
@@ -1830,7 +1880,7 @@ function DashboardInner() {
             </div>
 
             {/* Tabs */}
-            <div className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+            <div id="reviews-section" className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="flex border-b border-gray-100 px-2">
                 {['overview', 'reviews', 'leave-a-review'].map(tab => (
                   <button
@@ -2437,7 +2487,7 @@ function DashboardInner() {
         )}
 
         {/* Account settings — shown for all roles */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mt-6">
+        <div id="account-settings" className="bg-white rounded-2xl border border-gray-100 overflow-hidden mt-6">
           <button
             onClick={() => setSettingsOpen(v => !v)}
             className="w-full flex items-center justify-between px-6 sm:px-8 py-5 text-left hover:bg-gray-50 transition-colors"
