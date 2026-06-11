@@ -963,6 +963,9 @@ function DashboardInner() {
               </div>
             </div>
 
+            {/* Push notifications opt-in — clients get notified of replies and quotes */}
+            <PushToggle userId={user.id} />
+
             {/* Top rated freelancers */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">

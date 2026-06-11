@@ -1,45 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
-import webpush from 'web-push'
 import { escapeHtml } from '@/lib/escapeHtml'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
+import { sendPushToUser } from '@/lib/serverPush'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-/**
- * Browser push to every device the freelancer enabled notifications on.
- * Requires the service-role key (subscriptions are RLS-protected) and
- * VAPID keys; silently skips if either is missing. Expired/revoked
- * subscriptions (404/410) are pruned as we go.
- */
-async function sendPush(freelancerUserId, payload) {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-  const vapidPrivate = process.env.VAPID_PRIVATE_KEY
-  if (!serviceKey || !vapidPublic || !vapidPrivate || !freelancerUserId) return
-
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:hello@vetted.bb',
-    vapidPublic,
-    vapidPrivate,
-  )
-
-  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
-  const { data: subs } = await admin
-    .from('push_subscriptions')
-    .select('id, subscription')
-    .eq('user_id', freelancerUserId)
-
-  await Promise.all((subs || []).map(async (row) => {
-    try {
-      await webpush.sendNotification(row.subscription, JSON.stringify(payload))
-    } catch (err) {
-      if (err.statusCode === 404 || err.statusCode === 410) {
-        await admin.from('push_subscriptions').delete().eq('id', row.id)
-      }
-    }
-  }))
-}
 
 async function sendEmail({ to, subject, html }) {
   const res = await fetch('https://api.resend.com/emails', {
@@ -97,7 +62,7 @@ export async function POST(request) {
 
     // Browser push first (fire-and-forget) — the email below is the
     // reliable channel, push is the instant one.
-    sendPush(freelancer.user_id, {
+    sendPushToUser(freelancer.user_id, {
       title: `New message from ${senderName}`,
       body: subject,
       url: '/inbox',

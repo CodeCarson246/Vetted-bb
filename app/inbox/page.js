@@ -373,6 +373,13 @@ export default function Inbox() {
       setReplies(prev => ({ ...prev, [quoteMsg.id]: [...(prev[quoteMsg.id] || []), quoteReply] }))
     }
 
+    // Email + push the client about the new quote (fire-and-forget)
+    fetch('/api/notify-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message_id: quoteMsg.id, kind: 'quote' }),
+    }).catch(() => {})
+
     const recipientName = quoteClientName
     setQuoteMsg(null)
     setQuoteToast(`Quote sent to ${recipientName}`)
@@ -424,6 +431,12 @@ export default function Inbox() {
     if (!error) {
       setReplies(prev => ({ ...prev, [msg.id]: [...(prev[msg.id] || []), data] }))
       setReplyText(prev => ({ ...prev, [msg.id]: '' }))
+      // Email + push the client (fire-and-forget)
+      fetch('/api/notify-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_id: msg.id, message: text }),
+      }).catch(() => {})
     }
     setReplySending(false)
   }
