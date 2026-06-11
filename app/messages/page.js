@@ -26,6 +26,23 @@ export default function ClientMessages() {
   const [newReplies, setNewReplies] = useState({})
   const [myReviews, setMyReviews] = useState([])
   const [toast, setToast] = useState(null)
+  const [respondingQuoteId, setRespondingQuoteId] = useState(null)
+
+  async function respondToQuote(quoteId, status) {
+    setRespondingQuoteId(quoteId)
+    const { error } = await supabase.from('quotes').update({ status }).eq('id', quoteId)
+    if (error) {
+      setToast({ message: 'Could not update the quote. Please try again.', type: 'error' })
+    } else {
+      setQuotes(prev => ({ ...prev, [quoteId]: { ...prev[quoteId], status } }))
+      setToast({
+        message: status === 'accepted' ? 'Quote accepted — the freelancer has been notified.' : 'Quote declined.',
+        type: 'success',
+      })
+    }
+    setRespondingQuoteId(null)
+    setTimeout(() => setToast(null), 4000)
+  }
 
   const { user: authUser, loading: authLoading } = useAuth()
 
@@ -213,9 +230,36 @@ export default function ClientMessages() {
                                     <p className="text-sm font-semibold text-gray-700">{new Date(quoteData.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                                   </div>
                                 </div>
-                                <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                                  {quoteData.status}
-                                </span>
+                                {quoteData.status === 'sent' ? (
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => respondToQuote(quoteData.id, 'accepted')}
+                                      disabled={respondingQuoteId === quoteData.id}
+                                      className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                                      style={{ backgroundColor: '#16a34a' }}
+                                    >
+                                      Accept
+                                    </button>
+                                    <button
+                                      onClick={() => respondToQuote(quoteData.id, 'declined')}
+                                      disabled={respondingQuoteId === quoteData.id}
+                                      className="text-xs font-semibold px-3.5 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-gray-500 transition-colors disabled:opacity-50"
+                                    >
+                                      Decline
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span
+                                    className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize"
+                                    style={quoteData.status === 'accepted'
+                                      ? { backgroundColor: '#DCFCE7', color: '#166534' }
+                                      : quoteData.status === 'declined'
+                                      ? { backgroundColor: '#FEE2E2', color: '#991B1B' }
+                                      : { backgroundColor: '#EEF2FF', color: '#00267F' }}
+                                  >
+                                    {quoteData.status}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           )

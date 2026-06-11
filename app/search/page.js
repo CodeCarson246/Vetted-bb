@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useSaved, HeartButton } from '@/lib/useSaved'
 import SearchEmptyState from '@/components/SearchEmptyState'
 import Tooltip from '@/components/Tooltip'
 import { formatParish } from '@/lib/formatParish'
@@ -39,7 +40,7 @@ function getSortedServices(services, sortOrder) {
   return sortOrder === 'price_high' ? sorted.reverse() : sorted
 }
 
-function FreelancerCard({ f, getMinPrice, sortBy }) {
+function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
   const displayServices = getSortedServices(f.services, sortBy).slice(0, 5)
   const minPrice = getMinPrice(f)
   const hasServices = displayServices.length > 0
@@ -121,6 +122,13 @@ function FreelancerCard({ f, getMinPrice, sortBy }) {
                 <span className={`text-xs font-medium ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
                   {f.available ? 'Available' : 'Unavailable'}
                 </span>
+              </span>
+              {/* Save heart */}
+              <span style={{ marginLeft: 'auto' }}>
+                <HeartButton
+                  saved={saved}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); onToggleSave(f.id) }}
+                />
               </span>
             </div>
 
@@ -239,10 +247,17 @@ function FreelancerCard({ f, getMinPrice, sortBy }) {
 
 function SearchPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { savedIds, toggleSaved } = useSaved()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
   const [allFreelancers, setAllFreelancers] = useState([])
   const [loading, setLoading] = useState(true)
+
+  async function handleToggleSave(freelancerId) {
+    const result = await toggleSaved(freelancerId)
+    if (result === 'login') router.push('/login')
+  }
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -481,7 +496,7 @@ function SearchPage() {
               /* List container */
               <div style={{ background: '#F8F9FB', padding: '24px 0', borderRadius: 12 }}>
                 {filtered.map(f => (
-                  <FreelancerCard key={f.id} f={f} getMinPrice={getMinPrice} sortBy={sortBy} />
+                  <FreelancerCard key={f.id} f={f} getMinPrice={getMinPrice} sortBy={sortBy} saved={savedIds.has(f.id)} onToggleSave={handleToggleSave} />
                 ))}
               </div>
             )}

@@ -256,3 +256,31 @@ GRANT EXECUTE ON FUNCTION public.freelancer_message_count(uuid) TO anon, authent
 --
 -- CREATE POLICY "Logged-in users upload review photos" ON storage.objects FOR INSERT
 --   WITH CHECK (bucket_id = 'review-photos' AND auth.role() = 'authenticated');
+
+-- ============================================================
+-- SECTION 3 — SAVED PROFESSIONALS + QUOTE RESPONSES (2026-06-11)
+-- Run before deploying the saved-professionals / quotes-page code.
+-- ============================================================
+
+-- ── 3.1 Saved professionals (client favourites) ──
+CREATE TABLE IF NOT EXISTS saved_professionals (
+  id            uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id       uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  freelancer_id uuid        NOT NULL REFERENCES freelancers(id) ON DELETE CASCADE,
+  created_at    timestamptz DEFAULT now(),
+  UNIQUE (user_id, freelancer_id)
+);
+
+ALTER TABLE saved_professionals ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own saved list" ON saved_professionals;
+CREATE POLICY "Users manage own saved list"
+  ON saved_professionals FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+-- ── 3.2 Clients can accept/decline quotes addressed to them ──
+DROP POLICY IF EXISTS "Clients can respond to quotes" ON quotes;
+CREATE POLICY "Clients can respond to quotes"
+  ON quotes FOR UPDATE
+  USING (client_email IS NOT NULL AND client_email = auth.jwt()->>'email');

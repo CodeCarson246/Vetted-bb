@@ -26,8 +26,8 @@ export default function SiteFooter() {
       heading: 'For Clients',
       links: [
         { label: 'Browse Professionals', href: '/search' },
+        { label: 'Saved Professionals', href: '/saved' },
         { label: 'How It Works', href: '/#how-it-works' },
-        { label: 'All Categories', href: '/search' },
         { label: 'Leave a Review', href: '/dashboard' },
       ],
     },
@@ -36,7 +36,7 @@ export default function SiteFooter() {
       links: [
         { label: 'Create Profile', href: '/signup?role=freelancer' },
         { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Quote Builder', href: '/dashboard' },
+        { label: 'My Quotes', href: '/quotes' },
         { label: 'Get Verified', href: '/dashboard' },
       ],
     },
@@ -54,6 +54,12 @@ export default function SiteFooter() {
 
   return (
     <footer style={{ backgroundColor: '#001652', color: 'white' }}>
+      {/* Flag-inspired accent stripe */}
+      <div style={{ display: 'flex', height: 4 }} aria-hidden="true">
+        <div style={{ flex: 1, backgroundColor: '#00267F' }} />
+        <div style={{ flex: 1, backgroundColor: '#F9C000' }} />
+        <div style={{ flex: 1, backgroundColor: '#00267F' }} />
+      </div>
       {/* Top section */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '64px 24px 48px' }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">

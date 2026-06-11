@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
+import { useSaved } from '@/lib/useSaved'
 import Tooltip from '@/components/Tooltip'
 import WeekView from '@/components/calendar/WeekView'
 import MonthView from '@/components/calendar/MonthView'
@@ -94,6 +95,7 @@ export default function FreelancerProfile() {
   }
 
   const { user: authUser, session, loading: authLoading } = useAuth()
+  const { savedIds, toggleSaved } = useSaved()
 
   useEffect(() => {
     if (authLoading) return
@@ -661,6 +663,27 @@ export default function FreelancerProfile() {
                     </svg>
                     Share on WhatsApp
                   </a>
+                  <button
+                    onClick={async () => {
+                      const result = await toggleSaved(freelancer.id)
+                      if (result === 'login') window.location.href = '/login'
+                    }}
+                    className="flex items-center justify-center gap-2 px-5 py-2 rounded-full font-semibold text-sm border-2 transition-colors text-center"
+                    style={savedIds.has(freelancer.id)
+                      ? { borderColor: '#ef4444', color: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)' }
+                      : { borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}
+                  >
+                    <svg
+                      className="w-4 h-4 flex-shrink-0"
+                      viewBox="0 0 24 24"
+                      fill={savedIds.has(freelancer.id) ? '#ef4444' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    {savedIds.has(freelancer.id) ? 'Saved' : 'Save'}
+                  </button>
                 </div>
               </div>
             </div>

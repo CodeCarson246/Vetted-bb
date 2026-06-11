@@ -134,7 +134,7 @@ export default function Home() {
       {/* Hero */}
       <section className="px-4 sm:px-8 pt-20 sm:pt-32 text-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 60%, #001240 100%)', paddingBottom: '120px' }}>
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #F9C000 0%, transparent 50%), radial-gradient(circle at 80% 20%, #ffffff 0%, transparent 40%)' }} />
-        <div className="max-w-3xl mx-auto relative">
+        <div className="max-w-3xl mx-auto relative animate-rise">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#F9C000', border: '1px solid rgba(249,192,0,0.3)' }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F9C000', display: 'inline-block' }} />
             A professional marketplace, for Bajans by Bajans <img src="https://flagcdn.com/bb.svg" alt="Barbados flag" width="18" height="12" style={{display:'inline-block', verticalAlign:'middle', marginLeft:'6px', borderRadius:'2px'}} />
@@ -173,6 +173,28 @@ export default function Home() {
               Search
             </button>
           </div>
+          {/* Popular searches — one-tap entry points */}
+          <div className="flex flex-wrap justify-center gap-2 mt-6 animate-rise rise-delay-2">
+            <span className="text-xs self-center mr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Popular:</span>
+            {['Plumber', 'Electrician', 'Photographer', 'Caterer', 'Mechanic', 'Hairdresser'].map(term => (
+              <a
+                key={term}
+                href={`/search?q=${encodeURIComponent(term.toLowerCase())}`}
+                className="text-xs font-medium px-3.5 py-1.5 rounded-full transition-all"
+                style={{
+                  color: 'rgba(255,255,255,0.85)',
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(249,192,0,0.18)'; e.currentTarget.style.borderColor = 'rgba(249,192,0,0.5)'; e.currentTarget.style.color = '#F9C000' }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)' }}
+              >
+                {term}
+              </a>
+            ))}
+          </div>
+
           <p className="text-xs mt-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
             Free to use · No account needed to browse · 100% Barbados-based professionals
           </p>
@@ -196,7 +218,7 @@ export default function Home() {
         <div className="max-w-2xl mx-auto">
           <div style={{
             backgroundColor: 'white',
-            borderTop: '4px solid #00267F',
+            borderTop: '4px solid #F9C000',
             borderRadius: '16px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
             padding: '32px 24px',
@@ -451,21 +473,30 @@ export default function Home() {
         <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Browse by category</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 category-grid">
           {categories.map((cat) => {
-            const isEmpty = categoryCounts[cat.name] === 0
+            const count = categoryCounts[cat.name]
+            const isEmpty = count === 0
             return (
               <a
                 key={cat.name}
                 href={isEmpty
                   ? '/signup?role=freelancer'
                   : `/search?q=${encodeURIComponent(cat.searchQuery)}&category=${encodeURIComponent(cat.name)}`}
-                className="flex flex-col items-center gap-3 px-4 py-6 bg-white border border-gray-100 rounded-2xl hover:shadow-sm cursor-pointer transition-all group"
+                className="flex flex-col items-center gap-3 px-4 py-6 bg-white border border-gray-100 rounded-2xl cursor-pointer transition-all group"
                 style={{ borderColor: '' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = isEmpty ? '#F9C000' : '#00267F'; e.currentTarget.style.borderWidth = isEmpty ? '1.5px' : '1px' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.borderWidth = '' }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = isEmpty ? '#F9C000' : '#00267F'
+                  e.currentTarget.style.transform = 'translateY(-3px)'
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,38,127,0.1)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = ''
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
               >
                 <span className="text-4xl">{cat.icon}</span>
                 <span className="font-medium text-gray-700 text-sm text-center leading-snug">{cat.name}</span>
-                {isEmpty && (
+                {isEmpty ? (
                   <span style={{
                     backgroundColor: '#FEF3C7',
                     color: '#92400E',
@@ -477,7 +508,19 @@ export default function Home() {
                   }}>
                     Be the first →
                   </span>
-                )}
+                ) : count > 0 ? (
+                  <span style={{
+                    backgroundColor: 'rgba(0,38,127,0.06)',
+                    color: '#00267F',
+                    fontSize: '11px',
+                    padding: '2px 10px',
+                    borderRadius: '20px',
+                    fontWeight: 600,
+                    marginTop: '-4px',
+                  }}>
+                    {count} {count === 1 ? 'pro' : 'pros'}
+                  </span>
+                ) : null}
               </a>
             )
           })}

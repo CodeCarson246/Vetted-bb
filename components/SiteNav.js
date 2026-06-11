@@ -70,7 +70,9 @@ export default function SiteNav() {
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      backgroundColor: '#ffffff',
+      backgroundColor: 'rgba(255,255,255,0.88)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
       borderBottom: '1px solid rgba(0,38,127,0.08)',
     }}>
       <div style={{
@@ -190,22 +192,45 @@ export default function SiteNav() {
 
           {user ? (
             <>
-              {/* Quotes icon — coming soon */}
+              {/* Quotes — freelancers only */}
+              {freelancerProfile && (
+                <a
+                  href="/quotes"
+                  title="My quotes"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '6px',
+                    color: '#6B7280',
+                    textDecoration: 'none',
+                    transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#00267F')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#6B7280')}
+                >
+                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </a>
+              )}
+
+              {/* Saved professionals — heart icon */}
               <a
-                href="/quotes"
-                title="Quotes — coming soon"
+                href="/saved"
+                title="Saved professionals"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   padding: '6px',
                   color: '#6B7280',
-                  opacity: 0.45,
                   textDecoration: 'none',
-                  cursor: 'default',
+                  transition: 'color 0.15s',
                 }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#00267F')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#6B7280')}
               >
                 <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
               </a>
 
@@ -485,6 +510,10 @@ export default function SiteNav() {
                   </span>
                 )}
               </a>
+              {freelancerProfile && (
+                <a href="/quotes" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My quotes</a>
+              )}
+              <a href="/saved" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Saved professionals</a>
               <a href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</a>
               <button
                 onClick={() => supabase.auth.signOut().then(() => { window.location.href = '/login' })}

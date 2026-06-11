@@ -27,6 +27,10 @@
   --color-cream: var(--cream);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -35,6 +39,34 @@ body {
 
 h1, h2, h3, h4 {
   font-family: 'Sora', sans-serif;
+}
+
+/* Brand text selection */
+::selection {
+  background: var(--yellow);
+  color: var(--navy);
+}
+
+/* Visible, on-brand keyboard focus without affecting mouse users */
+:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Soft entry animation — add .animate-rise (+ optional .rise-delay-N) */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-rise { animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rise-delay-1 { animation-delay: 0.08s; }
+.rise-delay-2 { animation-delay: 0.16s; }
+.rise-delay-3 { animation-delay: 0.24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .animate-rise { animation: none; }
 }
 
 .category-grid > a:last-child:nth-child(odd) {
