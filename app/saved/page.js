@@ -26,9 +26,11 @@ export default function SavedProfessionals() {
     if (authLoading) return
     if (!authUser) { router.push('/login'); return }
 
+    // freelancers(*) rather than an explicit column list — survives schema
+    // differences (naming a column that doesn't exist 400s the whole query)
     supabase
       .from('saved_professionals')
-      .select('id, freelancer_id, created_at, freelancers(id, name, trade, avatar_url, location, rating, review_count, available, verified)')
+      .select('id, freelancer_id, created_at, freelancers(*)')
       .eq('user_id', authUser.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {

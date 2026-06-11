@@ -284,3 +284,12 @@ DROP POLICY IF EXISTS "Clients can respond to quotes" ON quotes;
 CREATE POLICY "Clients can respond to quotes"
   ON quotes FOR UPDATE
   USING (client_email IS NOT NULL AND client_email = auth.jwt()->>'email');
+
+-- ── 3.3 Verified badge column ──
+-- The "✓ Vetted" badge in the UI reads freelancers.verified, but the
+-- column never existed, so the badge never rendered. Adding it makes
+-- the badge system real. Mark a freelancer verified (after the manual
+-- checks in the admin panel checklist) with:
+--   UPDATE freelancers SET verified = true WHERE id = '<freelancer-id>';
+ALTER TABLE freelancers
+  ADD COLUMN IF NOT EXISTS verified boolean DEFAULT false;
