@@ -115,6 +115,9 @@ export default function QuotesPage() {
   const [busyId, setBusyId] = useState(null)
   const [view, setView] = useState('quotes')
   const [confirmAction, setConfirmAction] = useState(null)
+  const [selYear, setSelYear] = useState('all')
+  const [selMonth, setSelMonth] = useState('all')
+  const [selService, setSelService] = useState('all')
 
   useEffect(() => {
     if (authLoading) return
@@ -254,39 +257,66 @@ export default function QuotesPage() {
   const pendingCount = quotes.filter(q => q.status === 'sent').length
 
   // ── Earnings breakdowns (paid quotes only) ──
+  // Earnings are broken down at the LINE-ITEM level so year, month and
+  // service filters can combine: "Service A in June", "Service A all
+  // year", "everything in 2026", etc.
   const paidQuotes = quotes.filter(q => q.status === 'paid' && q.paid_at)
   const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-  const byMonthMap = {}
-  const byYearMap = {}
-  const byServiceMap = {}
+  const earningsEntries = []
   for (const q of paidQuotes) {
     const d = new Date(q.paid_at)
-    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    byMonthMap[monthKey] = (byMonthMap[monthKey] || 0) + (Number(q.total) || 0)
-    byYearMap[d.getFullYear()] = (byYearMap[d.getFullYear()] || 0) + (Number(q.total) || 0)
     for (const item of q.items || []) {
       const amount = (parseFloat(item.price) || 0) * (parseInt(item.qty) || 1)
       if (amount <= 0) continue
-      // Item descriptions look like "Service name — details"; group by the name
-      const key = (item.description || 'Other').split('—')[0].trim().slice(0, 60) || 'Other'
-      byServiceMap[key] = (byServiceMap[key] || 0) + amount
+      earningsEntries.push({
+        year: String(d.getFullYear()),
+        month: String(d.getMonth() + 1).padStart(2, '0'),
+        // Item descriptions look like "Service name — details"; group by the name
+        service: (item.description || 'Other').split('—')[0].trim().slice(0, 60) || 'Other',
+        amount,
+      })
     }
   }
-  const byMonth = Object.entries(byMonthMap)
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .slice(0, 12)
-    .map(([key, value]) => {
-      const [y, m] = key.split('-')
-      return { label: `${MONTHS_SHORT[Number(m) - 1]} ${y}`, value }
-    })
-  const byYear = Object.entries(byYearMap)
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([key, value]) => ({ label: key, value }))
-  const byService = Object.entries(byServiceMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([key, value]) => ({ label: key, value }))
+
+  // Dropdown options come from ALL earnings, not the filtered subset
+  const yearOptions = [...new Set(earningsEntries.map(e => e.year))].sort().reverse()
+  const serviceOptions = [...new Set(earningsEntries.map(e => e.service))].sort()
+
+  const filteredEntries = earningsEntries.filter(e =>
+    (selYear === 'all' || e.year === selYear)
+    && (selMonth === 'all' || e.month === selMonth)
+    && (selService === 'all' || e.service === selService)
+  )
+  const filteredTotal = filteredEntries.reduce((sum, e) => sum + e.amount, 0)
+  const hasEarningsFilter = selYear !== 'all' || selMonth !== 'all' || selService !== 'all'
+  const filterLabel = [
+    selService !== 'all' ? selService : null,
+    selMonth !== 'all' ? MONTHS_LONG[Number(selMonth) - 1] : null,
+    selYear !== 'all' ? selYear : null,
+  ].filter(Boolean).join(' · ') || 'All earnings'
+
+  function aggregateBy(entries, keyFn, labelFn = k => k) {
+    const map = {}
+    for (const e of entries) {
+      const k = keyFn(e)
+      map[k] = (map[k] || 0) + e.amount
+    }
+    return Object.entries(map).map(([key, value]) => ({ key, label: labelFn(key), value }))
+  }
+
+  const byMonth = aggregateBy(
+    filteredEntries,
+    e => `${e.year}-${e.month}`,
+    k => { const [y, m] = k.split('-'); return `${MONTHS_SHORT[Number(m) - 1]} ${y}` },
+  ).sort((a, b) => b.key.localeCompare(a.key)).slice(0, 12)
+
+  const byYear = aggregateBy(filteredEntries, e => e.year)
+    .sort((a, b) => b.key.localeCompare(a.key))
+
+  const byService = aggregateBy(filteredEntries, e => e.service)
+    .sort((a, b) => b.value - a.value).slice(0, 8)
 
   if (loading) {
     return (
@@ -352,25 +382,95 @@ export default function QuotesPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #00267F' }}>
-                  <h2 className="font-semibold text-gray-900 mb-4">By month</h2>
-                  <BarList rows={byMonth} />
-                </div>
-                <div className="flex flex-col gap-4">
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #F9C000' }}>
-                    <h2 className="font-semibold text-gray-900 mb-4">By year</h2>
-                    <BarList rows={byYear} accent="#F9C000" />
+              <>
+                {/* Drill-down filters — combine freely: "Service A in June 2026" */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Year</label>
+                      <select
+                        value={selYear}
+                        onChange={e => setSelYear(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      >
+                        <option value="all">All years</option>
+                        {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Month</label>
+                      <select
+                        value={selMonth}
+                        onChange={e => setSelMonth(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      >
+                        <option value="all">All months</option>
+                        {MONTHS_LONG.map((m, i) => (
+                          <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Service</label>
+                      <select
+                        value={selService}
+                        onChange={e => setSelService(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      >
+                        <option value="all">All services</option>
+                        {serviceOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
                   </div>
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #16a34a' }}>
-                    <h2 className="font-semibold text-gray-900 mb-4">By service</h2>
-                    <BarList rows={byService} accent="#16a34a" />
-                  </div>
+                  {hasEarningsFilter && (
+                    <button
+                      onClick={() => { setSelYear('all'); setSelMonth('all'); setSelService('all') }}
+                      className="text-xs font-medium text-gray-400 hover:text-gray-600 mt-3"
+                    >
+                      ✕ Clear filters
+                    </button>
+                  )}
                 </div>
-              </div>
+
+                {/* Headline for the current selection */}
+                <div className="rounded-2xl p-6 sm:p-8 text-center" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#F9C000' }}>
+                    {filterLabel}
+                  </p>
+                  <p className="text-4xl sm:text-5xl font-bold text-white tabular-nums" style={{ fontFamily: "'Sora', sans-serif" }}>
+                    ${filteredTotal.toFixed(2)}
+                  </p>
+                  <p className="text-sm mt-2" style={{ color: '#93b8ff' }}>
+                    {filteredEntries.length} line item{filteredEntries.length === 1 ? '' : 's'} across paid invoices
+                  </p>
+                </div>
+
+                {filteredEntries.length > 0 && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #00267F' }}>
+                      <h2 className="font-semibold text-gray-900 mb-4">By month</h2>
+                      <BarList rows={byMonth} />
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      {selYear === 'all' && byYear.length > 1 && (
+                        <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #F9C000' }}>
+                          <h2 className="font-semibold text-gray-900 mb-4">By year</h2>
+                          <BarList rows={byYear} accent="#F9C000" />
+                        </div>
+                      )}
+                      {selService === 'all' && (
+                        <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #16a34a' }}>
+                          <h2 className="font-semibold text-gray-900 mb-4">By service{hasEarningsFilter ? ' (in selection)' : ''}</h2>
+                          <BarList rows={byService} accent="#16a34a" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             <p className="text-xs text-gray-400 text-center">
-              Based on invoices you&apos;ve marked as paid · {paidQuotes.length} paid job{paidQuotes.length === 1 ? '' : 's'} · ${totalEarned.toFixed(2)} total
+              Based on invoices you&apos;ve marked as paid · {paidQuotes.length} paid job{paidQuotes.length === 1 ? '' : 's'} · ${totalEarned.toFixed(2)} lifetime total
             </p>
           </div>
         )}
