@@ -504,7 +504,7 @@ export default function FreelancerProfile() {
   } : null
 
   return (
-    <main className="min-h-screen" style={{ background: '#F3F4F8' }}>
+    <main className="min-h-screen page-bg">
       {jsonLd && (
         <script
           type="application/ld+json"

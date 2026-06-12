@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default function SiteNav() {
   const { user } = useAuth()
@@ -100,10 +101,10 @@ export default function SiteNav() {
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      backgroundColor: 'rgba(255,255,255,0.88)',
+      backgroundColor: 'var(--nav-bg)',
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
-      borderBottom: '1px solid rgba(0,38,127,0.08)',
+      borderBottom: '1px solid var(--border-card)',
     }}>
       <div style={{
         maxWidth: '1200px',
@@ -201,6 +202,8 @@ export default function SiteNav() {
           }}
           className="desktop-nav"
         >
+          <ThemeToggle />
+
           {/* Browse Professionals link */}
           <a
             href="/search"
@@ -463,6 +466,11 @@ export default function SiteNav() {
             </>
           )}
         </nav>
+
+        {/* Mobile: theme toggle next to hamburger */}
+        <span className="mobile-hamburger" style={{ display: 'none' }}>
+          <ThemeToggle />
+        </span>
 
         {/* Mobile hamburger */}
         <button

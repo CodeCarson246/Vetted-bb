@@ -12,7 +12,97 @@
   --muted: #6B7280;
   --card-shadow: 0 2px 12px rgba(0,38,127,0.08);
   --card-shadow-hover: 0 8px 28px rgba(0,38,127,0.15);
+  /* Semantic surfaces (light) */
+  --page-bg: #F3F4F8;
+  --surface-card: #ffffff;
+  --border-card: #E3E8F2;
+  --nav-bg: rgba(255, 255, 255, 0.88);
 }
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0B1220;
+  --foreground: #E6EAF4;
+  --cream: #11192B;
+  --muted: #94A3B8;
+  --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  --card-shadow-hover: 0 8px 28px rgba(0, 0, 0, 0.6);
+  --page-bg: #0B1220;
+  --surface-card: #151E32;
+  --border-card: #26324E;
+  --nav-bg: rgba(11, 18, 32, 0.85);
+}
+
+/* Page background used by main wrappers (replaces inline #F3F4F8) */
+.page-bg { background: var(--page-bg); }
+
+/* ── Light-mode contrast fix ──
+   Default gray-100 card outlines (#f3f4f6) are nearly invisible;
+   nudge them to a visible blue-grey without changing the design. */
+.border-gray-100 { border-color: var(--border-card); }
+
+/* ── Dark theme ──
+   The app styles surfaces with a small set of Tailwind utilities, so
+   remapping them here themes most of the site at once. */
+[data-theme="dark"] .bg-white { background-color: var(--surface-card) !important; }
+[data-theme="dark"] .bg-gray-50 { background-color: #0F172A !important; }
+[data-theme="dark"] .bg-gray-100 { background-color: #1B2640 !important; }
+[data-theme="dark"] .bg-gray-200 { background-color: #243049 !important; }
+[data-theme="dark"] .hover\:bg-gray-50:hover { background-color: #1B2640 !important; }
+[data-theme="dark"] .hover\:bg-gray-100:hover,
+[data-theme="dark"] .hover\:bg-gray-200:hover { background-color: #243049 !important; }
+
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800 { color: #E6EAF4 !important; }
+[data-theme="dark"] .text-gray-700 { color: #C7D0E0 !important; }
+[data-theme="dark"] .text-gray-600 { color: #A8B3C7 !important; }
+[data-theme="dark"] .text-gray-500 { color: #8A96AD !important; }
+[data-theme="dark"] .text-gray-400 { color: #6B7790 !important; }
+[data-theme="dark"] .text-gray-300 { color: #4C5870 !important; }
+[data-theme="dark"] .text-gray-200 { color: #3A455C !important; }
+
+[data-theme="dark"] .border-gray-50,
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200 { border-color: #26324E !important; }
+[data-theme="dark"] .border-gray-300,
+[data-theme="dark"] .border-gray-400 { border-color: #34415F !important; }
+[data-theme="dark"] .hover\:border-gray-300:hover,
+[data-theme="dark"] .hover\:border-gray-400:hover,
+[data-theme="dark"] .hover\:border-gray-500:hover { border-color: #4C5C82 !important; }
+[data-theme="dark"] .divide-gray-50 > * + * { border-color: #26324E !important; }
+
+[data-theme="dark"] .bg-red-50 { background-color: rgba(239, 68, 68, 0.12) !important; }
+[data-theme="dark"] .bg-green-50 { background-color: rgba(34, 197, 94, 0.12) !important; }
+[data-theme="dark"] .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12) !important; }
+[data-theme="dark"] .border-red-200 { border-color: rgba(239, 68, 68, 0.4) !important; }
+[data-theme="dark"] .border-green-200 { border-color: rgba(34, 197, 94, 0.4) !important; }
+
+/* Inline-styled text colors (stage-1 bridge until pages move to tokens).
+   :not([style*="background"]) keeps buttons with colored backgrounds —
+   e.g. gold buttons with navy text — untouched. */
+[data-theme="dark"] [style*="color:#00267F"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: #00267F"]:not([style*="background"]) { color: #7E9BFF !important; }
+[data-theme="dark"] [style*="color:#111827"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: #111827"]:not([style*="background"]),
+[data-theme="dark"] [style*="color:#1F2937"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: #1F2937"]:not([style*="background"]) { color: #E6EAF4 !important; }
+[data-theme="dark"] [style*="color:#374151"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: #374151"]:not([style*="background"]) { color: #C7D0E0 !important; }
+[data-theme="dark"] [style*="color:#6B7280"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: #6B7280"]:not([style*="background"]),
+[data-theme="dark"] [style*="color:#6b7280"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: #6b7280"]:not([style*="background"]) { color: #98A4BA !important; }
+[data-theme="dark"] [style*="color:#9CA3AF"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: #9CA3AF"]:not([style*="background"]),
+[data-theme="dark"] [style*="color:#9ca3af"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: #9ca3af"]:not([style*="background"]) { color: #7A879E !important; }
+
+/* Native form controls follow the theme */
+[data-theme="dark"] select,
+[data-theme="dark"] input,
+[data-theme="dark"] textarea { background-color: #1B2640; color: #E6EAF4; border-color: #34415F; }
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: #6B7790; }
 
 @theme inline {
   --color-background: var(--background);

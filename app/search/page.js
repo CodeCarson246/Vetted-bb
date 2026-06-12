@@ -51,10 +51,10 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
       href={`/freelancers/${f.id}`}
       className="block"
       style={{
-        background: '#FFFFFF',
+        background: 'var(--surface-card)',
         borderRadius: 16,
         borderTop: '4px solid #00267F',
-        border: '1px solid rgba(0,38,127,0.08)',
+        border: '1px solid var(--border-card)',
         borderTopWidth: 4,
         borderTopColor: '#00267F',
         boxShadow: '0 2px 12px rgba(0,38,127,0.08)',

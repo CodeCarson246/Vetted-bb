@@ -118,6 +118,7 @@ export default function QuotesPage() {
   const [selYear, setSelYear] = useState('all')
   const [selMonth, setSelMonth] = useState('all')
   const [selService, setSelService] = useState('all')
+  const [selClient, setSelClient] = useState('all')
 
   useEffect(() => {
     if (authLoading) return
@@ -275,6 +276,7 @@ export default function QuotesPage() {
         month: String(d.getMonth() + 1).padStart(2, '0'),
         // Item descriptions look like "Service name — details"; group by the name
         service: (item.description || 'Other').split('—')[0].trim().slice(0, 60) || 'Other',
+        client: q.client_name?.trim() || q.client_email || 'Client',
         amount,
       })
     }
@@ -283,16 +285,19 @@ export default function QuotesPage() {
   // Dropdown options come from ALL earnings, not the filtered subset
   const yearOptions = [...new Set(earningsEntries.map(e => e.year))].sort().reverse()
   const serviceOptions = [...new Set(earningsEntries.map(e => e.service))].sort()
+  const clientOptions = [...new Set(earningsEntries.map(e => e.client))].sort()
 
   const filteredEntries = earningsEntries.filter(e =>
     (selYear === 'all' || e.year === selYear)
     && (selMonth === 'all' || e.month === selMonth)
     && (selService === 'all' || e.service === selService)
+    && (selClient === 'all' || e.client === selClient)
   )
   const filteredTotal = filteredEntries.reduce((sum, e) => sum + e.amount, 0)
-  const hasEarningsFilter = selYear !== 'all' || selMonth !== 'all' || selService !== 'all'
+  const hasEarningsFilter = selYear !== 'all' || selMonth !== 'all' || selService !== 'all' || selClient !== 'all'
   const filterLabel = [
     selService !== 'all' ? selService : null,
+    selClient !== 'all' ? selClient : null,
     selMonth !== 'all' ? MONTHS_LONG[Number(selMonth) - 1] : null,
     selYear !== 'all' ? selYear : null,
   ].filter(Boolean).join(' · ') || 'All earnings'
@@ -316,6 +321,9 @@ export default function QuotesPage() {
     .sort((a, b) => b.key.localeCompare(a.key))
 
   const byService = aggregateBy(filteredEntries, e => e.service)
+    .sort((a, b) => b.value - a.value).slice(0, 8)
+
+  const byClient = aggregateBy(filteredEntries, e => e.client)
     .sort((a, b) => b.value - a.value).slice(0, 8)
 
   if (loading) {
@@ -385,7 +393,7 @@ export default function QuotesPage() {
               <>
                 {/* Drill-down filters — combine freely: "Service A in June 2026" */}
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Year</label>
                       <select
@@ -421,10 +429,21 @@ export default function QuotesPage() {
                         {serviceOptions.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Client</label>
+                      <select
+                        value={selClient}
+                        onChange={e => setSelClient(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      >
+                        <option value="all">All clients</option>
+                        {clientOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
                   </div>
                   {hasEarningsFilter && (
                     <button
-                      onClick={() => { setSelYear('all'); setSelMonth('all'); setSelService('all') }}
+                      onClick={() => { setSelYear('all'); setSelMonth('all'); setSelService('all'); setSelClient('all') }}
                       className="text-xs font-medium text-gray-400 hover:text-gray-600 mt-3"
                     >
                       ✕ Clear filters
@@ -462,6 +481,12 @@ export default function QuotesPage() {
                         <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #16a34a' }}>
                           <h2 className="font-semibold text-gray-900 mb-4">By service{hasEarningsFilter ? ' (in selection)' : ''}</h2>
                           <BarList rows={byService} accent="#16a34a" />
+                        </div>
+                      )}
+                      {selClient === 'all' && byClient.length > 1 && (
+                        <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #7C3AED' }}>
+                          <h2 className="font-semibold text-gray-900 mb-4">Top clients{hasEarningsFilter ? ' (in selection)' : ''}</h2>
+                          <BarList rows={byClient} accent="#7C3AED" />
                         </div>
                       )}
                     </div>

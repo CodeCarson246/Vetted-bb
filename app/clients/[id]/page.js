@@ -88,7 +88,7 @@ export default function ClientProfile() {
     : null
 
   return (
-    <main className="min-h-screen" style={{ background: '#F3F4F8' }}>
+    <main className="min-h-screen page-bg">
       {/* Hero */}
       <div className="w-full" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
         <div className="max-w-3xl mx-auto px-6 sm:px-8 py-10">

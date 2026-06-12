@@ -1031,7 +1031,7 @@ function DashboardInner() {
   const freelancerReviews = reviews.filter(r => r.type === 'freelancer')
 
   return (
-    <main className="min-h-screen" style={{ background: '#F3F4F8' }}>
+    <main className="min-h-screen page-bg">
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-10">
 
         {role === 'client' ? (

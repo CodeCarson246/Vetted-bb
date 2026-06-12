@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function CategoriesIndex() {
   return (
-    <main className="min-h-screen" style={{ background: '#F3F4F8' }}>
+    <main className="min-h-screen page-bg">
       <section style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }} className="px-4 sm:px-8 py-14 text-center">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ fontFamily: "'Sora', sans-serif" }}>

@@ -70,7 +70,7 @@ export default async function CategoryPage({ params }) {
   }
 
   return (
-    <main className="min-h-screen" style={{ background: '#F3F4F8' }}>
+    <main className="min-h-screen page-bg">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* Hero */}

@@ -194,7 +194,7 @@ export default function Roadmap() {
   }
 
   return (
-    <main style={{ background: '#F3F4F8', minHeight: '100vh' }}>
+    <main className="page-bg" style={{ minHeight: '100vh' }}>
       <style>{`
         @keyframes rm-pulse {
           0%, 100% { transform: scale(1); opacity: 0.7; }
