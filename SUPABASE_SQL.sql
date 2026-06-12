@@ -351,3 +351,51 @@ CREATE POLICY "Freelancers read own view analytics"
 -- carousel and carry a badge in search. Toggle from the admin panel.
 ALTER TABLE freelancers
   ADD COLUMN IF NOT EXISTS featured boolean DEFAULT false;
+
+-- ============================================================
+-- SECTION 6 — CLIENT PROFILES (2026-06-12)
+-- Run before deploying the client-profiles code.
+-- ============================================================
+
+-- ── 6.1 Client profile rows ──
+-- Visible to freelancers the client has contacted; public only when
+-- the client opts in (is_public).
+CREATE TABLE IF NOT EXISTS client_profiles (
+  user_id      uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name text,
+  avatar_url   text,
+  is_public    boolean     DEFAULT false,
+  created_at   timestamptz DEFAULT now(),
+  updated_at   timestamptz DEFAULT now()
+);
+
+ALTER TABLE client_profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Clients manage own profile" ON client_profiles;
+CREATE POLICY "Clients manage own profile"
+  ON client_profiles FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Contacted freelancers or public can view client profiles" ON client_profiles;
+CREATE POLICY "Contacted freelancers or public can view client profiles"
+  ON client_profiles FOR SELECT
+  USING (
+    is_public
+    OR user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1
+      FROM messages m
+      JOIN freelancers f ON f.id = m.freelancer_id
+      WHERE m.sender_user_id = client_profiles.user_id
+        AND f.user_id = auth.uid()
+    )
+  );
+
+-- ── 6.2 Link freelancer→client reviews to the client's account ──
+-- (legacy rows keyed only by typed name stay display-only, as agreed)
+ALTER TABLE reviews
+  ADD COLUMN IF NOT EXISTS client_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_reviews_client_user
+  ON reviews (client_user_id) WHERE client_user_id IS NOT NULL;

@@ -132,8 +132,16 @@ function DashboardInner() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState(null)
 
+  // Client profile (clients only)
+  const [clientProfile, setClientProfile] = useState(null)
+  const [cpName, setCpName] = useState('')
+  const [cpSaving, setCpSaving] = useState(false)
+  const [cpAvatarUploading, setCpAvatarUploading] = useState(false)
+
   // Client review form state
   const [clientName, setClientName] = useState('')
+  const [threadClients, setThreadClients] = useState([])
+  const [selectedClientId, setSelectedClientId] = useState('')
   const [clientRating, setClientRating] = useState(0)
   const [clientRatingHover, setClientRatingHover] = useState(0)
   const [clientComment, setClientComment] = useState('')
@@ -189,6 +197,28 @@ function DashboardInner() {
         setClientMessages(msgs || [])
         setClientReviewsLeft(rLeft || [])
         setTopFreelancers(topF || [])
+
+        // Client profile row — created lazily on first dashboard visit
+        const { data: cp } = await supabase
+          .from('client_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (cp) {
+          setClientProfile(cp)
+          setCpName(cp.display_name || '')
+        } else {
+          const defaultName = user.user_metadata?.full_name || user.email.split('@')[0]
+          const { data: created } = await supabase
+            .from('client_profiles')
+            .insert({ user_id: user.id, display_name: defaultName })
+            .select()
+            .maybeSingle()
+          if (created) {
+            setClientProfile(created)
+            setCpName(created.display_name || '')
+          }
+        }
       } else {
         const { data: p } = await supabase
           .from('freelancers')
@@ -228,6 +258,19 @@ function DashboardInner() {
           setViews30d(vCount ?? 0)
           setServices(svc || [])
           setPortfolioItems(portfolio || [])
+
+          // Clients with accounts who have contacted this freelancer —
+          // the only people they can leave a client review for.
+          const { data: senders } = await supabase
+            .from('messages')
+            .select('sender_user_id, sender_name')
+            .eq('freelancer_id', p.id)
+            .not('sender_user_id', 'is', null)
+          const seen = new Map()
+          for (const s of senders || []) {
+            if (!seen.has(s.sender_user_id)) seen.set(s.sender_user_id, s.sender_name)
+          }
+          setThreadClients([...seen.entries()].map(([id, name]) => ({ id, name })))
         }
       }
 
@@ -433,15 +476,75 @@ function DashboardInner() {
     setToast({ message: 'Profile photo removed', type: 'success' })
   }
 
+  async function saveClientProfile(patch) {
+    setCpSaving(true)
+    const { error } = await supabase
+      .from('client_profiles')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+    if (error) {
+      setToast({ message: 'Something went wrong. Please try again.', type: 'error' })
+    } else {
+      setClientProfile(prev => ({ ...prev, ...patch }))
+      setToast({ message: 'Profile updated', type: 'success' })
+    }
+    setCpSaving(false)
+  }
+
+  async function handleClientAvatarUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setToast({ message: 'Please upload a JPG, PNG or WebP under 5MB.', type: 'error' })
+      return
+    }
+    setCpAvatarUploading(true)
+    // Same path convention as freelancer avatars: '<uid>.<ext>'
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = `${user.id}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true })
+    if (uploadError) {
+      setToast({ message: 'Failed to upload photo. Please try again.', type: 'error' })
+    } else {
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      await saveClientProfile({ avatar_url: publicUrl })
+    }
+    setCpAvatarUploading(false)
+  }
+
   async function submitClientReview(e) {
     e.preventDefault()
     setClientReviewSubmitting(true)
     setClientReviewError(null)
 
+    const client = threadClients.find(c => c.id === selectedClientId)
+    if (!client) {
+      setClientReviewError('Please choose which client you want to review.')
+      setClientReviewSubmitting(false)
+      return
+    }
+
+    // One review per client per freelancer
+    const { data: existing } = await supabase
+      .from('reviews')
+      .select('id')
+      .eq('freelancer_id', profile.id)
+      .eq('client_user_id', client.id)
+      .eq('type', 'freelancer')
+      .maybeSingle()
+    if (existing) {
+      setClientReviewError('You have already reviewed this client.')
+      setClientReviewSubmitting(false)
+      return
+    }
+
     const { error } = await supabase.from('reviews').insert({
       freelancer_id: profile.id,
-      author: clientName,
+      author: client.name,
       author_user_id: user.id,
+      client_user_id: client.id,
       rating: clientRating,
       comment: clientComment,
       type: 'freelancer',
@@ -458,6 +561,7 @@ function DashboardInner() {
         .order('date', { ascending: false })
       setReviews(r || [])
       setClientName('')
+      setSelectedClientId('')
       setClientRating(0)
       setClientComment('')
       setClientReviewSuccess(true)
@@ -969,6 +1073,96 @@ function DashboardInner() {
 
             {/* Push notifications opt-in — clients get notified of replies and quotes */}
             <PushToggle userId={user.id} />
+
+            {/* Client profile settings */}
+            {clientProfile && (
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold text-gray-900">My client profile</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">Freelancers you contact can see this — it helps them know who they&apos;re working with.</p>
+                  </div>
+                  <a
+                    href={`/clients/${user.id}`}
+                    className="text-xs font-semibold flex-shrink-0 hover:opacity-80"
+                    style={{ color: '#00267F' }}
+                  >
+                    View my profile →
+                  </a>
+                </div>
+                <div className="p-6 sm:p-8 flex flex-col sm:flex-row gap-6">
+                  {/* Avatar */}
+                  <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                    <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center text-white text-2xl font-bold" style={{ backgroundColor: '#00267F' }}>
+                      {clientProfile.avatar_url
+                        ? <img src={clientProfile.avatar_url} alt="Your profile" className="w-full h-full object-cover" />
+                        : (cpName || user.email)[0].toUpperCase()}
+                    </div>
+                    <label className={`text-xs font-medium cursor-pointer hover:opacity-80 ${cpAvatarUploading ? 'opacity-50' : ''}`} style={{ color: '#00267F' }}>
+                      {cpAvatarUploading ? 'Uploading…' : clientProfile.avatar_url ? 'Change photo' : 'Add photo'}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={cpAvatarUploading} onChange={handleClientAvatarUpload} />
+                    </label>
+                  </div>
+                  {/* Name + visibility */}
+                  <div className="flex-1 flex flex-col gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Display name</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={cpName}
+                          onChange={e => setCpName(e.target.value)}
+                          maxLength={80}
+                          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
+                        />
+                        <button
+                          onClick={() => cpName.trim() && saveClientProfile({ display_name: cpName.trim() })}
+                          disabled={cpSaving || !cpName.trim() || cpName.trim() === clientProfile.display_name}
+                          className="text-sm font-semibold px-5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+                          style={{ backgroundColor: '#00267F' }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-start justify-between gap-4 pt-1">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Public profile</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {clientProfile.is_public
+                            ? 'Anyone can view your profile and client rating.'
+                            : 'Only freelancers you’ve contacted can view your profile.'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => saveClientProfile({ is_public: !clientProfile.is_public })}
+                        disabled={cpSaving}
+                        role="switch"
+                        aria-checked={clientProfile.is_public}
+                        className="flex-shrink-0 rounded-full transition-colors disabled:opacity-50"
+                        style={{
+                          width: 44,
+                          height: 24,
+                          backgroundColor: clientProfile.is_public ? '#00267F' : '#d1d5db',
+                          position: 'relative',
+                        }}
+                      >
+                        <span style={{
+                          position: 'absolute',
+                          top: 2,
+                          left: clientProfile.is_public ? 22 : 2,
+                          width: 20,
+                          height: 20,
+                          borderRadius: '50%',
+                          backgroundColor: 'white',
+                          transition: 'left 0.15s ease',
+                        }} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Top rated freelancers */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -2013,17 +2207,29 @@ function DashboardInner() {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Review a client</h3>
                     <p className="text-sm text-gray-500 mb-6">Rate a client you've worked with so other freelancers know what to expect.</p>
+                    {threadClients.length === 0 ? (
+                      <div className="rounded-xl px-4 py-6 text-center" style={{ backgroundColor: '#F9FAFB', border: '1px dashed #d1d5db' }}>
+                        <p className="text-sm text-gray-500">
+                          You can review clients once they&apos;ve contacted you through Vetted.bb.
+                          Reviews are tied to real conversations, so other freelancers can trust them.
+                        </p>
+                      </div>
+                    ) : (
                     <form onSubmit={submitClientReview} className="flex flex-col gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Client name</label>
-                        <input
-                          type="text"
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                        <select
                           required
-                          value={clientName}
-                          onChange={e => setClientName(e.target.value)}
-                          placeholder="e.g. Sarah Johnson"
+                          value={selectedClientId}
+                          onChange={e => setSelectedClientId(e.target.value)}
                           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
-                        />
+                        >
+                          <option value="">Choose a client you&apos;ve worked with…</option>
+                          {threadClients.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1.5">Only clients who have messaged you appear here — reviews are tied to real conversations.</p>
                       </div>
 
                       <div>
@@ -2068,6 +2274,7 @@ function DashboardInner() {
                         {clientReviewSubmitting ? 'Submitting...' : 'Submit review'}
                       </button>
                     </form>
+                    )}
                   </div>
                 )}
 

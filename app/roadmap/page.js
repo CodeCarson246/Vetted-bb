@@ -17,52 +17,57 @@ const phases = [
   },
   {
     side: 'right',
-    statusLabel: 'Phase 2 — In Progress',
+    statusLabel: 'Phase 2 — Live',
+    statusBg: '#DCFCE7',
+    statusColor: '#166534',
+    borderTop: '#22C55E',
+    node: 'navy',
+    title: 'Trust & Reach',
+    description: 'Vetted.bb in your pocket — install it like an app and get notified the moment something happens.',
+    tags: ['Add to home screen', 'Push notifications', 'Quotes page', 'Saved professionals'],
+    tagBg: '#DCFCE7',
+    tagColor: '#166534',
+  },
+  {
+    side: 'left',
+    statusLabel: 'Phase 3 — Live',
+    statusBg: '#DCFCE7',
+    statusColor: '#166534',
+    borderTop: '#22C55E',
+    node: 'navy',
+    title: 'Growth Tools',
+    description: 'Features that help freelancers grow their business and help clients make smarter decisions.',
+    tags: ['Analytics dashboard', 'Featured listings', 'Category SEO pages', 'Client profiles'],
+    tagBg: '#DCFCE7',
+    tagColor: '#166534',
+  },
+  {
+    side: 'right',
+    statusLabel: 'Phase 4 — In Progress',
     statusBg: '#FEF3C7',
     statusColor: '#92400E',
     borderTop: '#00267F',
     node: 'pulse',
-    title: 'Trust & Reach',
-    description: 'Identity verification and mobile access — making Vetted.bb the platform you carry in your pocket.',
-    tags: ['Phone verification', 'Add to home screen', 'Push notifications', 'Quotes page'],
-    tagBg: '#EFF6FF',
-    tagColor: '#1E40AF',
-  },
-  {
-    side: 'left',
-    statusLabel: 'Phase 3 — Coming Soon',
-    statusBg: '#F3F4F6',
-    statusColor: '#6B7280',
-    borderTop: '#D1D5DB',
-    node: 'empty',
-    title: 'Growth Tools',
-    description: 'Features that help freelancers grow their business and help clients make smarter decisions.',
-    tags: ['Analytics dashboard', 'Featured listings', 'Category SEO pages', 'Client profiles'],
-    tagBg: '#F3F4F6',
-    tagColor: '#6B7280',
-  },
-  {
-    side: 'right',
-    statusLabel: 'Phase 4 — The Vision',
-    statusBg: '#F3F4F6',
-    statusColor: '#6B7280',
-    borderTop: '#D1D5DB',
-    node: 'empty',
     title: 'The App',
     description: "A fully native mobile experience on iOS and Android — Barbados's professional services platform, fully in your hands.",
-    tags: ['iOS app', 'Android app', 'Booking history', 'In-app payments'],
-    tagBg: '#F3F4F6',
-    tagColor: '#6B7280',
+    tags: ['Phone verification', 'iOS app', 'Android app', 'Booking history', 'In-app payments'],
+    tagBg: '#EFF6FF',
+    tagColor: '#1E40AF',
   },
 ]
 
 const voteOptions = [
-  { id: 'client-profiles', label: 'Client profiles', sub: "Track who you've hired", pct: 54 },
-  { id: 'analytics', label: 'Analytics', sub: 'Profile views and stats', pct: 31 },
-  { id: 'instant-booking', label: 'Instant booking', sub: 'Book without messaging', pct: 15 },
+  { id: 'instant-booking', label: 'Instant booking', sub: 'Book a time slot without messaging', pct: 46 },
+  { id: 'whatsapp-contact', label: 'WhatsApp contact', sub: 'Message professionals on WhatsApp', pct: 38 },
+  { id: 'online-payments', label: 'Online payments', sub: 'Pay deposits through the platform', pct: 16 },
 ]
 
 const changelog = [
+  { date: 'Jun 2026', desc: 'Client profiles with two-way ratings', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
+  { date: 'Jun 2026', desc: 'Category pages, profile analytics, featured listings', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
+  { date: 'Jun 2026', desc: 'Push notifications for messages, replies and quotes', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
+  { date: 'Jun 2026', desc: 'Saved professionals, quotes dashboard, app install', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
+  { date: 'Jun 2026', desc: 'Platform-wide security hardening', badge: 'Security', badgeBg: '#FEF3C7', badgeColor: '#92400E' },
   { date: 'Apr 2026', desc: 'Platform launched', badge: 'Launch', badgeBg: '#DCFCE7', badgeColor: '#166534' },
   { date: 'Apr 2026', desc: 'Quote builder with PDF export', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
   { date: 'Apr 2026', desc: 'Two-way reviews system live', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
@@ -176,13 +181,14 @@ export default function Roadmap() {
   const [barsVisible, setBarsVisible] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('vetted_roadmap_vote')
+    // v2 key — the previous vote round (client profiles / analytics) shipped
+    const saved = localStorage.getItem('vetted_roadmap_vote_v2')
     if (saved) { setVote(saved); setSubmitted(true); setBarsVisible(true) }
   }, [])
 
   function handleSubmit() {
     if (!vote || submitted) return
-    localStorage.setItem('vetted_roadmap_vote', vote)
+    localStorage.setItem('vetted_roadmap_vote_v2', vote)
     setSubmitted(true)
     setTimeout(() => setBarsVisible(true), 50)
   }
@@ -325,7 +331,7 @@ export default function Roadmap() {
             color: '#6B7280',
             marginBottom: '28px',
           }}>
-            Vote for the feature you want to see in Phase 3.
+            Phases 1–3 have shipped. Vote for what we build next.
           </p>
 
           <div className="rm-vote-grid" style={{ marginBottom: '28px' }}>

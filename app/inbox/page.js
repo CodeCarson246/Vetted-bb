@@ -48,6 +48,7 @@ export default function Inbox() {
   const [deletingThread, setDeletingThread] = useState(false)
   const [toast, setToast] = useState(null)
   const [confirmDeleteQuoteId, setConfirmDeleteQuoteId] = useState(null)
+  const [clientRatings, setClientRatings] = useState({})
 
   const unreadCount = messages.filter(m => !m.read).length
 
@@ -108,6 +109,27 @@ export default function Inbox() {
             .map(m => ({ ...m, last_activity_at: latestReplyAt[m.id] || m.created_at }))
             .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))
           setMessages(enriched)
+
+          // Aggregate how other freelancers rated each client with an account
+          const clientIds = [...new Set(messageList.map(m => m.sender_user_id).filter(Boolean))]
+          if (clientIds.length > 0) {
+            const { data: clientRevs } = await supabase
+              .from('reviews')
+              .select('client_user_id, rating')
+              .in('client_user_id', clientIds)
+              .eq('type', 'freelancer')
+            const agg = {}
+            for (const r of clientRevs || []) {
+              if (!agg[r.client_user_id]) agg[r.client_user_id] = { sum: 0, count: 0 }
+              agg[r.client_user_id].sum += r.rating
+              agg[r.client_user_id].count += 1
+            }
+            const ratings = {}
+            for (const [cid, a] of Object.entries(agg)) {
+              ratings[cid] = { avg: Math.round((a.sum / a.count) * 10) / 10, count: a.count }
+            }
+            setClientRatings(ratings)
+          }
         } else {
           setMessages([])
         }
@@ -646,9 +668,29 @@ export default function Inbox() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-sm ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
-                            {msg.sender_name}
-                          </span>
+                          {msg.sender_user_id ? (
+                            <a
+                              href={`/clients/${msg.sender_user_id}`}
+                              onClick={e => e.stopPropagation()}
+                              title="View this client's profile"
+                              className={`text-sm hover:underline underline-offset-2 ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}
+                            >
+                              {msg.sender_name}
+                            </a>
+                          ) : (
+                            <span className={`text-sm ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
+                              {msg.sender_name}
+                            </span>
+                          )}
+                          {clientRatings[msg.sender_user_id] && (
+                            <span
+                              className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#92400E' }}
+                              title="How other freelancers rated this client"
+                            >
+                              ★ {clientRatings[msg.sender_user_id].avg} ({clientRatings[msg.sender_user_id].count})
+                            </span>
+                          )}
                           {!msg.read && (
                             <span className="text-xs text-white px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#00267F' }}>
                               Unread
