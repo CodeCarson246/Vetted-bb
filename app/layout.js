@@ -43,7 +43,10 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full antialiased">
+    // suppressHydrationWarning: the theme script intentionally sets
+    // data-theme on <html> before hydration, so the attribute differs
+    // from the server render — that one mismatch is expected.
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head>
         {/* Apply the saved theme before first paint — prevents light flash */}
         <script
