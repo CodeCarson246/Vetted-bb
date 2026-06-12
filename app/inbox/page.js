@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
@@ -50,6 +50,18 @@ export default function Inbox() {
   const [confirmDeleteQuoteId, setConfirmDeleteQuoteId] = useState(null)
   const [clientRatings, setClientRatings] = useState({})
   const [clientProfiles, setClientProfiles] = useState({})
+  const threadEndRef = useRef(null)
+
+  // Opening a thread (or sending into it) scrolls the newest message
+  // and composer into view — read the latest first, scroll up for history
+  const expandedReplyCount = expandedId ? (replies[expandedId] || []).length : 0
+  useEffect(() => {
+    if (!expandedId) return
+    const t = setTimeout(() => {
+      threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, 150)
+    return () => clearTimeout(t)
+  }, [expandedId, expandedReplyCount])
 
   const unreadCount = messages.filter(m => !m.read).length
 
@@ -903,6 +915,8 @@ export default function Inbox() {
                           </button>
                         </div>
                       </div>
+                      {/* Auto-scroll target — newest message + composer in view */}
+                      <div ref={threadEndRef} />
                     </div>
                   )}
                 </div>
