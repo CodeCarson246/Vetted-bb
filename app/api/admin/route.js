@@ -46,7 +46,7 @@ export async function GET(request) {
     supabase.from('clients').select('*', { count: 'exact', head: true }),
     supabase.from('reviews').select('*', { count: 'exact', head: true }),
     supabase.from('messages').select('*', { count: 'exact', head: true }),
-    supabase.from('freelancers').select('id, name, trade, category, location, rating, created_at').order('created_at', { ascending: false }),
+    supabase.from('freelancers').select('id, name, trade, category, location, rating, created_at, verified, featured').order('created_at', { ascending: false }),
     supabase.from('reviews').select('id, author, comment, rating, type, date, created_at').order('created_at', { ascending: false }),
     supabase.from('messages').select('id, sender_name, sender_email, subject, created_at, read').order('created_at', { ascending: false }),
   ])
@@ -62,6 +62,23 @@ export async function GET(request) {
     reviews: reviews || [],
     messages: messages || [],
   })
+}
+
+// Toggle admin-controlled flags on a freelancer (verified badge,
+// featured listing). Only whitelisted boolean fields are accepted.
+export async function PATCH(request) {
+  const ctx = await requireAdmin(request)
+  if (ctx.error) return Response.json({ error: ctx.error }, { status: ctx.status })
+  const { supabase } = ctx
+
+  const { id, field, value } = await request.json()
+  if (!id || !['verified', 'featured'].includes(field) || typeof value !== 'boolean') {
+    return Response.json({ error: 'Invalid request.' }, { status: 400 })
+  }
+
+  const { error } = await supabase.from('freelancers').update({ [field]: value }).eq('id', id)
+  if (error) return Response.json({ error: error.message }, { status: 500 })
+  return Response.json({ success: true })
 }
 
 export async function DELETE(request) {

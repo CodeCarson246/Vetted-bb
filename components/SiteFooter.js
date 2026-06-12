@@ -26,6 +26,7 @@ export default function SiteFooter() {
       heading: 'For Clients',
       links: [
         { label: 'Browse Professionals', href: '/search' },
+        { label: 'All Categories', href: '/categories' },
         { label: 'Saved Professionals', href: '/saved' },
         { label: 'How It Works', href: '/#how-it-works' },
         { label: 'Leave a Review', href: '/dashboard' },

@@ -2,25 +2,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import { CATEGORIES as categories } from '@/lib/categories'
 import TrustBar from '@/components/TrustBar'
-
-const categories = [
-  { icon: "🔧", name: "Trades & Construction", searchQuery: "electrician plumber carpenter mason painter roofer welder tiler construction builder" },
-  { icon: "❄️", name: "AC & Solar", searchQuery: "ac air conditioning solar installer technician cooling heating" },
-  { icon: "🌿", name: "Landscaping & Outdoors", searchQuery: "landscaper gardener pool cleaner pest control tree garden lawn irrigation" },
-  { icon: "🚗", name: "Automotive", searchQuery: "mechanic auto car body repair detailer tow boat motorcycle vehicle engine" },
-  { icon: "🧹", name: "Cleaning & Domestic", searchQuery: "cleaner cleaning housekeeper laundry maid domestic janitor ironing" },
-  { icon: "💇", name: "Beauty & Wellness", searchQuery: "hairdresser barber nail makeup artist massage therapist personal trainer nutritionist beauty salon" },
-  { icon: "🍽️", name: "Food & Catering", searchQuery: "chef caterer baker bartender food vendor cake catering meal prep cook" },
-  { icon: "⚽", name: "Sports & Fitness", searchQuery: "football cricket swimming tennis gym trainer dance yoga coach instructor fitness" },
-  { icon: "🎨", name: "Creative & Design", searchQuery: "graphic designer photographer videographer web designer social media content creator illustrator" },
-  { icon: "💻", name: "Technology", searchQuery: "web developer app developer IT support computer repair network CCTV installer tech" },
-  { icon: "🎉", name: "Events & Entertainment", searchQuery: "DJ event planner MC host decorator sound technician lighting band musician entertainment" },
-  { icon: "📚", name: "Education & Tutoring", searchQuery: "tutor teacher maths english music driving language special needs education instructor" },
-  { icon: "💼", name: "Business & Professional", searchQuery: "accountant bookkeeper lawyer notary HR consultant marketing translator business professional" },
-  { icon: "❤️", name: "Health & Care", searchQuery: "nurse caregiver babysitter nanny elder care first aid health carer" },
-  { icon: "✨", name: "Other", searchQuery: "other" },
-]
 
 const iconStyle = { width: '40px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }
 
@@ -344,6 +327,19 @@ export default function Home() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '3px' }}>
                       <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '1rem', color: '#00267F', lineHeight: 1.2 }}>{f.name}</span>
+                      {f.featured && (
+                        <span style={{
+                          backgroundColor: '#F9C000',
+                          color: '#00267F',
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          lineHeight: 1.6,
+                        }}>★ Featured</span>
+                      )}
                     </div>
                     <p style={{ fontSize: '0.82rem', color: '#6B7280', marginTop: '2px', textTransform: 'capitalize' }}>{f.trade}</p>
                   </div>
@@ -478,9 +474,7 @@ export default function Home() {
             return (
               <a
                 key={cat.name}
-                href={isEmpty
-                  ? '/signup?role=freelancer'
-                  : `/search?q=${encodeURIComponent(cat.searchQuery)}&category=${encodeURIComponent(cat.name)}`}
+                href={isEmpty ? '/signup?role=freelancer' : `/categories/${cat.slug}`}
                 className="flex flex-col items-center gap-3 px-4 py-6 bg-white border border-gray-100 rounded-2xl cursor-pointer transition-all group"
                 style={{ borderColor: '' }}
                 onMouseEnter={e => {

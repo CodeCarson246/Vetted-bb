@@ -163,6 +163,19 @@ export default function FreelancerProfile() {
     if (id) fetchData()
   }, [id])
 
+  // Record a profile view for the freelancer's analytics — skips the
+  // owner viewing themselves and repeat views within a browser session.
+  useEffect(() => {
+    if (!freelancer || authLoading) return
+    if (authUser && authUser.id === freelancer.user_id) return
+    const key = `pv_${freelancer.id}`
+    try {
+      if (sessionStorage.getItem(key)) return
+      sessionStorage.setItem(key, '1')
+    } catch { /* private browsing — count the view anyway */ }
+    supabase.from('profile_views').insert({ freelancer_id: freelancer.id }).then(() => {})
+  }, [freelancer, authUser, authLoading])
+
   useEffect(() => {
     const btn = contactBtnRef.current
     if (!btn) return

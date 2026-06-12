@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { CATEGORIES } from '@/lib/categories'
 
 export default async function sitemap() {
   const baseUrl = 'https://vetted-bb.vercel.app'
@@ -6,11 +7,19 @@ export default async function sitemap() {
   const staticPages = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
     { url: `${baseUrl}/search`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+    { url: `${baseUrl}/categories`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
     { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/faq`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/login`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.5 },
     { url: `${baseUrl}/signup`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.6 },
   ]
+
+  const categoryPages = CATEGORIES.map(c => ({
+    url: `${baseUrl}/categories/${c.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily',
+    priority: 0.85,
+  }))
 
   const { data: freelancers } = await supabase
     .from('freelancers')
@@ -24,5 +33,5 @@ export default async function sitemap() {
     priority: 0.8,
   }))
 
-  return [...staticPages, ...freelancerPages]
+  return [...staticPages, ...categoryPages, ...freelancerPages]
 }

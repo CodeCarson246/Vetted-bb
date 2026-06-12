@@ -62,6 +62,7 @@ function DashboardInner() {
   const avatarFileInputRef = useRef(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [quoteCount, setQuoteCount] = useState(0)
+  const [views30d, setViews30d] = useState(null)
   const [clientMessages, setClientMessages] = useState([])
   const [clientThreadReplies, setClientThreadReplies] = useState({})
   const [clientThreadQuotes, setClientThreadQuotes] = useState({})
@@ -214,14 +215,17 @@ function DashboardInner() {
             .order('date', { ascending: false })
           setReviews(r || [])
 
-          const [{ count }, { count: qCount }, { data: svc }, { data: portfolio }] = await Promise.all([
+          const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString()
+          const [{ count }, { count: qCount }, { count: vCount }, { data: svc }, { data: portfolio }] = await Promise.all([
             supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false),
             supabase.from('quotes').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id),
+            supabase.from('profile_views').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).gte('viewed_at', monthAgo),
             supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
             supabase.from('portfolio_items').select('*').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
           ])
           setUnreadCount(count || 0)
           setQuoteCount(qCount || 0)
+          setViews30d(vCount ?? 0)
           setServices(svc || [])
           setPortfolioItems(portfolio || [])
         }
@@ -1203,8 +1207,9 @@ function DashboardInner() {
             )}
 
             {/* At-a-glance stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
               {[
+                { label: 'Profile views (30d)', value: views30d ?? '—', href: `/freelancers/${profile.id}` },
                 { label: 'Rating', value: profile.review_count > 0 ? `★ ${profile.rating}` : '—', href: '#reviews-section' },
                 { label: 'Reviews', value: profile.review_count || 0, href: '#reviews-section' },
                 { label: 'Unread inquiries', value: unreadCount, href: '/inbox', highlight: unreadCount > 0 },

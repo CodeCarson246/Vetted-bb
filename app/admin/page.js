@@ -73,6 +73,23 @@ export default function AdminPanel() {
     return true
   }
 
+  async function toggleFlag(id, field, value) {
+    const res = await fetch('/api/admin', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ id, field, value }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      alert(body.error || 'Update failed. Please try again.')
+      return
+    }
+    setFreelancers(prev => prev.map(f => f.id === id ? { ...f, [field]: value } : f))
+  }
+
   async function deleteFreelancer(id) {
     if (!confirm('Delete this freelancer and all their data? This cannot be undone.')) return
     setDeletingId(id)
@@ -227,12 +244,13 @@ export default function AdminPanel() {
                     <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
                     <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Rating</th>
                     <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Joined</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Badges</th>
                     <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {freelancers.length === 0 && (
-                    <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">No freelancers found.</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">No freelancers found.</td></tr>
                   )}
                   {freelancers.map((f, i) => (
                     <tr key={f.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
@@ -241,6 +259,30 @@ export default function AdminPanel() {
                       <td className="px-6 py-4 text-gray-600">{f.category || '—'}</td>
                       <td className="px-6 py-4 text-gray-600">{f.rating ?? '—'}</td>
                       <td className="px-6 py-4 text-gray-500">{formatDate(f.created_at)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => toggleFlag(f.id, 'verified', !f.verified)}
+                            title={f.verified ? 'Remove the Vetted badge' : 'Grant the Vetted badge (run the verification checklist first)'}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors"
+                            style={f.verified
+                              ? { backgroundColor: '#00267F', color: 'white', borderColor: '#00267F' }
+                              : { borderColor: '#d1d5db', color: '#9ca3af' }}
+                          >
+                            ✓ Vetted
+                          </button>
+                          <button
+                            onClick={() => toggleFlag(f.id, 'featured', !f.featured)}
+                            title={f.featured ? 'Remove from featured' : 'Feature on the homepage'}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors"
+                            style={f.featured
+                              ? { backgroundColor: '#F9C000', color: '#00267F', borderColor: '#F9C000' }
+                              : { borderColor: '#d1d5db', color: '#9ca3af' }}
+                          >
+                            ★ Featured
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <button
                           onClick={() => deleteFreelancer(f.id)}

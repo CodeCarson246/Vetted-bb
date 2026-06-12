@@ -10,10 +10,12 @@ export async function GET() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   )
 
+  // Admin-featured freelancers lead, then best-rated fill the rest
   const { data, error } = await supabase
     .from('freelancers')
-    .select('id, name, trade, avatar_url, location, rating, review_count, available, skills, bio, min_price')
+    .select('id, name, trade, avatar_url, location, rating, review_count, available, skills, bio, min_price, featured')
     .eq('available', true)
+    .order('featured', { ascending: false })
     .order('rating', { ascending: false })
     .order('review_count', { ascending: false })
     .order('created_at', { ascending: false })

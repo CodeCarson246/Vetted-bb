@@ -314,3 +314,40 @@ CREATE POLICY "Users manage own push subscriptions"
   ON push_subscriptions FOR ALL
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
+
+-- ============================================================
+-- SECTION 5 — PHASE 3 GROWTH TOOLS (2026-06-12)
+-- Run before deploying analytics / featured listings / category pages.
+-- ============================================================
+
+-- ── 5.1 Profile view analytics ──
+CREATE TABLE IF NOT EXISTS profile_views (
+  id            uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  freelancer_id uuid        NOT NULL REFERENCES freelancers(id) ON DELETE CASCADE,
+  viewed_at     timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_profile_views_freelancer_time
+  ON profile_views (freelancer_id, viewed_at DESC);
+
+ALTER TABLE profile_views ENABLE ROW LEVEL SECURITY;
+
+-- Anyone (including anonymous visitors) can record a view…
+DROP POLICY IF EXISTS "Anyone can record a profile view" ON profile_views;
+CREATE POLICY "Anyone can record a profile view"
+  ON profile_views FOR INSERT
+  WITH CHECK (true);
+
+-- …but only the profile owner can read their analytics.
+DROP POLICY IF EXISTS "Freelancers read own view analytics" ON profile_views;
+CREATE POLICY "Freelancers read own view analytics"
+  ON profile_views FOR SELECT
+  USING (
+    freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
+  );
+
+-- ── 5.2 Featured listings ──
+-- Admin-controlled flag: featured freelancers lead the homepage
+-- carousel and carry a badge in search. Toggle from the admin panel.
+ALTER TABLE freelancers
+  ADD COLUMN IF NOT EXISTS featured boolean DEFAULT false;
