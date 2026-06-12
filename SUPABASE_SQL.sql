@@ -417,3 +417,15 @@ ALTER TABLE quotes ADD COLUMN IF NOT EXISTS invoice_terms    text;
 ALTER TABLE quotes ADD COLUMN IF NOT EXISTS invoice_due_date date;
 ALTER TABLE quotes ADD COLUMN IF NOT EXISTS completed_at     timestamptz;
 ALTER TABLE quotes ADD COLUMN IF NOT EXISTS paid_at          timestamptz;
+
+-- ============================================================
+-- SECTION 8 — CLIENT-SIDE UNREAD TRACKING (2026-06-12)
+-- Run before deploying the header-badge fix.
+--
+-- messages.read tracks the FREELANCER's unread state; client_read
+-- tracks the CLIENT's. Freelancer replies/quotes set it false, the
+-- client opening the thread sets it true.
+-- ============================================================
+
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS client_read boolean DEFAULT true;

@@ -42,6 +42,61 @@ function StatusChip({ status }) {
   )
 }
 
+/** Tick box for lifecycle steps — every change goes through a confirm popup. */
+function CheckRow({ label, sublabel, checked, disabled, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      className="flex items-center gap-3 text-left w-full group disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      <span
+        className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors"
+        style={checked
+          ? { backgroundColor: '#16a34a', borderColor: '#16a34a' }
+          : { borderColor: '#d1d5db', backgroundColor: 'white' }}
+      >
+        {checked && (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </span>
+      <span className="flex-1">
+        <span className={`text-sm font-medium block ${checked ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'} transition-colors`}>{label}</span>
+        {sublabel && <span className="text-xs text-gray-400">{sublabel}</span>}
+      </span>
+    </button>
+  )
+}
+
+/** Horizontal bar list for the earnings breakdowns. */
+function BarList({ rows, accent = '#00267F' }) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-gray-400 py-4 text-center">Nothing here yet.</p>
+  }
+  const max = Math.max(...rows.map(r => r.value))
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.map(r => (
+        <div key={r.label}>
+          <div className="flex items-center justify-between gap-3 mb-1">
+            <span className="text-sm text-gray-700 truncate">{r.label}</span>
+            <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: '#00267F' }}>${r.value.toFixed(0)}</span>
+          </div>
+          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${max > 0 ? (r.value / max) * 100 : 0}%`, backgroundColor: accent }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function fmtDate(str) {
   if (!str) return '—'
   return new Date(str).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -58,6 +113,8 @@ export default function QuotesPage() {
   const [invoicingId, setInvoicingId] = useState(null)
   const [invoiceTerms, setInvoiceTerms] = useState('net14')
   const [busyId, setBusyId] = useState(null)
+  const [view, setView] = useState('quotes')
+  const [confirmAction, setConfirmAction] = useState(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -127,6 +184,7 @@ export default function QuotesPage() {
 
     // Note it in the conversation and notify the client
     if (q.message_id) {
+      supabase.from('messages').update({ client_read: false }).eq('id', q.message_id).then(() => {})
       supabase.from('message_replies').insert({
         message_id: q.message_id,
         sender_name: profile.name,
@@ -146,6 +204,47 @@ export default function QuotesPage() {
     setBusyId(null)
   }
 
+  // Lifecycle tickboxes — every change is confirmed in a popup, and
+  // unticking reverts an accidental click.
+  function requestCompletedToggle(q) {
+    if (q.status === 'completed') {
+      setConfirmAction({
+        title: 'Undo job completed?',
+        body: `${q.quote_number} will go back to "Invoiced".`,
+        confirmLabel: 'Undo',
+        onConfirm: () => updateStatus(q.id, 'invoiced', { completed_at: null }),
+      })
+    } else if (q.status === 'invoiced') {
+      setConfirmAction({
+        title: 'Mark job as completed?',
+        body: `Confirm the work for ${q.client_name || 'this client'} is finished.`,
+        confirmLabel: 'Job completed',
+        onConfirm: () => updateStatus(q.id, 'completed', { completed_at: new Date().toISOString() }),
+      })
+    }
+  }
+
+  function requestPaidToggle(q) {
+    if (q.status === 'paid') {
+      setConfirmAction({
+        title: 'Undo payment?',
+        body: `${q.invoice_number || q.quote_number} will be marked unpaid and $${Number(q.total).toFixed(2)} removed from your earnings.`,
+        confirmLabel: 'Mark unpaid',
+        onConfirm: () => updateStatus(q.id, q.completed_at ? 'completed' : 'invoiced', { paid_at: null }),
+      })
+    } else if (q.status === 'invoiced' || q.status === 'completed') {
+      setConfirmAction({
+        title: 'Confirm payment received?',
+        body: `$${Number(q.total).toFixed(2)} from ${q.client_name || 'this client'} will be added to your earnings.`,
+        confirmLabel: 'Payment received',
+        onConfirm: () => updateStatus(q.id, 'paid', {
+          paid_at: new Date().toISOString(),
+          ...(q.completed_at ? {} : { completed_at: new Date().toISOString() }),
+        }),
+      })
+    }
+  }
+
   const filtered = filter === 'all' ? quotes : quotes.filter(q => q.status === filter)
   const sumWhere = statuses => quotes
     .filter(q => statuses.includes(q.status))
@@ -153,6 +252,41 @@ export default function QuotesPage() {
   const totalEarned = sumWhere(['paid'])
   const pendingPayment = sumWhere(['invoiced', 'completed'])
   const pendingCount = quotes.filter(q => q.status === 'sent').length
+
+  // ── Earnings breakdowns (paid quotes only) ──
+  const paidQuotes = quotes.filter(q => q.status === 'paid' && q.paid_at)
+  const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+  const byMonthMap = {}
+  const byYearMap = {}
+  const byServiceMap = {}
+  for (const q of paidQuotes) {
+    const d = new Date(q.paid_at)
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    byMonthMap[monthKey] = (byMonthMap[monthKey] || 0) + (Number(q.total) || 0)
+    byYearMap[d.getFullYear()] = (byYearMap[d.getFullYear()] || 0) + (Number(q.total) || 0)
+    for (const item of q.items || []) {
+      const amount = (parseFloat(item.price) || 0) * (parseInt(item.qty) || 1)
+      if (amount <= 0) continue
+      // Item descriptions look like "Service name — details"; group by the name
+      const key = (item.description || 'Other').split('—')[0].trim().slice(0, 60) || 'Other'
+      byServiceMap[key] = (byServiceMap[key] || 0) + amount
+    }
+  }
+  const byMonth = Object.entries(byMonthMap)
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .slice(0, 12)
+    .map(([key, value]) => {
+      const [y, m] = key.split('-')
+      return { label: `${MONTHS_SHORT[Number(m) - 1]} ${y}`, value }
+    })
+  const byYear = Object.entries(byYearMap)
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([key, value]) => ({ label: key, value }))
+  const byService = Object.entries(byServiceMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([key, value]) => ({ label: key, value }))
 
   if (loading) {
     return (
@@ -194,6 +328,54 @@ export default function QuotesPage() {
           ))}
         </div>
 
+        {/* View switch: quote list vs earnings breakdown */}
+        <div className="flex gap-1 mb-6 bg-white rounded-full border border-gray-200 p-1 w-fit">
+          {[['quotes', 'Quotes'], ['earnings', 'Earnings breakdown']].map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${view === v ? 'text-white' : 'text-gray-500 hover:text-gray-800'}`}
+              style={view === v ? { backgroundColor: '#00267F' } : {}}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {view === 'earnings' && (
+          <div className="flex flex-col gap-4">
+            {paidQuotes.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
+                <p className="font-medium text-gray-900 mb-1">No earnings recorded yet</p>
+                <p className="text-sm text-gray-500">
+                  Once you mark an invoice as paid, your earnings break down here by month, year and service.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #00267F' }}>
+                  <h2 className="font-semibold text-gray-900 mb-4">By month</h2>
+                  <BarList rows={byMonth} />
+                </div>
+                <div className="flex flex-col gap-4">
+                  <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #F9C000' }}>
+                    <h2 className="font-semibold text-gray-900 mb-4">By year</h2>
+                    <BarList rows={byYear} accent="#F9C000" />
+                  </div>
+                  <div className="bg-white rounded-2xl border border-gray-100 p-6" style={{ borderTop: '3px solid #16a34a' }}>
+                    <h2 className="font-semibold text-gray-900 mb-4">By service</h2>
+                    <BarList rows={byService} accent="#16a34a" />
+                  </div>
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 text-center">
+              Based on invoices you&apos;ve marked as paid · {paidQuotes.length} paid job{paidQuotes.length === 1 ? '' : 's'} · ${totalEarned.toFixed(2)} total
+            </p>
+          </div>
+        )}
+
+        {view === 'quotes' && (<>
         {/* Filter tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
           {['all', 'sent', 'accepted', 'invoiced', 'completed', 'paid', 'declined'].map(f => (
@@ -301,6 +483,26 @@ export default function QuotesPage() {
                       </div>
                     )}
 
+                    {/* Lifecycle tick boxes — confirmed via popup, untick to undo */}
+                    {['invoiced', 'completed', 'paid'].includes(q.status) && (
+                      <div className="mt-4 rounded-xl border border-gray-100 p-4 flex flex-col gap-3">
+                        <CheckRow
+                          label="Job completed"
+                          sublabel={q.completed_at ? `Completed ${fmtDate(q.completed_at)}` : 'Tick when the work is finished'}
+                          checked={!!q.completed_at}
+                          disabled={busyId === q.id || q.status === 'paid'}
+                          onToggle={() => requestCompletedToggle(q)}
+                        />
+                        <CheckRow
+                          label="Paid"
+                          sublabel={q.paid_at ? `Received ${fmtDate(q.paid_at)} · counted in your earnings` : 'Tick when the money is in hand'}
+                          checked={q.status === 'paid'}
+                          disabled={busyId === q.id}
+                          onToggle={() => requestPaidToggle(q)}
+                        />
+                      </div>
+                    )}
+
                     {/* Send-invoice form */}
                     {invoicingId === q.id && q.status === 'accepted' && (
                       <div className="mt-4 rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -387,31 +589,6 @@ export default function QuotesPage() {
                           </button>
                         )}
 
-                        {q.status === 'invoiced' && (
-                          <button
-                            onClick={() => updateStatus(q.id, 'completed', { completed_at: new Date().toISOString() })}
-                            disabled={busyId === q.id}
-                            className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                            style={{ backgroundColor: '#00267F' }}
-                          >
-                            Mark job completed
-                          </button>
-                        )}
-
-                        {(q.status === 'invoiced' || q.status === 'completed') && (
-                          <button
-                            onClick={() => updateStatus(q.id, 'paid', {
-                              paid_at: new Date().toISOString(),
-                              ...(q.completed_at ? {} : { completed_at: new Date().toISOString() }),
-                            })}
-                            disabled={busyId === q.id}
-                            className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                            style={{ backgroundColor: '#16a34a' }}
-                          >
-                            Mark as paid
-                          </button>
-                        )}
-
                         {q.status === 'declined' && (
                           <button
                             onClick={() => updateStatus(q.id, 'sent')}
@@ -432,9 +609,41 @@ export default function QuotesPage() {
 
         <p className="text-xs text-gray-400 text-center mt-8">
           Clients accept or decline quotes from their messages. Once accepted, send the invoice,
-          mark the job complete, then mark it paid — your earnings update automatically.
+          tick the job complete, then tick it paid — your earnings update automatically.
         </p>
+        </>)}
       </div>
+
+      {/* Confirmation popup for lifecycle changes */}
+      {confirmAction && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setConfirmAction(null)}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-gray-900 mb-2" style={{ fontFamily: "'Sora', sans-serif" }}>
+              {confirmAction.title}
+            </h3>
+            <p className="text-sm text-gray-500 leading-relaxed mb-6">{confirmAction.body}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { confirmAction.onConfirm(); setConfirmAction(null) }}
+                className="flex-1 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: '#00267F' }}
+              >
+                {confirmAction.confirmLabel || 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

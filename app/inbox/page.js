@@ -406,7 +406,8 @@ export default function Inbox() {
       setReplies(prev => ({ ...prev, [quoteMsg.id]: [...(prev[quoteMsg.id] || []), quoteReply] }))
     }
 
-    // Email + push the client about the new quote (fire-and-forget)
+    // Flag unread for the client and notify them (fire-and-forget)
+    supabase.from('messages').update({ client_read: false }).eq('id', quoteMsg.id).then(() => {})
     fetch('/api/notify-reply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -464,6 +465,8 @@ export default function Inbox() {
     if (!error) {
       setReplies(prev => ({ ...prev, [msg.id]: [...(prev[msg.id] || []), data] }))
       setReplyText(prev => ({ ...prev, [msg.id]: '' }))
+      // Flag the thread unread for the client's header badge
+      supabase.from('messages').update({ client_read: false }).eq('id', msg.id).then(() => {})
       // Email + push the client (fire-and-forget)
       fetch('/api/notify-reply', {
         method: 'POST',

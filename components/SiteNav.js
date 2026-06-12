@@ -19,34 +19,55 @@ export default function SiteNav() {
   useEffect(() => {
     if (!user) {
       setFreelancerProfile(null)
+      setClientProfile(null)
       setUnreadCount(0)
       return
     }
+
+    let cancelled = false
+
+    // Unread badge for both roles. messages.read is the freelancer's
+    // flag; messages.client_read is the client's.
+    async function refreshUnread(freelancerId) {
+      const query = freelancerId
+        ? supabase.from('messages').select('*', { count: 'exact', head: true })
+            .eq('freelancer_id', freelancerId).eq('read', false)
+        : supabase.from('messages').select('*', { count: 'exact', head: true })
+            .eq('sender_user_id', user.id).eq('client_read', false)
+      const { count } = await query
+      if (!cancelled) setUnreadCount(count || 0)
+    }
+
+    let interval
     supabase
       .from('freelancers')
       .select('id, name, avatar_url')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data: fp }) => {
+        if (cancelled) return
         setFreelancerProfile(fp || null)
-        if (fp) {
-          supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('freelancer_id', fp.id)
-            .eq('read', false)
-            .then(({ count }) => setUnreadCount(count || 0))
-        } else {
+        if (!fp) {
           // Clients: use their client profile for the nav avatar/name
           supabase
             .from('client_profiles')
             .select('display_name, avatar_url')
             .eq('user_id', user.id)
             .maybeSingle()
-            .then(({ data: cp }) => setClientProfile(cp || null))
+            .then(({ data: cp }) => { if (!cancelled) setClientProfile(cp || null) })
         }
+        refreshUnread(fp?.id || null)
+        // Keep the badge fresh while the tab stays open
+        interval = setInterval(() => refreshUnread(fp?.id || null), 60_000)
       })
-  }, [user])
+
+    return () => {
+      cancelled = true
+      if (interval) clearInterval(interval)
+    }
+    // pathname dependency: refetch the count on every page navigation so
+    // reading a thread (or receiving one) updates the badge immediately
+  }, [user, pathname])
 
   useEffect(() => {
     function onClickOutside(e) {

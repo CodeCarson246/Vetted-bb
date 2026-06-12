@@ -99,7 +99,43 @@ export default function ClientMessages() {
         .select('*, freelancers(id, name, avatar_url, trade, company_name, email, location)')
         .eq('sender_email', u.email)
         .order('created_at', { ascending: false })
-      setMessages(msgs || [])
+
+      // Load every thread's replies up front so the list can preview the
+      // LATEST message and sort by recent activity, not thread creation.
+      const list = msgs || []
+      if (list.length > 0) {
+        const { data: allReplies } = await supabase
+          .from('message_replies')
+          .select('*')
+          .in('message_id', list.map(m => m.id))
+          .order('created_at', { ascending: true })
+
+        const byThread = {}
+        for (const r of allReplies || []) {
+          if (!byThread[r.message_id]) byThread[r.message_id] = []
+          byThread[r.message_id].push(r)
+        }
+        setReplies(byThread)
+
+        const enriched = list
+          .map(m => {
+            const thread = byThread[m.id] || []
+            const last = thread[thread.length - 1]
+            return {
+              ...m,
+              last_activity_at: last?.created_at || m.created_at,
+              latest_preview: last
+                ? (getQuoteId(last)
+                  ? '📄 Quote received'
+                  : `${last.sender_user_id === u.id ? 'You: ' : ''}${last.body}`)
+                : m.message,
+            }
+          })
+          .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))
+        setMessages(enriched)
+      } else {
+        setMessages([])
+      }
 
       const { data: revs } = await supabase
         .from('reviews')
@@ -124,13 +160,15 @@ export default function ClientMessages() {
   async function handleExpand(msg) {
     if (expandedId === msg.id) { setExpandedId(null); return }
     setExpandedId(msg.id)
-    const { data: r } = await supabase
-      .from('message_replies')
-      .select('*')
-      .eq('message_id', msg.id)
-      .order('created_at', { ascending: true })
-    setReplies(prev => ({ ...prev, [msg.id]: r || [] }))
-    const quoteIds = (r || []).map(getQuoteId).filter(Boolean)
+
+    // Opening the thread clears the unread badge for this client
+    if (msg.client_read === false) {
+      supabase.from('messages').update({ client_read: true }).eq('id', msg.id).then(() => {})
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, client_read: true } : m))
+    }
+
+    const r = replies[msg.id] || []
+    const quoteIds = r.map(getQuoteId).filter(Boolean)
     if (quoteIds.length > 0) {
       const { data: qs } = await supabase
         .from('quotes')
@@ -225,19 +263,21 @@ export default function ClientMessages() {
                             {msg.freelancers?.name || 'Freelancer'}
                           </a>
                           <span className="text-xs text-gray-400">{msg.freelancers?.trade}</span>
-                          {(replies[msg.id] || []).length > 0 && (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                              {(replies[msg.id] || []).length} repl{(replies[msg.id] || []).length === 1 ? 'y' : 'ies'}
+                          {msg.client_read === false && (
+                            <span className="text-xs text-white font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#00267F' }}>
+                              New
                             </span>
                           )}
                         </div>
                         <span className="text-xs text-gray-400 flex-shrink-0">
-                          {new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-gray-700 mt-0.5">{msg.subject}</p>
+                      <p className={`text-sm mt-0.5 ${msg.client_read === false ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{msg.subject}</p>
                       {expandedId !== msg.id && (
-                        <p className="text-sm text-gray-400 mt-0.5 truncate">{msg.message}</p>
+                        <p className={`text-sm mt-0.5 truncate ${msg.client_read === false ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>
+                          {msg.latest_preview || msg.message}
+                        </p>
                       )}
                     </div>
                   </div>
