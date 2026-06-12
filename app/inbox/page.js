@@ -49,6 +49,7 @@ export default function Inbox() {
   const [toast, setToast] = useState(null)
   const [confirmDeleteQuoteId, setConfirmDeleteQuoteId] = useState(null)
   const [clientRatings, setClientRatings] = useState({})
+  const [clientProfiles, setClientProfiles] = useState({})
 
   const unreadCount = messages.filter(m => !m.read).length
 
@@ -110,9 +111,19 @@ export default function Inbox() {
             .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))
           setMessages(enriched)
 
-          // Aggregate how other freelancers rated each client with an account
+          // Live client profiles (current name + photo) and aggregate ratings.
+          // Messages only snapshot the name at send time, so without this
+          // a client's updated photo/name never shows in the inbox.
           const clientIds = [...new Set(messageList.map(m => m.sender_user_id).filter(Boolean))]
           if (clientIds.length > 0) {
+            const { data: cps } = await supabase
+              .from('client_profiles')
+              .select('user_id, display_name, avatar_url')
+              .in('user_id', clientIds)
+            const cpMap = {}
+            for (const cp of cps || []) cpMap[cp.user_id] = cp
+            setClientProfiles(cpMap)
+
             const { data: clientRevs } = await supabase
               .from('reviews')
               .select('client_user_id, rating')
@@ -660,9 +671,11 @@ export default function Inbox() {
               >
                 <div className="p-5 sm:p-6">
                   <div className="flex items-start gap-4">
-                    {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0">
-                      {msg.sender_name?.[0]?.toUpperCase() || '?'}
+                    {/* Avatar — live client photo when they have a profile */}
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0 overflow-hidden">
+                      {clientProfiles[msg.sender_user_id]?.avatar_url
+                        ? <img src={clientProfiles[msg.sender_user_id].avatar_url} alt={msg.sender_name} className="w-full h-full object-cover" />
+                        : msg.sender_name?.[0]?.toUpperCase() || '?'}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -675,7 +688,7 @@ export default function Inbox() {
                               title="View this client's profile"
                               className={`text-sm hover:underline underline-offset-2 ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}
                             >
-                              {msg.sender_name}
+                              {clientProfiles[msg.sender_user_id]?.display_name || msg.sender_name}
                             </a>
                           ) : (
                             <span className={`text-sm ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
@@ -810,8 +823,15 @@ export default function Inbox() {
                                   </>
                                 ) : (
                                   <>
-                                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
-                                      {r.sender_name[0]?.toUpperCase()}
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
+                                      {(() => {
+                                        const av = isOwnReply
+                                          ? profile?.avatar_url
+                                          : clientProfiles[r.sender_user_id]?.avatar_url
+                                        return av
+                                          ? <img src={av} alt={r.sender_name} className="w-full h-full object-cover" />
+                                          : r.sender_name[0]?.toUpperCase()
+                                      })()}
                                     </div>
                                     <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
                                       <p className="text-xs font-semibold text-gray-700 mb-1">{r.sender_name}</p>

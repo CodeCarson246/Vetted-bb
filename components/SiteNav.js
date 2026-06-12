@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 export default function SiteNav() {
   const { user } = useAuth()
   const [freelancerProfile, setFreelancerProfile] = useState(null)
+  const [clientProfile, setClientProfile] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -35,6 +36,14 @@ export default function SiteNav() {
             .eq('freelancer_id', fp.id)
             .eq('read', false)
             .then(({ count }) => setUnreadCount(count || 0))
+        } else {
+          // Clients: use their client profile for the nav avatar/name
+          supabase
+            .from('client_profiles')
+            .select('display_name, avatar_url')
+            .eq('user_id', user.id)
+            .maybeSingle()
+            .then(({ data: cp }) => setClientProfile(cp || null))
         }
       })
   }, [user])
@@ -60,9 +69,9 @@ export default function SiteNav() {
   // Initials fallback for avatar
   const initials = freelancerProfile?.name
     ? freelancerProfile.name.split(' ').map(n => n[0]).filter(Boolean).join('').slice(0, 2)
-    : (user?.user_metadata?.full_name || user?.email || '?')[0].toUpperCase()
+    : (clientProfile?.display_name || user?.user_metadata?.full_name || user?.email || '?')[0].toUpperCase()
 
-  const avatarUrl = freelancerProfile?.avatar_url || null
+  const avatarUrl = freelancerProfile?.avatar_url || clientProfile?.avatar_url || null
   const profileId = freelancerProfile?.id || null
 
   return (
@@ -492,7 +501,7 @@ export default function SiteNav() {
                     : initials}
                 </div>
                 <span style={{ color: '#374151', fontSize: '0.875rem', fontWeight: 500 }}>
-                  {freelancerProfile?.name || user?.user_metadata?.full_name || user?.email}
+                  {freelancerProfile?.name || clientProfile?.display_name || user?.user_metadata?.full_name || user?.email}
                 </span>
               </a>
               {profileId && (

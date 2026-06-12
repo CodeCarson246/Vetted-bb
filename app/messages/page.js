@@ -25,6 +25,7 @@ export default function ClientMessages() {
   const [viewingQuote, setViewingQuote] = useState(null)
   const [newReplies, setNewReplies] = useState({})
   const [myReviews, setMyReviews] = useState([])
+  const [myClientProfile, setMyClientProfile] = useState(null)
   const [toast, setToast] = useState(null)
   const [respondingQuoteId, setRespondingQuoteId] = useState(null)
   const [replySending, setReplySending] = useState(false)
@@ -106,6 +107,14 @@ export default function ClientMessages() {
         .eq('author_user_id', u.id)
         .order('date', { ascending: false })
       setMyReviews(revs || [])
+
+      // Own client profile — used for the "You" avatars in threads
+      const { data: cp } = await supabase
+        .from('client_profiles')
+        .select('display_name, avatar_url')
+        .eq('user_id', u.id)
+        .maybeSingle()
+      setMyClientProfile(cp || null)
 
       setLoading(false)
     }
@@ -239,8 +248,10 @@ export default function ClientMessages() {
 
                       {/* Original message */}
                       <div className="flex items-start gap-3">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#93b8ff' }}>
-                          {(user?.user_metadata?.full_name || user?.email || '?')[0].toUpperCase()}
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#93b8ff' }}>
+                          {myClientProfile?.avatar_url
+                            ? <img src={myClientProfile.avatar_url} alt="You" className="w-full h-full object-cover" />
+                            : (user?.user_metadata?.full_name || user?.email || '?')[0].toUpperCase()}
                         </div>
                         <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
                           <p className="text-xs font-semibold text-gray-500 mb-1">You</p>
@@ -326,7 +337,9 @@ export default function ClientMessages() {
                           <div key={r.id} className="flex items-start gap-3">
                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: isOwn ? '#93b8ff' : '#00267F' }}>
                               {isOwn
-                                ? (user?.user_metadata?.full_name || user?.email || '?')[0].toUpperCase()
+                                ? (myClientProfile?.avatar_url
+                                  ? <img src={myClientProfile.avatar_url} alt="You" className="w-full h-full object-cover" />
+                                  : (user?.user_metadata?.full_name || user?.email || '?')[0].toUpperCase())
                                 : msg.freelancers?.avatar_url
                                 ? <img src={msg.freelancers.avatar_url} alt={msg.freelancers.name} className="w-full h-full object-cover" />
                                 : (msg.freelancers?.name || '?')[0]?.toUpperCase()}
