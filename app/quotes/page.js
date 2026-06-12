@@ -55,7 +55,7 @@ function CheckRow({ label, sublabel, checked, disabled, onToggle }) {
         className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors"
         style={checked
           ? { backgroundColor: '#16a34a', borderColor: '#16a34a' }
-          : { borderColor: '#d1d5db', backgroundColor: 'white' }}
+          : { borderColor: '#d1d5db', backgroundColor: 'var(--surface-card)' }}
       >
         {checked && (
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5">

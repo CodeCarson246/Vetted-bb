@@ -81,7 +81,7 @@ function PhaseNode({ type }) {
       <div style={{
         ...shared,
         backgroundColor: '#00267F',
-        boxShadow: '0 0 0 3px #F3F4F8, 0 0 0 5px #00267F',
+        boxShadow: '0 0 0 3px var(--page-bg), 0 0 0 5px #00267F',
         position: 'relative', zIndex: 1,
       }} />
     )
@@ -98,7 +98,7 @@ function PhaseNode({ type }) {
         <div style={{
           ...shared,
           backgroundColor: '#F9C000',
-          boxShadow: '0 0 0 3px #F3F4F8, 0 0 0 5px #F9C000',
+          boxShadow: '0 0 0 3px var(--page-bg), 0 0 0 5px #F9C000',
           position: 'relative', zIndex: 2,
         }} />
       </div>
@@ -107,7 +107,7 @@ function PhaseNode({ type }) {
   return (
     <div style={{
       ...shared,
-      backgroundColor: '#F3F4F8',
+      backgroundColor: 'var(--page-bg)',
       border: '2px solid #D1D5DB',
       position: 'relative', zIndex: 1,
     }} />
@@ -118,7 +118,7 @@ function PhaseCard({ phase }) {
   const muted = phase.borderTop === '#D1D5DB'
   return (
     <div style={{
-      backgroundColor: 'white',
+      backgroundColor: 'var(--surface-card)',
       border: `1px solid ${muted ? '#E5E7EB' : 'rgba(0,38,127,0.1)'}`,
       borderTop: `4px solid ${phase.borderTop}`,
       borderRadius: '16px',
@@ -309,7 +309,7 @@ export default function Roadmap() {
       {/* ── Voting ── */}
       <section style={{ maxWidth: '880px', margin: '0 auto', padding: '0 24px 64px' }}>
         <div style={{
-          backgroundColor: 'white',
+          backgroundColor: 'var(--surface-card)',
           border: '1px solid rgba(0,38,127,0.1)',
           borderTop: '4px solid #00267F',
           borderRadius: '16px',
@@ -445,7 +445,7 @@ export default function Roadmap() {
           Recent updates
         </h2>
         <div style={{
-          backgroundColor: 'white',
+          backgroundColor: 'var(--surface-card)',
           borderRadius: '16px',
           border: '1px solid rgba(0,38,127,0.1)',
           boxShadow: '0 2px 12px rgba(0,38,127,0.07)',

@@ -200,7 +200,7 @@ export default function Home() {
       <section className="px-4 sm:px-8 py-10" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
         <div className="max-w-2xl mx-auto">
           <div style={{
-            backgroundColor: 'white',
+            backgroundColor: 'var(--surface-card)',
             borderTop: '4px solid #F9C000',
             borderRadius: '16px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
@@ -274,12 +274,13 @@ export default function Home() {
                   display: flex !important;
                   overflow-x: auto;
                   scroll-snap-type: x mandatory;
-                  padding: 0 24px;
-                  padding-right: 48px;
-                  gap: 16px;
+                  padding: 4px 16px 12px;
+                  scroll-padding: 16px;
+                  gap: 12px;
                 }
                 .hidden-scroll-mobile > a {
-                  min-width: 85vw;
+                  min-width: min(78vw, 340px);
+                  max-width: 340px;
                   flex-shrink: 0;
                   scroll-snap-align: start;
                 }
@@ -290,7 +291,7 @@ export default function Home() {
                 key={f.id}
                 href={`/freelancers/${f.id}`}
                 style={{
-                  backgroundColor: 'white',
+                  backgroundColor: 'var(--surface-card)',
                   borderTop: '4px solid #00267F',
                   borderRadius: '16px',
                   padding: '28px 24px 24px',

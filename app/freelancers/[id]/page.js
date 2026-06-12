@@ -958,7 +958,7 @@ export default function FreelancerProfile() {
                           setPubCalMonth(p => p.month === 0 ? { year: p.year - 1, month: 11 } : { year: p.year, month: p.month - 1 })
                         }
                       }}
-                      style={{ width: 28, height: 28, borderRadius: '7px', border: '1.5px solid #e5e7eb', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#374151' }}
+                      style={{ width: 28, height: 28, borderRadius: '7px', border: '1.5px solid #e5e7eb', background: 'var(--surface-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#374151' }}
                     >←</button>
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', minWidth: '140px', textAlign: 'center' }}>
                       {pubNavLabel}
@@ -971,7 +971,7 @@ export default function FreelancerProfile() {
                           setPubCalMonth(p => p.month === 11 ? { year: p.year + 1, month: 0 } : { year: p.year, month: p.month + 1 })
                         }
                       }}
-                      style={{ width: 28, height: 28, borderRadius: '7px', border: '1.5px solid #e5e7eb', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#374151' }}
+                      style={{ width: 28, height: 28, borderRadius: '7px', border: '1.5px solid #e5e7eb', background: 'var(--surface-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#374151' }}
                     >→</button>
                   </div>
 

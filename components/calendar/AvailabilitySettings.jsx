@@ -170,7 +170,7 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
 
       {/* ── Mode switcher ────────────────────────────────────── */}
       <div style={{
-        backgroundColor: 'white', borderRadius: '16px',
+        backgroundColor: 'var(--surface-card)', borderRadius: '16px',
         border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F',
         boxShadow: '0 2px 12px rgba(0,38,127,0.08)', padding: '20px',
       }}>
@@ -190,7 +190,7 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
                 padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
                 border: settings?.mode === opt.id ? '1px solid rgba(0,38,127,0.15)' : '1px solid rgba(0,38,127,0.15)',
                 borderTop: settings?.mode === opt.id ? '4px solid #00267F' : '4px solid #00267F',
-                backgroundColor: settings?.mode === opt.id ? '#EEF2FF' : 'white',
+                backgroundColor: settings?.mode === opt.id ? 'var(--selected-fill, #EEF2FF)' : 'var(--surface-card)',
                 boxShadow: settings?.mode === opt.id ? '0 2px 12px rgba(0,38,127,0.12)' : '0 2px 12px rgba(0,38,127,0.06)',
                 textAlign: 'left', width: '100%', transition: 'all 0.2s ease',
               }}
@@ -198,7 +198,7 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
               <div style={{
                 width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 1,
                 border: `2px solid ${settings?.mode === opt.id ? '#00267F' : '#d1d5db'}`,
-                backgroundColor: settings?.mode === opt.id ? '#00267F' : 'white',
+                backgroundColor: settings?.mode === opt.id ? '#00267F' : 'var(--surface-card)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {settings?.mode === opt.id && (
@@ -232,7 +232,7 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
       {/* ── Show on profile toggle ───────────────────────────── */}
       {settings?.mode === 'calendar' && (
         <div style={{
-          backgroundColor: 'white', borderRadius: '16px',
+          backgroundColor: 'var(--surface-card)', borderRadius: '16px',
           border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F',
           boxShadow: '0 2px 12px rgba(0,38,127,0.08)',
           padding: '14px 20px',
@@ -270,7 +270,7 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
       {/* ── Calendar ─────────────────────────────────────────── */}
       {settings?.mode === 'calendar' && (
         <div style={{
-          backgroundColor: 'white', borderRadius: '16px',
+          backgroundColor: 'var(--surface-card)', borderRadius: '16px',
           borderTop: '4px solid #00267F',
           boxShadow: '0 2px 12px rgba(0,38,127,0.08)',
           overflow: 'hidden',
@@ -307,7 +307,7 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
                 onClick={calView === 'week' ? prevWeek : prevMonth}
                 style={{
                   width: 30, height: 30, borderRadius: '7px',
-                  border: '1.5px solid #e5e7eb', background: 'white',
+                  border: '1.5px solid #e5e7eb', background: 'var(--surface-card)',
                   cursor: 'pointer', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', fontSize: '0.9rem', color: '#374151',
                 }}
@@ -322,7 +322,7 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
                 onClick={calView === 'week' ? nextWeek : nextMonth}
                 style={{
                   width: 30, height: 30, borderRadius: '7px',
-                  border: '1.5px solid #e5e7eb', background: 'white',
+                  border: '1.5px solid #e5e7eb', background: 'var(--surface-card)',
                   cursor: 'pointer', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', fontSize: '0.9rem', color: '#374151',
                 }}

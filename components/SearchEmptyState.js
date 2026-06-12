@@ -51,7 +51,7 @@ export default function SearchEmptyState({ query, category, onClearFilters }) {
           <button
             onClick={onClearFilters}
             className="px-7 py-3 rounded-full font-semibold text-sm transition-opacity hover:opacity-90 border-2"
-            style={{ borderColor: '#00267F', color: '#00267F', backgroundColor: 'white' }}
+            style={{ borderColor: '#00267F', color: '#00267F', backgroundColor: 'var(--surface-card)' }}
           >
             Clear Filters
           </button>

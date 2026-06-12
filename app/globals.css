@@ -17,6 +17,7 @@
   --surface-card: #ffffff;
   --border-card: #D7DFEC;
   --nav-bg: rgba(255, 255, 255, 0.88);
+  --selected-fill: #EEF2FF;
 }
 
 [data-theme="dark"] {
@@ -31,6 +32,7 @@
   --surface-card: #151E32;
   --border-card: #26324E;
   --nav-bg: rgba(11, 18, 32, 0.85);
+  --selected-fill: #1E2A4A;
 }
 
 /* Page background used by main wrappers (replaces inline #F3F4F8) */
@@ -91,23 +93,50 @@
 
 /* Inline-styled text colors (stage-1 bridge until pages move to tokens).
    :not([style*="background"]) keeps buttons with colored backgrounds —
-   e.g. gold buttons with navy text — untouched. */
+   e.g. gold buttons with navy text — untouched.
+   IMPORTANT: both hex AND rgb() forms are needed — server-rendered HTML
+   keeps the authored hex, but once React mutates a style client-side the
+   browser re-serializes the attribute as rgb(r, g, b). */
 [data-theme="dark"] [style*="color:#00267F"]:not([style*="background"]),
-[data-theme="dark"] [style*="color: #00267F"]:not([style*="background"]) { color: #7E9BFF !important; }
+[data-theme="dark"] [style*="color: #00267F"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: rgb(0, 38, 127)"]:not([style*="background"]) { color: #7E9BFF !important; }
 [data-theme="dark"] [style*="color:#111827"]:not([style*="background"]),
 [data-theme="dark"] [style*="color: #111827"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: rgb(17, 24, 39)"]:not([style*="background"]),
 [data-theme="dark"] [style*="color:#1F2937"]:not([style*="background"]),
-[data-theme="dark"] [style*="color: #1F2937"]:not([style*="background"]) { color: #E6EAF4 !important; }
+[data-theme="dark"] [style*="color: #1F2937"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: rgb(31, 41, 55)"]:not([style*="background"]) { color: #E6EAF4 !important; }
 [data-theme="dark"] [style*="color:#374151"]:not([style*="background"]),
-[data-theme="dark"] [style*="color: #374151"]:not([style*="background"]) { color: #C7D0E0 !important; }
+[data-theme="dark"] [style*="color: #374151"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: rgb(55, 65, 81)"]:not([style*="background"]) { color: #C7D0E0 !important; }
 [data-theme="dark"] [style*="color:#6B7280"]:not([style*="background"]),
 [data-theme="dark"] [style*="color: #6B7280"]:not([style*="background"]),
 [data-theme="dark"] [style*="color:#6b7280"]:not([style*="background"]),
-[data-theme="dark"] [style*="color: #6b7280"]:not([style*="background"]) { color: #98A4BA !important; }
+[data-theme="dark"] [style*="color: #6b7280"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: rgb(107, 114, 128)"]:not([style*="background"]) { color: #98A4BA !important; }
 [data-theme="dark"] [style*="color:#9CA3AF"]:not([style*="background"]),
 [data-theme="dark"] [style*="color: #9CA3AF"]:not([style*="background"]),
 [data-theme="dark"] [style*="color:#9ca3af"]:not([style*="background"]),
-[data-theme="dark"] [style*="color: #9ca3af"]:not([style*="background"]) { color: #7A879E !important; }
+[data-theme="dark"] [style*="color: #9ca3af"]:not([style*="background"]),
+[data-theme="dark"] [style*="color: rgb(156, 163, 175)"]:not([style*="background"]) { color: #7A879E !important; }
+
+/* Inline light fills (selected states, alt rows) — hex for SSR HTML,
+   rgb for client-mutated styles */
+[data-theme="dark"] [style*="background-color:#EEF2FF"],
+[data-theme="dark"] [style*="background-color: #EEF2FF"],
+[data-theme="dark"] [style*="background-color: rgb(238, 242, 255)"] { background-color: #1E2A4A !important; }
+[data-theme="dark"] [style*="background-color:#f9fafb"],
+[data-theme="dark"] [style*="background-color: #f9fafb"],
+[data-theme="dark"] [style*="background-color:#F9FAFB"],
+[data-theme="dark"] [style*="background-color: rgb(249, 250, 251)"] { background-color: #10192E !important; }
+[data-theme="dark"] [style*="background-color:#f3f4f6"],
+[data-theme="dark"] [style*="background-color: #f3f4f6"],
+[data-theme="dark"] [style*="background-color: rgb(243, 244, 246)"] { background-color: #1B2640 !important; }
+
+/* Navy text sitting on those light fills needs brightening too —
+   the main text bridge skips elements with inline backgrounds */
+[data-theme="dark"] [style*="#EEF2FF"][style*="#00267F"],
+[data-theme="dark"] [style*="rgb(238, 242, 255)"][style*="rgb(0, 38, 127)"] { background-color: #1E2A4A !important; color: #9DB4FF !important; }
 
 /* Native form controls follow the theme */
 [data-theme="dark"] select,

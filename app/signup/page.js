@@ -72,7 +72,7 @@ function SignupContent() {
               display: 'inline-flex',
               alignItems: 'center',
               alignSelf: 'flex-start',
-              backgroundColor: '#ffffff',
+              backgroundColor: 'var(--surface-card)',
               borderRadius: '999px',
               padding: '10px 28px',
               fontFamily: "'Sora', sans-serif",

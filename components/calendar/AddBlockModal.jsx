@@ -147,7 +147,7 @@ export default function AddBlockModal({
     width: '100%', padding: '10px 12px',
     border: '1.5px solid #e5e7eb', borderRadius: '8px',
     fontSize: '0.875rem', outline: 'none', color: '#374151',
-    backgroundColor: 'white', boxSizing: 'border-box',
+    backgroundColor: 'var(--surface-card)', boxSizing: 'border-box',
   }
   const labelStyle = {
     display: 'block', fontSize: '0.83rem',
@@ -170,7 +170,7 @@ export default function AddBlockModal({
       padding: '16px',
     }}>
       <div style={{
-        backgroundColor: 'white', borderRadius: '16px',
+        backgroundColor: 'var(--surface-card)', borderRadius: '16px',
         maxWidth: '480px', width: '100%',
         maxHeight: '92vh', overflowY: 'auto',
         padding: '28px 28px 32px',
@@ -184,7 +184,7 @@ export default function AddBlockModal({
           style={{
             position: 'absolute', top: 14, right: 14,
             width: 30, height: 30, borderRadius: '50%',
-            border: '1px solid #e5e7eb', background: 'white',
+            border: '1px solid #e5e7eb', background: 'var(--surface-card)',
             cursor: 'pointer', fontSize: '18px', color: '#9CA3AF',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
@@ -423,7 +423,7 @@ export default function AddBlockModal({
                           onClick={() => onBlockRemove(block.id)}
                           style={{
                             padding: '6px 12px', borderRadius: '7px',
-                            border: '1px solid #fecaca', backgroundColor: 'white',
+                            border: '1px solid #fecaca', backgroundColor: 'var(--surface-card)',
                             color: '#dc2626', fontSize: '0.78rem', fontWeight: 600,
                             cursor: 'pointer', flexShrink: 0,
                           }}

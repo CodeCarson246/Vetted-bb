@@ -32,7 +32,7 @@ export default function BlockPopover({ block, onClose, onRemove, onEdit }) {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: 600,
-        backgroundColor: 'white',
+        backgroundColor: 'var(--surface-card)',
         borderRadius: '14px',
         padding: '18px 20px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
@@ -61,7 +61,7 @@ export default function BlockPopover({ block, onClose, onRemove, onEdit }) {
             onClick={onClose}
             style={{
               width: 26, height: 26, borderRadius: '50%',
-              border: '1px solid #e5e7eb', background: 'white',
+              border: '1px solid #e5e7eb', background: 'var(--surface-card)',
               cursor: 'pointer', fontSize: '16px', color: '#9CA3AF',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0, marginLeft: '8px',
@@ -90,7 +90,7 @@ export default function BlockPopover({ block, onClose, onRemove, onEdit }) {
             onClick={onRemove}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px',
-              border: '1.5px solid #fca5a5', background: 'white',
+              border: '1.5px solid #fca5a5', background: 'var(--surface-card)',
               color: '#dc2626', fontSize: '0.8rem', fontWeight: 600,
               cursor: 'pointer',
             }}
@@ -101,7 +101,7 @@ export default function BlockPopover({ block, onClose, onRemove, onEdit }) {
             onClick={onEdit}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px',
-              border: '1.5px solid #e5e7eb', background: 'white',
+              border: '1.5px solid #e5e7eb', background: 'var(--surface-card)',
               color: '#6B7280', fontSize: '0.8rem', fontWeight: 600,
               cursor: 'pointer',
             }}

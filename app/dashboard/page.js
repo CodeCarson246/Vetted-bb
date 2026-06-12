@@ -1154,7 +1154,7 @@ function DashboardInner() {
                           width: 20,
                           height: 20,
                           borderRadius: '50%',
-                          backgroundColor: 'white',
+                          backgroundColor: 'var(--surface-card)',
                           transition: 'left 0.15s ease',
                         }} />
                       </button>
@@ -1754,7 +1754,7 @@ function DashboardInner() {
                           className="flex-1 py-2.5 text-sm font-medium transition-colors"
                           style={servicePriceType === 'fixed'
                             ? { backgroundColor: '#00267F', color: 'white' }
-                            : { backgroundColor: 'white', color: '#6b7280' }}
+                            : { backgroundColor: 'var(--surface-card)', color: '#6b7280' }}
                         >
                           Fixed price
                         </button>
@@ -1764,7 +1764,7 @@ function DashboardInner() {
                           className="flex-1 py-2.5 text-sm font-medium transition-colors border-l border-gray-200"
                           style={servicePriceType === 'starting_from'
                             ? { backgroundColor: '#00267F', color: 'white' }
-                            : { backgroundColor: 'white', color: '#6b7280' }}
+                            : { backgroundColor: 'var(--surface-card)', color: '#6b7280' }}
                         >
                           Starting from
                         </button>
@@ -2622,7 +2622,7 @@ function DashboardInner() {
                                   className="flex-1 py-2 text-xs font-medium transition-colors"
                                   style={createSvcPriceType === 'fixed'
                                     ? { backgroundColor: '#00267F', color: 'white' }
-                                    : { backgroundColor: 'white', color: '#6b7280' }}
+                                    : { backgroundColor: 'var(--surface-card)', color: '#6b7280' }}
                                 >
                                   Fixed price
                                 </button>
@@ -2632,7 +2632,7 @@ function DashboardInner() {
                                   className="flex-1 py-2 text-xs font-medium transition-colors border-l border-gray-200"
                                   style={createSvcPriceType === 'starting_from'
                                     ? { backgroundColor: '#00267F', color: 'white' }
-                                    : { backgroundColor: 'white', color: '#6b7280' }}
+                                    : { backgroundColor: 'var(--surface-card)', color: '#6b7280' }}
                                 >
                                   Starting from
                                 </button>
