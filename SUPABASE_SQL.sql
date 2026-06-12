@@ -399,3 +399,21 @@ ALTER TABLE reviews
 
 CREATE INDEX IF NOT EXISTS idx_reviews_client_user
   ON reviews (client_user_id) WHERE client_user_id IS NOT NULL;
+
+-- ============================================================
+-- SECTION 7 — INVOICES + EARNINGS (2026-06-12)
+-- Run before deploying the earnings/invoice code.
+--
+-- Quote lifecycle becomes:
+--   sent → accepted → invoiced → completed → paid   (declined terminal)
+-- A quote and an invoice are legally distinct documents: the invoice
+-- gets its own number, issue date and payment terms, set when the
+-- freelancer sends it after acceptance.
+-- ============================================================
+
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS invoice_number   text;
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS invoiced_at      timestamptz;
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS invoice_terms    text;
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS invoice_due_date date;
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS completed_at     timestamptz;
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS paid_at          timestamptz;

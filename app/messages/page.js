@@ -315,14 +315,22 @@ export default function ClientMessages() {
                                   </div>
                                 ) : (
                                   <span
-                                    className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize"
-                                    style={quoteData.status === 'accepted'
-                                      ? { backgroundColor: '#DCFCE7', color: '#166534' }
-                                      : quoteData.status === 'declined'
-                                      ? { backgroundColor: '#FEE2E2', color: '#991B1B' }
-                                      : { backgroundColor: '#EEF2FF', color: '#00267F' }}
+                                    className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                                    style={{
+                                      accepted:  { backgroundColor: '#DCFCE7', color: '#166534' },
+                                      declined:  { backgroundColor: '#FEE2E2', color: '#991B1B' },
+                                      invoiced:  { backgroundColor: '#FEF3C7', color: '#92400E' },
+                                      completed: { backgroundColor: '#E0E7FF', color: '#3730A3' },
+                                      paid:      { backgroundColor: '#DCFCE7', color: '#166534' },
+                                    }[quoteData.status] || { backgroundColor: '#EEF2FF', color: '#00267F' }}
                                   >
-                                    {quoteData.status}
+                                    {{
+                                      accepted: 'Accepted',
+                                      declined: 'Declined',
+                                      invoiced: `Invoice — due ${quoteData.invoice_due_date ? new Date(quoteData.invoice_due_date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'soon'}`,
+                                      completed: 'Job completed',
+                                      paid: 'Paid ✓',
+                                    }[quoteData.status] || quoteData.status}
                                   </span>
                                 )}
                               </div>
@@ -526,8 +534,17 @@ export default function ClientMessages() {
                 className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: '#F9C000', color: '#00267F' }}
               >
-                Download PDF
+                Quote PDF
               </button>
+              {viewingQuote.quote.invoice_number && (
+                <button
+                  onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice' })}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#00267F' }}
+                >
+                  Invoice PDF
+                </button>
+              )}
             </div>
           </div>
         </div>
