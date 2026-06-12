@@ -93,21 +93,32 @@ export default function Inbox() {
 
         const messageList = msgs || []
         if (messageList.length > 0) {
-          // Fetch the latest reply timestamp for each thread so we can sort by
-          // most recent activity (original message or any reply), not just send date
+          // Fetch the latest reply per thread so rows sort by most recent
+          // activity AND preview the newest message, not the original one
           const { data: latestReplies } = await supabase
             .from('message_replies')
-            .select('message_id, created_at')
+            .select('message_id, created_at, body, sender_user_id, quote_id')
             .in('message_id', messageList.map(m => m.id))
             .order('created_at', { ascending: false })
 
-          const latestReplyAt = {}
+          const latestReply = {}
           ;(latestReplies || []).forEach(r => {
-            if (!latestReplyAt[r.message_id]) latestReplyAt[r.message_id] = r.created_at
+            if (!latestReply[r.message_id]) latestReply[r.message_id] = r
           })
 
           const enriched = messageList
-            .map(m => ({ ...m, last_activity_at: latestReplyAt[m.id] || m.created_at }))
+            .map(m => {
+              const last = latestReply[m.id]
+              return {
+                ...m,
+                last_activity_at: last?.created_at || m.created_at,
+                latest_preview: last
+                  ? (getQuoteId(last)
+                    ? '📄 Quote sent'
+                    : `${last.sender_user_id === user.id ? 'You: ' : ''}${last.body}`)
+                  : m.message,
+              }
+            })
             .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))
           setMessages(enriched)
 
@@ -736,8 +747,10 @@ export default function Inbox() {
                       </p>
 
                       {expandedId !== msg.id && (
-                        <p className="text-sm text-gray-500 mt-1">
-                          {msg.message.length > 100 ? msg.message.slice(0, 100) + '…' : msg.message}
+                        <p className="text-sm text-gray-500 mt-1 truncate">
+                          {(msg.latest_preview || msg.message).length > 100
+                            ? (msg.latest_preview || msg.message).slice(0, 100) + '…'
+                            : (msg.latest_preview || msg.message)}
                         </p>
                       )}
                     </div>
