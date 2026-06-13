@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -19,8 +19,48 @@ export default function PhoneVerify({ verified, onVerified }) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [cooldown, setCooldown] = useState(0) // seconds until resend allowed
 
   const cleanPhone = () => phone.replace(/[\s()-]/g, '')
+
+  // Reconcile on mount: if Supabase Auth already shows a confirmed phone
+  // but our profile flag is still off (e.g. a previous attempt verified
+  // the OTP but the server write failed), finish it now — no new code.
+  useEffect(() => {
+    if (verified) return
+    let cancelled = false
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (cancelled || !user?.phone_confirmed_at || !user?.phone) return
+      const ok = await finalize()
+      if (ok && !cancelled) { setStep('done'); onVerified?.() }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Tick the resend cooldown down to zero
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const t = setTimeout(() => setCooldown(c => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
+
+  // Calls the server route that flips phone_verified after re-checking
+  // the confirmation. Returns true on success.
+  async function finalize() {
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/verify-phone', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session?.access_token || ''}` },
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setError(body.error || 'Could not finish verification. Please try again.')
+      return false
+    }
+    return true
+  }
 
   async function sendCode() {
     setBusy(true); setError(null)
@@ -34,9 +74,12 @@ export default function PhoneVerify({ verified, onVerified }) {
     if (error) {
       // Surface the real Supabase message — it pinpoints provider/config issues
       console.error('[phone-verify] updateUser error:', error)
+      const m = /after (\d+) seconds/.exec(error.message || '')
+      if (m) setCooldown(Number(m[1]))
       setError(error.message || 'Could not send the code. Please try again.')
     } else {
       setStep('code')
+      setCooldown(60) // Supabase throttles repeat sends ~60s
     }
     setBusy(false)
   }
@@ -55,19 +98,11 @@ export default function PhoneVerify({ verified, onVerified }) {
       setBusy(false)
       return
     }
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch('/api/verify-phone', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${session?.access_token || ''}` },
-    })
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      setError(body.error || 'Could not finish verification. Please try again.')
-      setBusy(false)
-      return
+    const ok = await finalize()
+    if (ok) {
+      setStep('done')
+      onVerified?.()
     }
-    setStep('done')
-    onVerified?.()
     setBusy(false)
   }
 
@@ -144,6 +179,14 @@ export default function PhoneVerify({ verified, onVerified }) {
                   {busy ? 'Verifying…' : 'Verify'}
                 </button>
               </div>
+              <button
+                onClick={sendCode}
+                disabled={busy || cooldown > 0}
+                className="text-xs mt-2 hover:opacity-80 disabled:opacity-50"
+                style={{ color: '#00267F' }}
+              >
+                {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Didn’t get it? Resend code'}
+              </button>
             </>
           )}
 
