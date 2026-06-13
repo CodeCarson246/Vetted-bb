@@ -414,8 +414,8 @@ export default function QuotesPage() {
           {[['quotes', 'Quotes'], ['outstanding', `Pending payment${outstanding.length ? ` (${outstanding.length})` : ''}`], ['earnings', 'Earnings breakdown']].map(([v, label]) => (
             <button
               key={v}
-              onClick={() => setView(v)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap ${view === v ? 'text-white' : 'text-gray-500 hover:text-gray-800'}`}
+              onClick={e => { setView(v); e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }) }}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${view === v ? 'text-white' : 'text-gray-500 hover:text-gray-800'}`}
               style={view === v ? { backgroundColor: '#00267F' } : {}}
             >
               {label}
