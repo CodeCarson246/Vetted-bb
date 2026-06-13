@@ -18,6 +18,7 @@
   --border-card: #D7DFEC;
   --nav-bg: rgba(255, 255, 255, 0.88);
   --selected-fill: #EEF2FF;
+  --row-stripe: #f9fafb;
 }
 
 [data-theme="dark"] {
@@ -33,6 +34,7 @@
   --border-card: #26324E;
   --nav-bg: rgba(11, 18, 32, 0.85);
   --selected-fill: #1E2A4A;
+  --row-stripe: #0F172A;
 }
 
 /* Page background used by main wrappers (replaces inline #F3F4F8) */

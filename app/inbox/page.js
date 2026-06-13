@@ -1319,7 +1319,7 @@ export default function Inbox() {
                 </thead>
                 <tbody>
                   {quoteItems.map((item, i) => (
-                    <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#f9fafb' : 'white' }}>
+                    <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
                       <td className="px-3 py-2 text-gray-700">{item.description || '—'}</td>
                       <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
                       <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '—'}</td>
@@ -1456,7 +1456,7 @@ export default function Inbox() {
               </thead>
               <tbody>
                 {(viewingQuote.items || []).map((item, i) => (
-                  <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#f9fafb' : 'white' }}>
+                  <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
                     <td className="px-3 py-2 text-gray-700">{item.description || '—'}</td>
                     <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
                     <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '—'}</td>

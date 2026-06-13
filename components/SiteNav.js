@@ -247,6 +247,28 @@ export default function SiteNav() {
                 </a>
               )}
 
+              {/* My jobs — clients only */}
+              {!freelancerProfile && (
+                <a
+                  href="/jobs"
+                  title="My jobs"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '6px',
+                    color: '#6B7280',
+                    textDecoration: 'none',
+                    transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#00267F')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#6B7280')}
+                >
+                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7h-3V5a2 2 0 00-2-2H9a2 2 0 00-2 2v2H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM9 5h6v2H9V5z" />
+                  </svg>
+                </a>
+              )}
+
               {/* Saved professionals — heart icon */}
               <a
                 href="/saved"
@@ -488,6 +510,17 @@ export default function SiteNav() {
             >
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </a>
+          )}
+          {user && !freelancerProfile && (
+            <a
+              href="/jobs"
+              title="My jobs"
+              style={{ display: 'inline-flex', alignItems: 'center', padding: 6, color: '#6B7280', textDecoration: 'none' }}
+            >
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 7h-3V5a2 2 0 00-2-2H9a2 2 0 00-2 2v2H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM9 5h6v2H9V5z" />
               </svg>
             </a>
           )}
