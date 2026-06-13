@@ -8,6 +8,7 @@ import { getQuoteId } from '@/lib/quoteReply'
 import { parsePrice } from '@/lib/price'
 import { printSavedQuote } from '@/lib/printQuote'
 import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
+import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -89,7 +90,7 @@ export default function Inbox() {
 
       const { data: p } = await supabase
         .from('freelancers')
-        .select('id, name, avatar_url, trade, company_name, location, email')
+        .select('id, name, avatar_url, trade, company_name, location, email, verified, phone_verified')
         .eq('user_id', user.id)
         .single()
 
@@ -984,7 +985,10 @@ export default function Inbox() {
                                       })()}
                                     </div>
                                     <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
-                                      <p className="text-xs font-semibold text-gray-700 mb-1">{r.sender_name}</p>
+                                      <p className="text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                                        {r.sender_name}
+                                        {isOwnReply && isVerified(profile) && <VerifiedBadge size={13} />}
+                                      </p>
                                       <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
                                       {!isOwnReply && (() => {
                                         const prefill = quoteItemsFromEnquiry(r.body)

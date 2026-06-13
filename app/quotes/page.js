@@ -411,7 +411,7 @@ export default function QuotesPage() {
 
         {/* View switch: quotes · outstanding · earnings */}
         <div className="flex gap-1 mb-6 bg-white rounded-full border border-gray-200 p-1 w-fit overflow-x-auto">
-          {[['quotes', 'Quotes'], ['outstanding', `Awaiting payment${outstanding.length ? ` (${outstanding.length})` : ''}`], ['earnings', 'Earnings breakdown']].map(([v, label]) => (
+          {[['quotes', 'Quotes'], ['outstanding', `Pending payment${outstanding.length ? ` (${outstanding.length})` : ''}`], ['earnings', 'Earnings breakdown']].map(([v, label]) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -429,7 +429,7 @@ export default function QuotesPage() {
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ borderTop: '3px solid #F9C000' }}>
                 <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>${outstandingTotal.toFixed(0)}</p>
-                <p className="text-xs sm:text-sm text-gray-500 mt-1">Awaiting payment</p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">Pending payment</p>
               </div>
               <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ borderTop: `3px solid ${overdueCount ? '#ef4444' : '#00267F'}` }}>
                 <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: overdueCount ? '#ef4444' : '#00267F', fontFamily: "'Sora', sans-serif" }}>{overdueCount}</p>
