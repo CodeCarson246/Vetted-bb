@@ -103,7 +103,7 @@ export default function WeekView({ weekDays, blocks, isPublic, onCellClick }) {
                         : '1px solid rgba(0,38,127,0.06)',
                       backgroundColor: hasBlock
                         ? '#FEE2E2'
-                        : today ? 'rgba(249,192,0,0.04)' : 'white',
+                        : today ? 'rgba(249,192,0,0.04)' : 'var(--surface-card)',
                       cursor: isPublic ? 'default' : (hasBlock ? 'pointer' : 'cell'),
                       padding: '3px 5px',
                       transition: 'background-color 0.1s',
@@ -116,7 +116,7 @@ export default function WeekView({ weekDays, blocks, isPublic, onCellClick }) {
                     onMouseLeave={e => {
                       if (!isPublic && !hasBlock)
                         e.currentTarget.style.backgroundColor =
-                          today ? 'rgba(249,192,0,0.04)' : 'white'
+                          today ? 'rgba(249,192,0,0.04)' : 'var(--surface-card)'
                     }}
                   >
                     {hasBlock && !isPublic && topBlock?.label && (

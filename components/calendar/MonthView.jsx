@@ -49,7 +49,7 @@ export default function MonthView({ year, month, blocks, isPublic, onDayClick })
                   border: '1px solid rgba(0,38,127,0.06)',
                   backgroundColor: today
                     ? 'rgba(249,192,0,0.07)'
-                    : hasBlocks ? 'rgba(239,68,68,0.06)' : 'white',
+                    : hasBlocks ? 'rgba(239,68,68,0.06)' : 'var(--surface-card)',
                   padding: '6px',
                   cursor: onDayClick ? 'pointer' : 'default',
                   opacity: inMonth ? 1 : 0.35,
@@ -65,7 +65,7 @@ export default function MonthView({ year, month, blocks, isPublic, onDayClick })
                   if (onDayClick)
                     e.currentTarget.style.backgroundColor = today
                       ? 'rgba(249,192,0,0.07)'
-                      : hasBlocks ? 'rgba(239,68,68,0.06)' : 'white'
+                      : hasBlocks ? 'rgba(239,68,68,0.06)' : 'var(--surface-card)'
                 }}
               >
                 {/* Day number */}

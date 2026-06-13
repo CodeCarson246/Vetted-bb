@@ -83,7 +83,17 @@
 [data-theme="dark"] .hover\:border-gray-300:hover,
 [data-theme="dark"] .hover\:border-gray-400:hover,
 [data-theme="dark"] .hover\:border-gray-500:hover { border-color: #4C5C82 !important; }
-[data-theme="dark"] .divide-gray-50 > * + * { border-color: #26324E !important; }
+/* Dividers: cover every child (v4 puts the border on all but the last)
+   and bare divide-y/border-*, whose v4 default is currentColor — light
+   text in dark mode would otherwise paint white lines */
+[data-theme="dark"] .divide-y > :not(:last-child),
+[data-theme="dark"] .divide-gray-50 > :not(:last-child),
+[data-theme="dark"] .divide-gray-100 > :not(:last-child) { border-color: #26324E !important; }
+[data-theme="dark"] .border,
+[data-theme="dark"] .border-t,
+[data-theme="dark"] .border-b,
+[data-theme="dark"] .border-l,
+[data-theme="dark"] .border-r { border-color: #26324E; }
 
 [data-theme="dark"] .bg-red-50 { background-color: rgba(239, 68, 68, 0.12) !important; }
 [data-theme="dark"] .bg-green-50 { background-color: rgba(34, 197, 94, 0.12) !important; }
