@@ -815,7 +815,7 @@ export default function Inbox() {
                             className="mt-3 text-xs font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
                             style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                           >
-                            {prefill.length === 1 ? '⚡ Quote this service →' : `⚡ Quote these ${prefill.length} services →`}
+                            {prefill.length === 1 ? '⚡ Quote this service →' : '⚡ Quote these services →'}
                           </button>
                         )
                       })()}
@@ -910,7 +910,7 @@ export default function Inbox() {
                                             className="mt-2 text-xs font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
                                             style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                                           >
-                                            {prefill.length === 1 ? '⚡ Quote this service →' : `⚡ Quote these ${prefill.length} services →`}
+                                            {prefill.length === 1 ? '⚡ Quote this service →' : '⚡ Quote these services →'}
                                           </button>
                                         )
                                       })()}
