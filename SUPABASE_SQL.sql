@@ -429,3 +429,41 @@ ALTER TABLE quotes ADD COLUMN IF NOT EXISTS paid_at          timestamptz;
 
 ALTER TABLE messages
   ADD COLUMN IF NOT EXISTS client_read boolean DEFAULT true;
+
+-- ============================================================
+-- SECTION 9 — PHONE VERIFICATION (2026-06-12)
+-- Run before deploying the phone-verification code, AND configure a
+-- phone provider in the Supabase dashboard (see deploy notes).
+--
+-- Phone OTP itself is handled by Supabase Auth (updateUser + verifyOtp);
+-- these columns just mirror the verified state onto the public
+-- freelancers row so the badge can render for anonymous visitors.
+-- ============================================================
+
+ALTER TABLE freelancers ADD COLUMN IF NOT EXISTS phone          text;
+ALTER TABLE freelancers ADD COLUMN IF NOT EXISTS phone_verified boolean DEFAULT false;
+
+-- Guard: a freelancer can edit their own row (bio, services, etc.), so
+-- without this they could simply set phone_verified = true themselves.
+-- This trigger freezes phone/phone_verified for every writer EXCEPT the
+-- service role — only /api/verify-phone (which checks the confirmed OTP
+-- server-side) can change them.
+CREATE OR REPLACE FUNCTION public.protect_phone_verification()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF coalesce(current_setting('request.jwt.claims', true)::jsonb ->> 'role', '') <> 'service_role' THEN
+    NEW.phone_verified := OLD.phone_verified;
+    NEW.phone := OLD.phone;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS freelancers_protect_phone ON freelancers;
+CREATE TRIGGER freelancers_protect_phone
+  BEFORE UPDATE ON freelancers
+  FOR EACH ROW EXECUTE FUNCTION public.protect_phone_verification();

@@ -580,9 +580,17 @@ export default function FreelancerProfile() {
                       ? createdAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
                       : null
                     const showInquiries = messageCount >= 5
-                    if (!memberSince && !showInquiries) return null
+                    if (!memberSince && !showInquiries && !freelancer.phone_verified) return null
                     return (
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                        {freelancer.phone_verified && (
+                          <span className="text-xs flex items-center gap-1" style={{ color: '#4ade80' }}>
+                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Phone verified
+                          </span>
+                        )}
                         {memberSince && (
                           <span className="text-xs flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
                             <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

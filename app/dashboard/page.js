@@ -9,6 +9,7 @@ import { formatParish } from '@/lib/formatParish'
 import { getQuoteId } from '@/lib/quoteReply'
 import Tooltip from '@/components/Tooltip'
 import PushToggle from '@/components/PushToggle'
+import PhoneVerify from '@/components/PhoneVerify'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
 import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
 
@@ -1424,6 +1425,14 @@ function DashboardInner() {
             {/* Push notifications opt-in */}
             <div className="mb-6">
               <PushToggle userId={user.id} />
+            </div>
+
+            {/* Phone verification */}
+            <div className="mb-6">
+              <PhoneVerify
+                verified={profile.phone_verified}
+                onVerified={() => setProfile(p => ({ ...p, phone_verified: true }))}
+              />
             </div>
 
             {/* Section quick-nav */}
