@@ -2841,7 +2841,7 @@ function DashboardInner() {
       {/* Portfolio lightbox */}
       {portfolioLightbox && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center px-4"
           style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
           onClick={() => setPortfolioLightbox(null)}
         >
@@ -2865,8 +2865,8 @@ function DashboardInner() {
 
       {/* Client quote viewer modal */}
       {viewingClientQuote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setViewingClientQuote(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-screen overflow-y-auto p-8" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setViewingClientQuote(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[88vh] overflow-y-auto p-8 my-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-3">
                 {viewingClientQuote.freelancer?.avatar_url ? (
@@ -2905,7 +2905,7 @@ function DashboardInner() {
               </thead>
               <tbody>
                 {(viewingClientQuote.quote.items || []).map((item, i) => (
-                  <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#f9fafb' : 'white' }}>
+                  <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#f9fafb' : 'transparent' }}>
                     <td className="px-3 py-2 text-gray-700">{item.description || '—'}</td>
                     <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
                     <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '—'}</td>

@@ -178,10 +178,10 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
             {f.skills?.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {f.skills.slice(0, 3).map(skill => (
-                  <span key={skill} style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 999, fontWeight: 500, background: '#EEF2FF', color: '#00267F' }}>{skill}</span>
+                  <span key={skill} className="chip" style={{ fontSize: '0.75rem', padding: '4px 10px', fontWeight: 500 }}>{skill}</span>
                 ))}
                 {f.skills.length > 3 && (
-                  <span style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 999, fontWeight: 500, background: '#F3F4F6', color: '#6B7280' }}>+{f.skills.length - 3}</span>
+                  <span className="chip" style={{ fontSize: '0.75rem', padding: '4px 10px', fontWeight: 500 }}>+{f.skills.length - 3}</span>
                 )}
               </div>
             )}

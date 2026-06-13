@@ -174,11 +174,11 @@ export default function Inbox() {
     init()
   }, [authUser, authLoading, router])
 
-  function openQuote(msg) {
+  function openQuote(msg, prefillItems = null) {
     setQuoteMsg(msg)
     setQuoteClientName(msg.sender_name || '')
     setQuoteClientEmail(msg.sender_email || '')
-    setQuoteItems([{ description: '', qty: 1, price: '' }])
+    setQuoteItems(prefillItems?.length > 0 ? prefillItems : [{ description: '', qty: 1, price: '' }])
     const now = new Date()
     const ast = new Date(now.getTime() - (4 * 60 * 60 * 1000))
     const astDate = ast.toISOString().split('T')[0]
@@ -186,6 +186,30 @@ export default function Inbox() {
     setQuotePaymentTerms('net14')
     setQuoteNotes('')
     setQuoteNumber(`QT-${astDate.replace(/-/g, '').slice(0, 8)}-${Math.floor(Math.random()*900)+100}`)
+  }
+
+  // Service enquiries from profiles list services as "• Name: price"
+  // lines — parse them so the freelancer can build the quote in one
+  // click instead of re-typing everything.
+  function quoteItemsFromEnquiry(text) {
+    const items = []
+    for (const line of (text || '').split('\n')) {
+      const m = line.match(/^\s*[•\-\*]\s*(.+?):\s*\$?([\d.,]+)\s*$/)
+      if (!m) continue
+      const name = m[1].trim()
+      // Prefer the live service (current price + description) over the
+      // snapshot in the message
+      const svc = freelancerServices.find(s => s.name?.toLowerCase() === name.toLowerCase())
+      const price = svc ? (parsePrice(svc.price) ?? parsePrice(m[2])) : parsePrice(m[2])
+      items.push({
+        description: svc
+          ? svc.name + (svc.description ? ' — ' + svc.description : '')
+          : name,
+        qty: 1,
+        price: price ?? '',
+      })
+    }
+    return items
   }
 
   function quoteTotal() {
@@ -782,6 +806,19 @@ export default function Inbox() {
                         </button>
                       </div>
                       <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                      {(() => {
+                        const prefill = quoteItemsFromEnquiry(msg.message)
+                        if (prefill.length === 0) return null
+                        return (
+                          <button
+                            onClick={e => { e.stopPropagation(); openQuote(msg, prefill) }}
+                            className="mt-3 text-xs font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
+                            style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                          >
+                            ⚡ Quote these {prefill.length} service{prefill.length === 1 ? '' : 's'} →
+                          </button>
+                        )
+                      })()}
                       {/* Previous replies */}
                       {(replies[msg.id] || []).length > 0 && (
                         <div className="mt-4 flex flex-col gap-3">
@@ -864,6 +901,19 @@ export default function Inbox() {
                                     <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
                                       <p className="text-xs font-semibold text-gray-700 mb-1">{r.sender_name}</p>
                                       <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
+                                      {!isOwnReply && (() => {
+                                        const prefill = quoteItemsFromEnquiry(r.body)
+                                        if (prefill.length === 0) return null
+                                        return (
+                                          <button
+                                            onClick={e => { e.stopPropagation(); openQuote(msg, prefill) }}
+                                            className="mt-2 text-xs font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
+                                            style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                                          >
+                                            ⚡ Quote these {prefill.length} service{prefill.length === 1 ? '' : 's'} →
+                                          </button>
+                                        )
+                                      })()}
                                       <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                                       {isOwnReply && (
                                         confirmDeleteReplyId === r.id ? (

@@ -1372,7 +1372,7 @@ export default function FreelancerProfile() {
 
       {contactOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center px-4"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
           onClick={e => { if (e.target === e.currentTarget) setContactOpen(false) }}
         >
@@ -1479,7 +1479,7 @@ export default function FreelancerProfile() {
         const imgs = lightboxService.service_images
         return (
           <div
-            className="fixed inset-0 z-50 flex flex-col"
+            className="fixed inset-0 z-[200] flex flex-col"
             style={{ backgroundColor: 'rgba(0,0,0,0.95)' }}
             onKeyDown={e => {
               if (e.key === 'ArrowRight') setLightboxSlide(i => (i + 1) % imgs.length)
@@ -1571,7 +1571,7 @@ export default function FreelancerProfile() {
       {/* Review photo lightbox */}
       {reviewPhotoLightbox && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center px-4"
           style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
           onClick={() => setReviewPhotoLightbox(null)}
           onKeyDown={e => e.key === 'Escape' && setReviewPhotoLightbox(null)}
@@ -1596,7 +1596,7 @@ export default function FreelancerProfile() {
       {/* Portfolio lightbox */}
       {portfolioLightbox && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center px-4"
           style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
           onClick={() => setPortfolioLightbox(null)}
         >
@@ -1664,7 +1664,7 @@ export default function FreelancerProfile() {
 
       {/* Report review modal */}
       {reportingReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setReportingReview(null)}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setReportingReview(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md p-7" onClick={e => e.stopPropagation()}>
             <h2 className="text-base font-bold text-gray-900 mb-5">Report this review</h2>
             <form onSubmit={submitReport} className="flex flex-col gap-4">

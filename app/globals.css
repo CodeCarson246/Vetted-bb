@@ -142,6 +142,10 @@
 [data-theme="dark"] [style*="background-color:#f3f4f6"],
 [data-theme="dark"] [style*="background-color: #f3f4f6"],
 [data-theme="dark"] [style*="background-color: rgb(243, 244, 246)"] { background-color: #1B2640 !important; }
+/* `background:` SHORTHAND serializes without "-color" — cover it too */
+[data-theme="dark"] [style*="background: rgb(238, 242, 255)"] { background: #1E2A4A !important; }
+[data-theme="dark"] [style*="background: rgb(249, 250, 251)"] { background: #10192E !important; }
+[data-theme="dark"] [style*="background: rgb(243, 244, 246)"] { background: #1B2640 !important; }
 
 /* Navy text sitting on those light fills needs brightening too —
    the main text bridge skips elements with inline backgrounds */
