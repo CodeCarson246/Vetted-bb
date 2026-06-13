@@ -138,6 +138,25 @@
 [data-theme="dark"] [style*="#EEF2FF"][style*="#00267F"],
 [data-theme="dark"] [style*="rgb(238, 242, 255)"][style*="rgb(0, 38, 127)"] { background-color: #1E2A4A !important; color: #9DB4FF !important; }
 
+/* Pill chip — matches the hero quick-search bubbles in dark mode,
+   navy-tinted pill in light. Use for skill tags, count badges, etc. */
+.chip {
+  display: inline-block;
+  font-size: 0.73rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 38, 127, 0.07);
+  color: #00267F;
+  border: 1px solid rgba(0, 38, 127, 0.14);
+  line-height: 1.6;
+}
+[data-theme="dark"] .chip {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
 /* Native form controls follow the theme */
 [data-theme="dark"] select,
 [data-theme="dark"] input,

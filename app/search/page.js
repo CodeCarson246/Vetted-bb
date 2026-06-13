@@ -118,16 +118,12 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
               )}
               {/* Vetted badge */}
               {f.verified && (
-                <span style={{
-                  background: 'rgba(0,38,127,0.08)',
-                  color: '#00267F',
+                <span className="chip" style={{
                   fontSize: '0.65rem',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em',
                   padding: '2px 8px',
-                  borderRadius: 999,
-                  lineHeight: 1.6,
                 }}>✓ Vetted</span>
               )}
               {/* Availability dot */}

@@ -103,7 +103,7 @@ export default function SavedProfessionals() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{f.name}</span>
                       {f.verified && (
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(0,38,127,0.08)', color: '#00267F' }}>✓ Vetted</span>
+                        <span className="chip" style={{ fontSize: '0.7rem', fontWeight: 700 }}>✓ Vetted</span>
                       )}
                       <span className={`text-xs font-medium ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
                         ● {f.available ? 'Available' : 'Unavailable'}

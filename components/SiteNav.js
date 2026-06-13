@@ -175,7 +175,7 @@ export default function SiteNav() {
                 height: '36px',
                 borderRadius: '999px',
                 border: '1px solid rgba(0,38,127,0.2)',
-                backgroundColor: 'white',
+                backgroundColor: 'var(--surface-card)',
                 paddingLeft: '36px',
                 paddingRight: '14px',
                 fontSize: '0.875rem',
@@ -345,7 +345,7 @@ export default function SiteNav() {
                     position: 'absolute',
                     top: '46px',
                     right: 0,
-                    backgroundColor: 'white',
+                    backgroundColor: 'var(--surface-card)',
                     borderRadius: '12px',
                     boxShadow: '0 4px 16px rgba(0,38,127,0.12)',
                     border: '1px solid rgba(0,38,127,0.15)',
@@ -374,7 +374,7 @@ export default function SiteNav() {
                         View my profile
                       </a>
                     )}
-                    <div style={{ borderTop: '1px solid rgba(0,38,127,0.08)', margin: '4px 0' }} />
+                    <div style={{ borderTop: '1px solid var(--border-card)', margin: '4px 0' }} />
                     <button
                       onClick={() => {
                         setDropdownOpen(false)
@@ -467,8 +467,40 @@ export default function SiteNav() {
           )}
         </nav>
 
-        {/* Mobile: theme toggle next to hamburger */}
-        <span className="mobile-hamburger" style={{ display: 'none' }}>
+        {/* Mobile: quick icons + theme toggle next to hamburger */}
+        <span className="mobile-hamburger" style={{ display: 'none', alignItems: 'center', gap: 2 }}>
+          {user && freelancerProfile && (
+            <a
+              href="/quotes"
+              title="My quotes"
+              style={{ display: 'inline-flex', alignItems: 'center', padding: 6, color: '#6B7280', textDecoration: 'none' }}
+            >
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </a>
+          )}
+          {user && (
+            <a
+              href={freelancerProfile ? '/inbox' : '/messages'}
+              title="Messages"
+              style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', padding: 6, color: '#6B7280', textDecoration: 'none' }}
+            >
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 0, right: 0, minWidth: 15, height: 15,
+                  backgroundColor: '#ef4444', color: 'white', fontSize: '0.6rem',
+                  borderRadius: '999px', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontWeight: 700, padding: '0 2px', lineHeight: 1,
+                }}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </a>
+          )}
           <ThemeToggle />
         </span>
 
@@ -508,8 +540,8 @@ export default function SiteNav() {
       {menuOpen && (
         <div
           style={{
-            borderTop: '1px solid rgba(0,38,127,0.08)',
-            backgroundColor: '#ffffff',
+            borderTop: '1px solid var(--border-card)',
+            backgroundColor: 'var(--surface-card)',
             padding: '16px 24px',
             display: 'flex',
             flexDirection: 'column',

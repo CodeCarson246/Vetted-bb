@@ -383,14 +383,7 @@ export default function Home() {
                 {f.skills?.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
                     {f.skills.slice(0, 3).map(skill => (
-                      <span key={skill} style={{
-                        fontSize: '0.73rem',
-                        fontWeight: 600,
-                        color: '#00267F',
-                        backgroundColor: 'rgba(0,38,127,0.06)',
-                        padding: '3px 10px',
-                        borderRadius: '999px',
-                      }}>
+                      <span key={skill} className="chip">
                         {skill}
                       </span>
                     ))}
@@ -504,15 +497,7 @@ export default function Home() {
                     Be the first →
                   </span>
                 ) : count > 0 ? (
-                  <span style={{
-                    backgroundColor: 'rgba(0,38,127,0.06)',
-                    color: '#00267F',
-                    fontSize: '11px',
-                    padding: '2px 10px',
-                    borderRadius: '20px',
-                    fontWeight: 600,
-                    marginTop: '-4px',
-                  }}>
+                  <span className="chip" style={{ fontSize: '11px', marginTop: '-4px' }}>
                     {count} {count === 1 ? 'pro' : 'pros'}
                   </span>
                 ) : null}
