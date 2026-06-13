@@ -32,9 +32,9 @@ export default function PhoneVerify({ verified, onVerified }) {
     }
     const { error } = await supabase.auth.updateUser({ phone: p })
     if (error) {
-      setError(error.message.includes('provider')
-        ? 'Phone verification isn’t enabled yet. Please try again later.'
-        : error.message)
+      // Surface the real Supabase message — it pinpoints provider/config issues
+      console.error('[phone-verify] updateUser error:', error)
+      setError(error.message || 'Could not send the code. Please try again.')
     } else {
       setStep('code')
     }
