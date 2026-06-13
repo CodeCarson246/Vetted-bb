@@ -410,7 +410,7 @@ export default function QuotesPage() {
         </div>
 
         {/* View switch: quotes · outstanding · earnings */}
-        <div className="flex gap-1 mb-6 bg-white rounded-full border border-gray-200 p-1 w-fit overflow-x-auto">
+        <div className="flex gap-1 mb-6 bg-white rounded-full border border-gray-200 p-1 max-w-full overflow-x-auto no-scrollbar">
           {[['quotes', 'Quotes'], ['outstanding', `Pending payment${outstanding.length ? ` (${outstanding.length})` : ''}`], ['earnings', 'Earnings breakdown']].map(([v, label]) => (
             <button
               key={v}

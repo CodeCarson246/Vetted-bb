@@ -1328,7 +1328,11 @@ export default function FreelancerProfile() {
                 <p className="text-xs text-gray-400 mb-3">Final prices are agreed directly with the freelancer.</p>
                 <button
                   onClick={() => {
-                    const serviceList = cart.map(i => `• ${i.name}: ${i.price}`).join('\n')
+                    const serviceList = cart.map(i => {
+                      const n = parsePrice(i.price)
+                      const priceText = n !== null ? `$${Number.isInteger(n) ? n : n.toFixed(2)}` : i.price
+                      return `• ${i.name}: ${priceText}`
+                    }).join('\n')
                     const total = cartTotal() > 0 ? `\n\nEstimated total: $${cartTotal().toFixed(0)}` : ''
                     const msg = `Hi ${freelancer.name.split(' ')[0]}, I am interested in the following services:\n\n${serviceList}${total}\n\nCould you confirm availability and pricing?`
                     setSenderName(senderName || '')
