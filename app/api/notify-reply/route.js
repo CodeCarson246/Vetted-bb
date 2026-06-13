@@ -42,6 +42,7 @@ export async function POST(request) {
     const replyBody = String(body.message || '').slice(0, 5000)
     const isQuote = body.kind === 'quote'
     const isInvoice = body.kind === 'invoice'
+    const isReminder = body.kind === 'reminder'
 
     if (!messageId) {
       return Response.json({ error: 'message_id required' }, { status: 400 })
@@ -66,10 +67,12 @@ export async function POST(request) {
     sendPushToUser(msg.sender_user_id, {
       title: isInvoice
         ? `${freelancerName} sent you an invoice`
+        : isReminder
+        ? `Payment reminder from ${freelancerName}`
         : isQuote
         ? `${freelancerName} sent you a quote`
         : `${freelancerName} replied`,
-      body: isInvoice
+      body: (isInvoice || isReminder)
         ? (replyBody.slice(0, 120) || 'Open your messages to view it.')
         : isQuote
         ? 'Open your messages to review and respond.'
@@ -86,6 +89,8 @@ export async function POST(request) {
       to: msg.sender_email,
       subject: isInvoice
         ? `${freelancerName} sent you an invoice — ${msg.subject || 'Vetted.bb'}`
+        : isReminder
+        ? `Payment reminder from ${freelancerName} — ${msg.subject || 'Vetted.bb'}`
         : isQuote
         ? `${freelancerName} sent you a quote — ${msg.subject || 'Vetted.bb'}`
         : `${freelancerName} replied — ${msg.subject || 'Vetted.bb'}`,
@@ -94,22 +99,22 @@ export async function POST(request) {
           <div style="background: white; border-radius: 16px; overflow: hidden; border: 1px solid #e5e7eb;">
             <div style="background: #00267F; padding: 24px; text-align: center;">
               <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 700;">Vetted.bb</h1>
-              <p style="color: #93b8ff; margin: 6px 0 0; font-size: 14px;">${isInvoice ? 'You have a new invoice' : isQuote ? 'You have a new quote' : 'You have a reply'}</p>
+              <p style="color: #93b8ff; margin: 6px 0 0; font-size: 14px;">${isInvoice ? 'You have a new invoice' : isReminder ? 'Payment reminder' : isQuote ? 'You have a new quote' : 'You have a reply'}</p>
             </div>
             <div style="padding: 28px 24px;">
               <p style="color: #374151; font-size: 15px; margin: 0 0 20px;">Hi ${safeClientName},</p>
               <p style="color: #374151; font-size: 15px; margin: 0 0 20px;">
-                <strong>${safeFreelancer}</strong> ${isInvoice ? 'has sent you an invoice' : isQuote ? 'has sent you a quote' : 'has replied to your conversation'} on Vetted.bb.
+                <strong>${safeFreelancer}</strong> ${isInvoice ? 'has sent you an invoice' : isReminder ? 'has sent you a payment reminder' : isQuote ? 'has sent you a quote' : 'has replied to your conversation'} on Vetted.bb.
               </p>
               <div style="background: #f9fafb; border-left: 3px solid #00267F; border-radius: 8px; padding: 16px; margin: 0 0 24px;">
                 <p style="color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 6px;">Conversation</p>
                 <p style="color: #111827; font-size: 14px; font-weight: 600; margin: 0 0 12px;">${safeSubject}</p>
                 ${safeBody && !isQuote && !isInvoice ? `
-                <p style="color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 6px;">Reply</p>
+                <p style="color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 6px;">${isReminder ? 'Reminder' : 'Reply'}</p>
                 <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${safeBody}</p>` : ''}
               </div>
               <a href="https://vetted.bb/messages" style="display: block; background: #00267F; color: white; text-align: center; padding: 14px 24px; border-radius: 100px; text-decoration: none; font-weight: 600; font-size: 14px;">
-                ${isInvoice ? 'View your invoice →' : isQuote ? 'View your quote →' : 'View the conversation →'}
+                ${isInvoice ? 'View your invoice →' : isReminder ? 'View & pay →' : isQuote ? 'View your quote →' : 'View the conversation →'}
               </a>
             </div>
             <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; text-align: center;">

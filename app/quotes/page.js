@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { printSavedQuote } from '@/lib/printQuote'
+import { PAYMENT_TERMS, reminderThreshold, daysUntil, termLabel } from '@/lib/paymentTerms'
 
 // Lifecycle: sent → accepted → invoiced → completed → paid (declined terminal)
 const STATUS_STYLES = {
@@ -24,12 +25,7 @@ const STATUS_LABELS = {
   paid: 'Paid ✓',
 }
 
-const INVOICE_TERMS = [
-  { value: 'due_receipt', label: 'Due on receipt', days: 0 },
-  { value: 'net7', label: 'Net 7 days', days: 7 },
-  { value: 'net14', label: 'Net 14 days', days: 14 },
-  { value: 'net30', label: 'Net 30 days', days: 30 },
-]
+const INVOICE_TERMS = PAYMENT_TERMS
 
 function StatusChip({ status }) {
   return (
@@ -119,6 +115,7 @@ export default function QuotesPage() {
   const [selMonth, setSelMonth] = useState('all')
   const [selService, setSelService] = useState('all')
   const [selClient, setSelClient] = useState('all')
+  const [remindedIds, setRemindedIds] = useState(() => new Set())
 
   useEffect(() => {
     if (authLoading) return
@@ -337,6 +334,41 @@ export default function QuotesPage() {
   const byClient = aggregateBy(filteredEntries, e => e.client)
     .sort((a, b) => b.value - a.value).slice(0, 8)
 
+  // ── Outstanding payments: invoiced but not yet paid ──
+  const outstanding = quotes
+    .filter(q => ['invoiced', 'completed'].includes(q.status) && q.invoice_due_date)
+    .map(q => ({ ...q, daysLeft: daysUntil(q.invoice_due_date) }))
+    .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999))
+  const outstandingTotal = outstanding.reduce((sum, q) => sum + (Number(q.total) || 0), 0)
+  const overdueCount = outstanding.filter(q => q.daysLeft !== null && q.daysLeft < 0).length
+
+  // Send a "payment due" reminder to the client (email + push + thread note)
+  async function sendReminder(q) {
+    setBusyId(q.id)
+    const dl = daysUntil(q.invoice_due_date)
+    const phrase = dl < 0 ? `was due ${Math.abs(dl)} day${Math.abs(dl) === 1 ? '' : 's'} ago`
+      : dl === 0 ? 'is due today'
+      : `is due in ${dl} day${dl === 1 ? '' : 's'}`
+    const body = `Friendly reminder: invoice ${q.invoice_number} for $${Number(q.total).toFixed(2)} ${phrase} (due ${fmtDate(q.invoice_due_date)}).`
+
+    if (q.message_id) {
+      await supabase.from('messages').update({ client_read: false }).eq('id', q.message_id)
+      await supabase.from('message_replies').insert({
+        message_id: q.message_id,
+        sender_name: profile.name,
+        sender_user_id: authUser?.id,
+        body,
+      })
+      fetch('/api/notify-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_id: q.message_id, kind: 'reminder', message: body }),
+      }).catch(() => {})
+    }
+    setRemindedIds(prev => new Set(prev).add(q.id))
+    setBusyId(null)
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -377,19 +409,104 @@ export default function QuotesPage() {
           ))}
         </div>
 
-        {/* View switch: quote list vs earnings breakdown */}
-        <div className="flex gap-1 mb-6 bg-white rounded-full border border-gray-200 p-1 w-fit">
-          {[['quotes', 'Quotes'], ['earnings', 'Earnings breakdown']].map(([v, label]) => (
+        {/* View switch: quotes · outstanding · earnings */}
+        <div className="flex gap-1 mb-6 bg-white rounded-full border border-gray-200 p-1 w-fit overflow-x-auto">
+          {[['quotes', 'Quotes'], ['outstanding', `Awaiting payment${outstanding.length ? ` (${outstanding.length})` : ''}`], ['earnings', 'Earnings breakdown']].map(([v, label]) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${view === v ? 'text-white' : 'text-gray-500 hover:text-gray-800'}`}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap ${view === v ? 'text-white' : 'text-gray-500 hover:text-gray-800'}`}
               style={view === v ? { backgroundColor: '#00267F' } : {}}
             >
               {label}
             </button>
           ))}
         </div>
+
+        {view === 'outstanding' && (
+          <div className="flex flex-col gap-4">
+            {/* Summary */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ borderTop: '3px solid #F9C000' }}>
+                <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>${outstandingTotal.toFixed(0)}</p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">Awaiting payment</p>
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ borderTop: `3px solid ${overdueCount ? '#ef4444' : '#00267F'}` }}>
+                <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: overdueCount ? '#ef4444' : '#00267F', fontFamily: "'Sora', sans-serif" }}>{overdueCount}</p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">Overdue</p>
+              </div>
+            </div>
+
+            {outstanding.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
+                <p className="font-medium text-gray-900 mb-1">No outstanding invoices</p>
+                <p className="text-sm text-gray-500">Invoices you&apos;ve sent that aren&apos;t paid yet will appear here, with a reminder button as the due date approaches.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {outstanding.map(q => {
+                  const dl = q.daysLeft
+                  const overdue = dl !== null && dl < 0
+                  const showReminder = dl !== null && dl <= reminderThreshold(q.invoice_terms)
+                  const dueText = dl === null ? '—'
+                    : overdue ? `${Math.abs(dl)} day${Math.abs(dl) === 1 ? '' : 's'} overdue`
+                    : dl === 0 ? 'Due today'
+                    : `${dl} day${dl === 1 ? '' : 's'} left`
+                  const dueColor = overdue ? '#ef4444' : dl <= reminderThreshold(q.invoice_terms) ? '#B45309' : '#6B7280'
+                  return (
+                    <div key={q.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderLeft: `4px solid ${overdue ? '#ef4444' : '#F9C000'}` }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm" style={{ color: '#00267F' }}>{q.invoice_number || q.quote_number}</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: overdue ? '#FEE2E2' : '#FEF3C7', color: dueColor }}>{dueText}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">{q.client_name || 'Client'} · {termLabel(q.invoice_terms)}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Due {fmtDate(q.invoice_due_date)}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-lg font-bold" style={{ color: '#00267F' }}>${Number(q.total).toFixed(2)}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                        {q.invoice_number && (
+                          <button onClick={() => printSavedQuote(q, profile, { type: 'invoice' })} className="text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-colors" style={{ borderColor: '#00267F', color: '#00267F' }}>
+                            Invoice PDF
+                          </button>
+                        )}
+                        {showReminder && (
+                          remindedIds.has(q.id) ? (
+                            <span className="text-xs font-medium px-3.5 py-1.5 rounded-full" style={{ backgroundColor: '#DCFCE7', color: '#166534' }}>Reminder sent ✓</span>
+                          ) : (
+                            <button
+                              onClick={() => sendReminder(q)}
+                              disabled={busyId === q.id}
+                              className="text-xs font-semibold px-3.5 py-1.5 rounded-full hover:opacity-90 transition-opacity disabled:opacity-50"
+                              style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                            >
+                              {busyId === q.id ? 'Sending…' : overdue ? 'Send overdue reminder' : 'Send payment reminder'}
+                            </button>
+                          )
+                        )}
+                        <button
+                          onClick={() => updateStatus(q.id, 'paid', { paid_at: new Date().toISOString() })}
+                          disabled={busyId === q.id}
+                          className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                          style={{ backgroundColor: '#16a34a' }}
+                        >
+                          Mark paid
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <p className="text-xs text-gray-400 text-center">
+              Reminders appear automatically as the due date nears (2 days out for Net 7, 7 for Net 14, 14 for Net 30, 30 for Net 60) and stay available once overdue.
+            </p>
+          </div>
+        )}
 
         {view === 'earnings' && (
           <div className="flex flex-col gap-4">

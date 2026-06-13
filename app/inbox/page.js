@@ -7,6 +7,7 @@ import { formatParish } from '@/lib/formatParish'
 import { getQuoteId } from '@/lib/quoteReply'
 import { parsePrice } from '@/lib/price'
 import { printSavedQuote } from '@/lib/printQuote'
+import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -226,8 +227,7 @@ export default function Inbox() {
   function quoteDueDate() {
     const [y, m, d] = quoteDate.split('-').map(Number)
     const base = new Date(y, m - 1, d) // local midnight — no UTC offset flip
-    const terms = { 'due_receipt': 0, 'net7': 7, 'net14': 14, 'net30': 30, 'net60': 60 }
-    const days = terms[quotePaymentTerms] ?? 14
+    const days = termDays(quotePaymentTerms)
     base.setDate(base.getDate() + days)
     return base.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   }
@@ -409,8 +409,7 @@ export default function Inbox() {
 
   async function saveQuoteInApp() {
     const [qy, qm, qd] = quoteDate.split('-').map(Number)
-    const terms = { 'due_receipt': 0, 'net7': 7, 'net14': 14, 'net30': 30, 'net60': 60 }
-    const days = terms[quotePaymentTerms] ?? 14
+    const days = termDays(quotePaymentTerms)
     const due = new Date(qy, qm - 1, qd + days) // local date, no UTC flip
     const dueStr = `${due.getFullYear()}-${String(due.getMonth()+1).padStart(2,'0')}-${String(due.getDate()).padStart(2,'0')}`
 
@@ -472,12 +471,7 @@ export default function Inbox() {
 
   // Turn an accepted quote into a formal invoice — same flow as the
   // quotes/earnings page, available right here in the conversation.
-  const INVOICE_TERMS = [
-    { value: 'due_receipt', label: 'Due on receipt', days: 0 },
-    { value: 'net7', label: 'Net 7 days', days: 7 },
-    { value: 'net14', label: 'Net 14 days', days: 14 },
-    { value: 'net30', label: 'Net 30 days', days: 30 },
-  ]
+  const INVOICE_TERMS = PAYMENT_TERMS
 
   async function sendInvoiceFromInbox(quote, replyMsgId) {
     setInvoiceBusy(true)
@@ -1190,11 +1184,7 @@ export default function Inbox() {
                     <label className="block text-xs font-medium text-gray-500 mb-1">Payment terms</label>
                     <select value={quotePaymentTerms} onChange={e => setQuotePaymentTerms(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white">
-                      <option value="due_receipt">Due on receipt</option>
-                      <option value="net7">Net 7 days</option>
-                      <option value="net14">Net 14 days</option>
-                      <option value="net30">Net 30 days</option>
-                      <option value="net60">Net 60 days</option>
+                      {PAYMENT_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </div>
                   <div className="text-xs text-gray-400 bg-gray-50 rounded-xl px-4 py-3">
