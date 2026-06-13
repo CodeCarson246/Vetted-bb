@@ -1175,7 +1175,7 @@ export default function FreelancerProfile() {
 
         {/* Leave a review */}
         {user && freelancer && user.id !== freelancer.user_id && (
-          <div className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+          <div id="leave-review" className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
             <h2 className="text-base font-bold text-gray-900 mb-1">Leave a review</h2>
             <p className="text-sm text-gray-500 mb-6">Share your experience working with <span className="capitalize">{freelancer.name.split(' ')[0]}</span>.</p>
 

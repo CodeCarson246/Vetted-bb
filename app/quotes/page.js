@@ -189,10 +189,13 @@ export default function QuotesPage() {
     // Note it in the conversation and notify the client
     if (q.message_id) {
       supabase.from('messages').update({ client_read: false }).eq('id', q.message_id).then(() => {})
+      // quote_id makes the client see a downloadable invoice card, not
+      // just a text line.
       supabase.from('message_replies').insert({
         message_id: q.message_id,
         sender_name: profile.name,
         sender_user_id: authUser?.id,
+        quote_id: q.id,
         body: `Sent invoice ${invoiceNumber} — payment due ${fmtDate(dueStr)} (${terms.label.toLowerCase()})`,
       }).then(() => {})
       fetch('/api/notify-reply', {
@@ -208,22 +211,33 @@ export default function QuotesPage() {
     setBusyId(null)
   }
 
+  // A job's status reflects MUTUAL completion: 'completed' only when
+  // both the freelancer (completed_at) and client (client_completed_at)
+  // have confirmed. 'paid' is terminal and preserved regardless.
+  function deriveStatus(q, freelancerDone, paid) {
+    if (paid) return 'paid'
+    return (freelancerDone && q.client_completed_at) ? 'completed' : 'invoiced'
+  }
+
   // Lifecycle tickboxes — every change is confirmed in a popup, and
   // unticking reverts an accidental click.
   function requestCompletedToggle(q) {
-    if (q.status === 'completed') {
+    const done = !!q.completed_at
+    if (done) {
       setConfirmAction({
-        title: 'Undo job completed?',
-        body: `${q.quote_number} will go back to "Invoiced".`,
+        title: 'Undo your completion?',
+        body: 'This removes your confirmation that the job is finished.',
         confirmLabel: 'Undo',
-        onConfirm: () => updateStatus(q.id, 'invoiced', { completed_at: null }),
+        onConfirm: () => updateStatus(q.id, deriveStatus(q, false, q.status === 'paid'), { completed_at: null }),
       })
-    } else if (q.status === 'invoiced') {
+    } else {
       setConfirmAction({
-        title: 'Mark job as completed?',
-        body: `Confirm the work for ${q.client_name || 'this client'} is finished.`,
+        title: 'Mark the job as completed?',
+        body: q.client_completed_at
+          ? `${q.client_name || 'The client'} has already confirmed — this completes the job for both of you.`
+          : `Confirm the work for ${q.client_name || 'this client'} is finished. The client also confirms on their side before reviews open.`,
         confirmLabel: 'Job completed',
-        onConfirm: () => updateStatus(q.id, 'completed', { completed_at: new Date().toISOString() }),
+        onConfirm: () => updateStatus(q.id, deriveStatus(q, true, q.status === 'paid'), { completed_at: new Date().toISOString() }),
       })
     }
   }
@@ -234,17 +248,14 @@ export default function QuotesPage() {
         title: 'Undo payment?',
         body: `${q.invoice_number || q.quote_number} will be marked unpaid and $${Number(q.total).toFixed(2)} removed from your earnings.`,
         confirmLabel: 'Mark unpaid',
-        onConfirm: () => updateStatus(q.id, q.completed_at ? 'completed' : 'invoiced', { paid_at: null }),
+        onConfirm: () => updateStatus(q.id, deriveStatus(q, !!q.completed_at, false), { paid_at: null }),
       })
-    } else if (q.status === 'invoiced' || q.status === 'completed') {
+    } else {
       setConfirmAction({
         title: 'Confirm payment received?',
         body: `$${Number(q.total).toFixed(2)} from ${q.client_name || 'this client'} will be added to your earnings.`,
         confirmLabel: 'Payment received',
-        onConfirm: () => updateStatus(q.id, 'paid', {
-          paid_at: new Date().toISOString(),
-          ...(q.completed_at ? {} : { completed_at: new Date().toISOString() }),
-        }),
+        onConfirm: () => updateStatus(q.id, 'paid', { paid_at: new Date().toISOString() }),
       })
     }
   }
@@ -603,7 +614,8 @@ export default function QuotesPage() {
                         <span className="text-xs font-semibold" style={{ color: '#92400E' }}>Invoice {q.invoice_number}</span>
                         <span className="text-xs" style={{ color: '#B45309' }}>Issued {fmtDate(q.invoiced_at)}</span>
                         <span className="text-xs" style={{ color: '#B45309' }}>Due {fmtDate(q.invoice_due_date)}</span>
-                        {q.completed_at && <span className="text-xs" style={{ color: '#B45309' }}>Job completed {fmtDate(q.completed_at)}</span>}
+                        {q.completed_at && <span className="text-xs" style={{ color: '#B45309' }}>You confirmed {fmtDate(q.completed_at)}</span>}
+                        {q.client_completed_at && <span className="text-xs" style={{ color: '#B45309' }}>Client confirmed {fmtDate(q.client_completed_at)}</span>}
                         {q.paid_at && <span className="text-xs font-semibold" style={{ color: '#166534' }}>Paid {fmtDate(q.paid_at)}</span>}
                       </div>
                     )}
@@ -612,10 +624,15 @@ export default function QuotesPage() {
                     {['invoiced', 'completed', 'paid'].includes(q.status) && (
                       <div className="mt-4 rounded-xl border border-gray-100 p-4 flex flex-col gap-3">
                         <CheckRow
-                          label="Job completed"
-                          sublabel={q.completed_at ? `Completed ${fmtDate(q.completed_at)}` : 'Tick when the work is finished'}
+                          label="Job completed (your confirmation)"
+                          sublabel={
+                            q.completed_at && q.client_completed_at ? 'Both confirmed — reviews are open ✓'
+                            : q.completed_at ? 'Waiting for the client to confirm on their side'
+                            : q.client_completed_at ? 'Client has confirmed — tick to complete the job'
+                            : 'Tick when the work is finished'
+                          }
                           checked={!!q.completed_at}
-                          disabled={busyId === q.id || q.status === 'paid'}
+                          disabled={busyId === q.id}
                           onToggle={() => requestCompletedToggle(q)}
                         />
                         <CheckRow

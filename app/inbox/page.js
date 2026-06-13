@@ -48,6 +48,9 @@ export default function Inbox() {
   const [deletingThread, setDeletingThread] = useState(false)
   const [toast, setToast] = useState(null)
   const [confirmDeleteQuoteId, setConfirmDeleteQuoteId] = useState(null)
+  const [invoicingQuoteId, setInvoicingQuoteId] = useState(null)
+  const [invoiceTerms, setInvoiceTerms] = useState('net14')
+  const [invoiceBusy, setInvoiceBusy] = useState(false)
   const [clientRatings, setClientRatings] = useState({})
   const [clientProfiles, setClientProfiles] = useState({})
   const threadEndRef = useRef(null)
@@ -467,6 +470,66 @@ export default function Inbox() {
     setTimeout(() => setQuoteToast(null), 4000)
   }
 
+  // Turn an accepted quote into a formal invoice — same flow as the
+  // quotes/earnings page, available right here in the conversation.
+  const INVOICE_TERMS = [
+    { value: 'due_receipt', label: 'Due on receipt', days: 0 },
+    { value: 'net7', label: 'Net 7 days', days: 7 },
+    { value: 'net14', label: 'Net 14 days', days: 14 },
+    { value: 'net30', label: 'Net 30 days', days: 30 },
+  ]
+
+  async function sendInvoiceFromInbox(quote, replyMsgId) {
+    setInvoiceBusy(true)
+    const terms = INVOICE_TERMS.find(t => t.value === invoiceTerms) || INVOICE_TERMS[2]
+    const now = new Date()
+    const due = new Date(now)
+    due.setDate(due.getDate() + terms.days)
+    const dueStr = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`
+    const invoiceNumber = `INV-${now.toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 900) + 100}`
+    const fmt = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+
+    const patch = {
+      status: 'invoiced',
+      invoice_number: invoiceNumber,
+      invoiced_at: now.toISOString(),
+      invoice_terms: terms.value,
+      invoice_due_date: dueStr,
+    }
+    const { error } = await supabase.from('quotes').update(patch).eq('id', quote.id)
+    if (error) {
+      setInvoiceBusy(false)
+      showToast('Could not send the invoice. Please try again.', true)
+      return
+    }
+    setThreadQuotes(prev => ({ ...prev, [quote.id]: { ...prev[quote.id], ...patch } }))
+    setInvoicingQuoteId(null)
+
+    const { data: invReply } = await supabase.from('message_replies').insert({
+      message_id: replyMsgId,
+      sender_name: profile.name,
+      sender_user_id: user?.id,
+      quote_id: quote.id,
+      body: `Sent invoice ${invoiceNumber} — payment due ${fmt(dueStr)} (${terms.label.toLowerCase()})`,
+    }).select().single()
+    if (invReply) setReplies(prev => ({ ...prev, [replyMsgId]: [...(prev[replyMsgId] || []), invReply] }))
+
+    supabase.from('messages').update({ client_read: false }).eq('id', replyMsgId).then(() => {})
+    fetch('/api/notify-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message_id: replyMsgId,
+        kind: 'invoice',
+        message: `Invoice ${invoiceNumber} for $${Number(quote.total).toFixed(2)} — payment due ${fmt(dueStr)}`,
+      }),
+    }).catch(() => {})
+
+    setInvoiceBusy(false)
+    setQuoteToast(`Invoice sent`)
+    setTimeout(() => setQuoteToast(null), 4000)
+  }
+
   async function sendQuoteToClient() {
     const lines = quoteItems.map(i =>
       `${i.description || 'Item'} (x${i.qty}) — $${((parseFloat(i.price)||0) * (parseInt(i.qty)||1)).toFixed(2)}`
@@ -854,9 +917,14 @@ export default function Inbox() {
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                                        {quoteData.status}
+                                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                                        {quoteData.status === 'invoiced' ? 'Invoiced' : quoteData.status}
                                       </span>
+                                      {quoteData.status === 'accepted' && (
+                                        <button onClick={e => { e.stopPropagation(); setInvoicingQuoteId(invoicingQuoteId === quoteData.id ? null : quoteData.id) }} className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+                                          Send invoice →
+                                        </button>
+                                      )}
                                       {confirmDeleteQuoteId === quoteData.id ? (
                                         <span className="text-xs text-gray-500 flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                           Delete?{' '}
@@ -871,6 +939,29 @@ export default function Inbox() {
                                       )}
                                     </div>
                                   </div>
+                                  {/* Inline invoice sender */}
+                                  {invoicingQuoteId === quoteData.id && quoteData.status === 'accepted' && (
+                                    <div className="px-4 py-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-end gap-3" onClick={e => e.stopPropagation()}>
+                                      <div className="flex-1">
+                                        <label className="block text-xs font-semibold text-gray-600 mb-1">Payment terms</label>
+                                        <select
+                                          value={invoiceTerms}
+                                          onChange={e => setInvoiceTerms(e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
+                                        >
+                                          {INVOICE_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                        </select>
+                                      </div>
+                                      <button
+                                        onClick={() => sendInvoiceFromInbox(quoteData, r.message_id)}
+                                        disabled={invoiceBusy}
+                                        className="text-xs font-semibold px-4 py-2.5 rounded-full hover:opacity-90 transition-opacity disabled:opacity-50 flex-shrink-0"
+                                        style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                                      >
+                                        {invoiceBusy ? 'Sending…' : 'Send invoice'}
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               )
                             }

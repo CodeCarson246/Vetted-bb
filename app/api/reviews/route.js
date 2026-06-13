@@ -62,6 +62,25 @@ export async function POST(request) {
       return Response.json({ error: 'You cannot review your own profile.' }, { status: 403 })
     }
 
+    // Integrity gate: a review is only allowed once both sides have
+    // confirmed a job is complete (a quote between this client and this
+    // freelancer with both completion timestamps set).
+    const { data: doneJob } = await supabase
+      .from('quotes')
+      .select('id')
+      .eq('freelancer_id', freelancer_id)
+      .eq('client_email', user.email)
+      .not('completed_at', 'is', null)
+      .not('client_completed_at', 'is', null)
+      .limit(1)
+      .maybeSingle()
+    if (!doneJob) {
+      return Response.json(
+        { error: 'You can review this professional once you have both marked a job as completed.' },
+        { status: 403 },
+      )
+    }
+
     // One client review per user per freelancer
     const { data: existing } = await supabase
       .from('reviews')

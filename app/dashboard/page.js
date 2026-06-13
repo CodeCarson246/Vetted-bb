@@ -260,15 +260,25 @@ function DashboardInner() {
           setServices(svc || [])
           setPortfolioItems(portfolio || [])
 
-          // Clients with accounts who have contacted this freelancer —
-          // the only people they can leave a client review for.
-          const { data: senders } = await supabase
-            .from('messages')
-            .select('sender_user_id, sender_name')
-            .eq('freelancer_id', p.id)
-            .not('sender_user_id', 'is', null)
+          // Reviewable clients = those who share a MUTUALLY-COMPLETED job
+          // with this freelancer (both confirmation timestamps set). The
+          // quote carries client_email; messages map that email to the
+          // client's account (sender_user_id) + display name.
+          const [{ data: senders }, { data: doneJobs }] = await Promise.all([
+            supabase.from('messages')
+              .select('sender_user_id, sender_name, sender_email')
+              .eq('freelancer_id', p.id)
+              .not('sender_user_id', 'is', null),
+            supabase.from('quotes')
+              .select('client_email')
+              .eq('freelancer_id', p.id)
+              .not('completed_at', 'is', null)
+              .not('client_completed_at', 'is', null),
+          ])
+          const doneEmails = new Set((doneJobs || []).map(j => (j.client_email || '').toLowerCase()))
           const seen = new Map()
           for (const s of senders || []) {
+            if (!doneEmails.has((s.sender_email || '').toLowerCase())) continue
             if (!seen.has(s.sender_user_id)) seen.set(s.sender_user_id, s.sender_name)
           }
           setThreadClients([...seen.entries()].map(([id, name]) => ({ id, name })))
@@ -2219,8 +2229,8 @@ function DashboardInner() {
                     {threadClients.length === 0 ? (
                       <div className="rounded-xl px-4 py-6 text-center" style={{ backgroundColor: '#F9FAFB', border: '1px dashed #d1d5db' }}>
                         <p className="text-sm text-gray-500">
-                          You can review clients once they&apos;ve contacted you through Vetted.bb.
-                          Reviews are tied to real conversations, so other freelancers can trust them.
+                          You can review a client once you&apos;ve both marked a job as completed.
+                          Tying reviews to finished jobs keeps them trustworthy for other freelancers.
                         </p>
                       </div>
                     ) : (
@@ -2238,7 +2248,7 @@ function DashboardInner() {
                             <option key={c.id} value={c.id}>{c.name}</option>
                           ))}
                         </select>
-                        <p className="text-xs text-gray-400 mt-1.5">Only clients who have messaged you appear here — reviews are tied to real conversations.</p>
+                        <p className="text-xs text-gray-400 mt-1.5">Only clients you&apos;ve both marked a completed job with appear here.</p>
                       </div>
 
                       <div>

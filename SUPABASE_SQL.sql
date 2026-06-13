@@ -467,3 +467,17 @@ DROP TRIGGER IF EXISTS freelancers_protect_phone ON freelancers;
 CREATE TRIGGER freelancers_protect_phone
   BEFORE UPDATE ON freelancers
   FOR EACH ROW EXECUTE FUNCTION public.protect_phone_verification();
+
+-- ============================================================
+-- SECTION 10 — DUAL JOB COMPLETION (2026-06-13)
+-- Run before deploying the /jobs page and review-gating.
+--
+-- quotes.completed_at = the FREELANCER's confirmation (existing).
+-- quotes.client_completed_at = the CLIENT's confirmation (new).
+-- A job is "mutually completed" only when BOTH are set — that's the
+-- gate for either party leaving a review. The existing
+-- "Clients can respond to quotes" UPDATE policy already lets a client
+-- set their own confirmation on a quote addressed to their email.
+-- ============================================================
+
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS client_completed_at timestamptz;

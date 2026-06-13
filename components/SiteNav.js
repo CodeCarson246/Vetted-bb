@@ -363,6 +363,17 @@ export default function SiteNav() {
                     >
                       Dashboard
                     </a>
+                    {!freelancerProfile && (
+                      <a
+                        href="/jobs"
+                        onClick={() => setDropdownOpen(false)}
+                        style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F0F4FF'; e.currentTarget.style.color = '#00267F' }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
+                      >
+                        My jobs
+                      </a>
+                    )}
                     {profileId && (
                       <a
                         href={`/freelancers/${profileId}`}
@@ -582,6 +593,9 @@ export default function SiteNav() {
               </a>
               {freelancerProfile && (
                 <a href="/quotes" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My quotes</a>
+              )}
+              {!freelancerProfile && (
+                <a href="/jobs" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My jobs</a>
               )}
               <a href="/saved" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Saved professionals</a>
               <a href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</a>
