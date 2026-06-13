@@ -197,10 +197,10 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
           </>
         )}
 
-        {/* RIGHT SECTION — services */}
+        {/* RIGHT SECTION — services (desktop only; mobile uses the stacked block below) */}
         {hasServices && (
           <div
-            className="flex-shrink-0"
+            className="hidden md:block flex-shrink-0"
             style={{
               background: 'rgba(0,38,127,0.02)',
               borderRadius: '0 12px 12px 0',
