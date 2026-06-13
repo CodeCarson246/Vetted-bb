@@ -116,6 +116,7 @@ export default function QuotesPage() {
   const [selService, setSelService] = useState('all')
   const [selClient, setSelClient] = useState('all')
   const [remindedIds, setRemindedIds] = useState(() => new Set())
+  const [receiptSentIds, setReceiptSentIds] = useState(() => new Set())
 
   useEffect(() => {
     if (authLoading) return
@@ -366,6 +367,34 @@ export default function QuotesPage() {
       }).catch(() => {})
     }
     setRemindedIds(prev => new Set(prev).add(q.id))
+    setBusyId(null)
+  }
+
+  // Send a paid receipt to the client — the invoice re-issued with a PAID
+  // stamp and the payment date, for both parties' tax records. Drops a
+  // downloadable receipt card into the thread + email + push.
+  async function sendReceipt(q) {
+    setBusyId(q.id)
+    const ref = q.invoice_number || q.quote_number
+    const body = `Sent receipt for ${ref} — paid in full on ${fmtDate(q.paid_at)}. Total $${Number(q.total).toFixed(2)}.`
+
+    if (q.message_id) {
+      await supabase.from('messages').update({ client_read: false }).eq('id', q.message_id)
+      // quote_id makes the client see a downloadable receipt card.
+      await supabase.from('message_replies').insert({
+        message_id: q.message_id,
+        sender_name: profile.name,
+        sender_user_id: authUser?.id,
+        quote_id: q.id,
+        body,
+      })
+      fetch('/api/notify-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_id: q.message_id, kind: 'receipt', message: body }),
+      }).catch(() => {})
+    }
+    setReceiptSentIds(prev => new Set(prev).add(q.id))
     setBusyId(null)
   }
 
@@ -816,6 +845,27 @@ export default function QuotesPage() {
                           >
                             Invoice PDF
                           </button>
+                        )}
+
+                        {q.status === 'paid' && q.paid_at && (
+                          <>
+                            <button
+                              onClick={() => printSavedQuote(q, profile, { type: 'receipt' })}
+                              className="text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-colors"
+                              style={{ borderColor: '#16a34a', color: '#166534' }}
+                            >
+                              Receipt PDF
+                            </button>
+                            <button
+                              onClick={() => sendReceipt(q)}
+                              disabled={busyId === q.id || !q.message_id}
+                              title={!q.message_id ? 'No linked conversation to send to' : 'Email & message the paid receipt to the client'}
+                              className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                              style={{ backgroundColor: '#16a34a' }}
+                            >
+                              {busyId === q.id ? 'Sending…' : receiptSentIds.has(q.id) ? 'Receipt sent ✓' : 'Send receipt'}
+                            </button>
+                          </>
                         )}
 
                         {q.status === 'sent' && (

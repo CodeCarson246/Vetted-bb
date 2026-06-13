@@ -323,19 +323,21 @@ export default function ClientMessages() {
                         if (isQuote && quoteData) {
                           // This reply is the invoice (not the original quote) when its
                           // body announces the invoice — present it as an invoice.
-                          const asInvoice = (r.body || '').startsWith('Sent invoice') && !!quoteData.invoice_number
+                          // A "Sent receipt" reply is the paid receipt (invoice + PAID stamp).
+                          const asReceipt = (r.body || '').startsWith('Sent receipt') && !!quoteData.paid_at
+                          const asInvoice = asReceipt || ((r.body || '').startsWith('Sent invoice') && !!quoteData.invoice_number)
                           const dueDate = asInvoice ? (quoteData.invoice_due_date || quoteData.due_date) : quoteData.due_date
                           return (
                             <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                              <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#00267F' }}>
+                              <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: asReceipt ? '#166534' : '#00267F' }}>
                                 <div>
-                                  <p className="text-white font-semibold text-sm">{asInvoice ? `Invoice ${quoteData.invoice_number}` : `Quote ${quoteData.quote_number}`}</p>
-                                  <p className="text-xs mt-0.5" style={{ color: '#93b8ff' }}>
+                                  <p className="text-white font-semibold text-sm">{asReceipt ? `Receipt ${quoteData.invoice_number}` : asInvoice ? `Invoice ${quoteData.invoice_number}` : `Quote ${quoteData.quote_number}`}</p>
+                                  <p className="text-xs mt-0.5" style={{ color: asReceipt ? '#86efac' : '#93b8ff' }}>
                                     From {msg.freelancers?.name} · {new Date((asInvoice ? quoteData.invoiced_at : quoteData.quote_date) || quoteData.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                   </p>
                                 </div>
                                 <button
-                                  onClick={() => setViewingQuote({ quote: quoteData, freelancer: msg.freelancers, asInvoice })}
+                                  onClick={() => setViewingQuote({ quote: quoteData, freelancer: msg.freelancers, asInvoice, asReceipt })}
                                   className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity"
                                   style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                                 >
@@ -349,8 +351,10 @@ export default function ClientMessages() {
                                     <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
                                   </div>
                                   <div>
-                                    <p className="text-xs text-gray-400">Payment due</p>
-                                    <p className="text-sm font-semibold text-gray-700">{dueDate ? new Date(dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</p>
+                                    <p className="text-xs text-gray-400">{asReceipt ? 'Paid' : 'Payment due'}</p>
+                                    <p className="text-sm font-semibold" style={{ color: asReceipt ? '#166534' : '#374151' }}>{asReceipt
+                                      ? (quoteData.paid_at ? new Date(quoteData.paid_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
+                                      : (dueDate ? new Date(dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')}</p>
                                   </div>
                                 </div>
                                 {quoteData.status === 'sent' ? (
@@ -530,9 +534,12 @@ export default function ClientMessages() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold" style={{ color: '#00267F' }}>{viewingQuote.asInvoice ? 'INVOICE' : 'QUOTE'}</p>
+                <p className="text-2xl font-bold" style={{ color: viewingQuote.asReceipt ? '#166534' : '#00267F' }}>{viewingQuote.asReceipt ? 'RECEIPT' : viewingQuote.asInvoice ? 'INVOICE' : 'QUOTE'}</p>
                 <p className="text-xs text-gray-400 mt-1">{viewingQuote.asInvoice ? (viewingQuote.quote.invoice_number || viewingQuote.quote.quote_number) : viewingQuote.quote.quote_number}</p>
                 <p className="text-xs text-gray-400">{new Date((viewingQuote.asInvoice ? viewingQuote.quote.invoiced_at : viewingQuote.quote.quote_date) || viewingQuote.quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                {viewingQuote.asReceipt && (
+                  <span className="inline-block mt-2 text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#DCFCE7', color: '#166534' }}>PAID IN FULL{viewingQuote.quote.paid_at ? ` · ${new Date(viewingQuote.quote.paid_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}</span>
+                )}
               </div>
             </div>
             <div className="h-0.5 mb-6 rounded-full" style={{ backgroundColor: '#F9C000' }} />
@@ -575,9 +582,11 @@ export default function ClientMessages() {
                 </div>
               </div>
             </div>
-            <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: '#EEF2FF' }}>
-              <p className="text-xs font-semibold text-gray-700 mb-0.5">Payment due</p>
-              <p className="text-sm font-bold" style={{ color: '#00267F' }}>{new Date((viewingQuote.asInvoice ? viewingQuote.quote.invoice_due_date : viewingQuote.quote.due_date) || viewingQuote.quote.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: viewingQuote.asReceipt ? '#DCFCE7' : '#EEF2FF' }}>
+              <p className="text-xs font-semibold text-gray-700 mb-0.5">{viewingQuote.asReceipt ? 'Paid in full' : 'Payment due'}</p>
+              <p className="text-sm font-bold" style={{ color: viewingQuote.asReceipt ? '#166534' : '#00267F' }}>{viewingQuote.asReceipt
+                ? (viewingQuote.quote.paid_at ? `Received ${new Date(viewingQuote.quote.paid_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Received')
+                : new Date((viewingQuote.asInvoice ? viewingQuote.quote.invoice_due_date : viewingQuote.quote.due_date) || viewingQuote.quote.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </div>
             {viewingQuote.quote.notes && (
               <div className="border-t border-gray-100 pt-4 mb-4">
@@ -592,7 +601,24 @@ export default function ClientMessages() {
               <button onClick={() => setViewingQuote(null)} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
                 Close
               </button>
-              {viewingQuote.asInvoice ? (
+              {viewingQuote.asReceipt ? (
+                <>
+                  <button
+                    onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'receipt' })}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#16a34a' }}
+                  >
+                    Receipt PDF
+                  </button>
+                  <button
+                    onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice' })}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                  >
+                    Invoice PDF
+                  </button>
+                </>
+              ) : viewingQuote.asInvoice ? (
                 <>
                   <button
                     onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice' })}
