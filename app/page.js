@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { CATEGORIES as categories } from '@/lib/categories'
 import TrustBar from '@/components/TrustBar'
+import VerifiedBadge from '@/components/VerifiedBadge'
 
 const iconStyle = { width: '40px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }
 
@@ -328,6 +329,7 @@ export default function Home() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '3px' }}>
                       <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '1rem', color: '#00267F', lineHeight: 1.2 }}>{f.name}</span>
+                      {(f.phone_verified || f.verified) && <VerifiedBadge size={15} />}
                       {f.featured && (
                         <span style={{
                           backgroundColor: '#F9C000',

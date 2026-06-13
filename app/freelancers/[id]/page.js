@@ -7,6 +7,7 @@ import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
 import { useSaved } from '@/lib/useSaved'
+import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import Tooltip from '@/components/Tooltip'
 import WeekView from '@/components/calendar/WeekView'
 import MonthView from '@/components/calendar/MonthView'
@@ -528,11 +529,11 @@ export default function FreelancerProfile() {
       {/* ── Hero banner ── */}
       <div className="w-full" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
         <div className="max-w-4xl mx-auto px-6 sm:px-8 py-10">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-7">
 
             {/* Avatar */}
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="w-24 h-24 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-2xl font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', boxShadow: '0 0 0 4px rgba(249,192,0,0.45)' }}>
+            <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+              <div className="w-32 h-32 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center text-4xl font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', boxShadow: '0 0 0 3px rgba(249,192,0,0.55)' }}>
                 {freelancer.avatar_url
                   ? <img src={freelancer.avatar_url} alt={freelancer.name} className="w-full h-full object-cover" />
                   : freelancer.name.split(' ').map(n => n[0]).join('')}
@@ -546,23 +547,11 @@ export default function FreelancerProfile() {
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="text-2xl font-bold text-white capitalize">{freelancer.name}</h1>
-                    {freelancer.verified && (
-                      <span
-                        className="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
-                        style={{ backgroundColor: '#F9C000', color: '#00267F' }}
-                        title="Identity and work verified by Vetted.bb"
-                      >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#00267F" />
-                          <path d="M9 12l2 2 4-4" stroke="#F9C000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        Vetted
-                      </span>
-                    )}
+                    {isVerified(freelancer) && <VerifiedBadge size={20} withLabel />}
                   </div>
                   {freelancer.company_name && freelancer.company_name.trim().length > 3 && (
                     <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>{freelancer.company_name}</p>
@@ -580,17 +569,9 @@ export default function FreelancerProfile() {
                       ? createdAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
                       : null
                     const showInquiries = messageCount >= 5
-                    if (!memberSince && !showInquiries && !freelancer.phone_verified) return null
+                    if (!memberSince && !showInquiries) return null
                     return (
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
-                        {freelancer.phone_verified && (
-                          <span className="text-xs flex items-center gap-1" style={{ color: '#4ade80' }}>
-                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Phone verified
-                          </span>
-                        )}
                         {memberSince && (
                           <span className="text-xs flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
                             <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -639,8 +620,8 @@ export default function FreelancerProfile() {
                   </div>
                 </div>
 
-                {/* Right: services-from pill + CTAs */}
-                <div className="flex flex-col items-stretch sm:items-end gap-2 flex-shrink-0">
+                {/* Right: services-from pill + CTAs — uniform width */}
+                <div className="flex flex-col gap-2 flex-shrink-0 w-full sm:w-52">
                   {services.length > 0 && (() => {
                     const minSvc = services.reduce((acc, s) => {
                       const n = parsePrice(s.price)
@@ -655,8 +636,8 @@ export default function FreelancerProfile() {
                     const isStarting = minSvc.price_type === 'starting_from'
                     return (
                       <span
-                        className="text-xs font-semibold px-3 py-1 rounded-full border self-center sm:self-end"
-                        style={{ color: '#F9C000', borderColor: 'rgba(249,192,0,0.5)', backgroundColor: 'rgba(249,192,0,0.1)' }}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg text-center mb-1"
+                        style={{ color: '#F9C000', border: '1px solid rgba(249,192,0,0.45)', backgroundColor: 'rgba(249,192,0,0.1)' }}
                       >
                         Services from {isStarting ? `${fmt}+` : fmt}
                       </span>
@@ -665,7 +646,7 @@ export default function FreelancerProfile() {
                   <button
                     ref={contactBtnRef}
                     onClick={() => user ? setContactOpen(true) : window.location.href = '/login'}
-                    className="font-semibold px-6 py-2.5 rounded-full hover:opacity-90 transition-opacity text-center"
+                    className="w-full font-semibold py-2.5 rounded-full hover:opacity-90 transition-opacity text-center text-sm"
                     style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                   >
                     Contact
@@ -682,7 +663,7 @@ export default function FreelancerProfile() {
                         setContactOpen(true)
                       }
                     }}
-                    className="font-semibold px-6 py-2.5 rounded-full border-2 hover:bg-white/10 transition-colors text-center"
+                    className="w-full font-semibold py-2.5 rounded-full border-2 hover:bg-white/10 transition-colors text-center text-sm"
                     style={{ borderColor: '#F9C000', color: '#F9C000' }}
                   >
                     Request a Quote
@@ -691,7 +672,7 @@ export default function FreelancerProfile() {
                     href={whatsappShareUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-5 py-2 rounded-full font-semibold text-sm text-white hover:opacity-90 transition-opacity text-center"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full font-semibold text-sm text-white hover:opacity-90 transition-opacity text-center"
                     style={{ backgroundColor: '#25D366' }}
                   >
                     <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
@@ -705,7 +686,7 @@ export default function FreelancerProfile() {
                       if (result === 'login') window.location.href = '/login'
                       if (result === 'error') alert('Could not update your saved list. Please try again.')
                     }}
-                    className="flex items-center justify-center gap-2 px-5 py-2 rounded-full font-semibold text-sm border-2 transition-colors text-center"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full font-semibold text-sm border-2 transition-colors text-center"
                     style={savedIds.has(freelancer.id)
                       ? { borderColor: '#ef4444', color: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)' }
                       : { borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}

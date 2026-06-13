@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { getQuoteId } from '@/lib/quoteReply'
 import { printSavedQuote } from '@/lib/printQuote'
+import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -108,7 +109,7 @@ export default function ClientMessages() {
       setUser(u)
       const { data: msgs } = await supabase
         .from('messages')
-        .select('*, freelancers(id, name, avatar_url, trade, company_name, email, location)')
+        .select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, verified, phone_verified)')
         .eq('sender_email', u.email)
         .order('created_at', { ascending: false })
 
@@ -274,6 +275,7 @@ export default function ClientMessages() {
                           >
                             {msg.freelancers?.name || 'Freelancer'}
                           </a>
+                          {isVerified(msg.freelancers) && <VerifiedBadge size={14} />}
                           <span className="text-xs text-gray-400">{msg.freelancers?.trade}</span>
                           {msg.client_read === false && (
                             <span className="text-xs text-white font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#00267F' }}>

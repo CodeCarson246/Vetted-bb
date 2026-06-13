@@ -13,7 +13,7 @@ export async function GET() {
   // Admin-featured freelancers lead, then best-rated fill the rest
   const { data, error } = await supabase
     .from('freelancers')
-    .select('id, name, trade, avatar_url, location, rating, review_count, available, skills, bio, min_price, featured')
+    .select('id, name, trade, avatar_url, location, rating, review_count, available, skills, bio, min_price, featured, verified, phone_verified')
     .eq('available', true)
     .order('featured', { ascending: false })
     .order('rating', { ascending: false })

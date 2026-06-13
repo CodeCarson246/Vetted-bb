@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useSaved, HeartButton } from '@/lib/useSaved'
+import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import SearchEmptyState from '@/components/SearchEmptyState'
 import Tooltip from '@/components/Tooltip'
 import { formatParish } from '@/lib/formatParish'
@@ -116,16 +117,8 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
                   lineHeight: 1.6,
                 }}>★ Featured</span>
               )}
-              {/* Vetted badge */}
-              {f.verified && (
-                <span className="chip" style={{
-                  fontSize: '0.65rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  padding: '2px 8px',
-                }}>✓ Vetted</span>
-              )}
+              {/* Verified badge */}
+              {isVerified(f) && <VerifiedBadge size={16} />}
               {/* Availability dot */}
               <span className="flex items-center gap-1">
                 <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${f.available ? 'bg-green-400' : 'bg-gray-300'}`} />

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { CATEGORIES, categoryBySlug } from '@/lib/categories'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
+import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 
 // Server-rendered + ISR: Google gets full HTML, revalidated hourly.
 export const revalidate = 3600
@@ -49,7 +50,7 @@ export default async function CategoryPage({ params }) {
 
   const { data: freelancers } = await sb()
     .from('freelancers')
-    .select('id, name, trade, avatar_url, location, rating, review_count, available, bio, services(price)')
+    .select('id, name, trade, avatar_url, location, rating, review_count, available, bio, verified, phone_verified, services(price)')
     .eq('category', cat.name)
     .order('rating', { ascending: false })
     .order('review_count', { ascending: false })
@@ -124,6 +125,7 @@ export default async function CategoryPage({ params }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{f.name}</span>
+                      {isVerified(f) && <VerifiedBadge size={15} />}
                       <span className={`text-xs font-medium ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
                         ● {f.available ? 'Available' : 'Unavailable'}
                       </span>

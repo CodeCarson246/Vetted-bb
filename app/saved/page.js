@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
+import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 
 function StarRating({ rating }) {
   return (
@@ -102,9 +103,7 @@ export default function SavedProfessionals() {
                   <a href={`/freelancers/${f.id}`} className="flex-1 min-w-0" style={{ textDecoration: 'none' }}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{f.name}</span>
-                      {f.verified && (
-                        <span className="chip" style={{ fontSize: '0.7rem', fontWeight: 700 }}>✓ Vetted</span>
-                      )}
+                      {isVerified(f) && <VerifiedBadge size={15} />}
                       <span className={`text-xs font-medium ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
                         ● {f.available ? 'Available' : 'Unavailable'}
                       </span>
