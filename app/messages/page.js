@@ -407,7 +407,10 @@ export default function ClientMessages() {
                                 : (msg.freelancers?.name || '?')[0]?.toUpperCase()}
                             </div>
                             <div className={`flex-1 rounded-xl px-4 py-3 ${isOwn ? 'bg-gray-50' : 'bg-white border border-gray-100'}`}>
-                              <p className="text-xs font-semibold text-gray-700 mb-1">{isOwn ? 'You' : r.sender_name}</p>
+                              <p className="text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                                {isOwn ? 'You' : r.sender_name}
+                                {!isOwn && isVerified(msg.freelancers) && <VerifiedBadge size={13} />}
+                              </p>
                               <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
                               <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
