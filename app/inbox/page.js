@@ -8,6 +8,7 @@ import { getQuoteId, dedupeThreadReplies, conversationPreview, quoteReplyKind, i
 import { parsePrice } from '@/lib/price'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
+import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
@@ -196,29 +197,35 @@ export default function Inbox() {
     init()
   }, [authUser, authLoading, router])
 
-  // Live updates: re-pull the thread list (and the open thread's replies +
-  // quotes) on an interval so the inbox updates while you sit on it — new
-  // client messages, replies and quote responses appear without a reload.
-  useEffect(() => {
+  // Re-pull the thread list (and the open thread's replies + quotes) so the
+  // inbox updates while you sit on it — new client messages, replies and quote
+  // responses appear without a reload. Driven by Supabase Realtime (instant),
+  // with a slow interval + tab-focus refresh as a safety net.
+  async function refresh() {
     if (!profile) return
-    async function tick() {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-      await loadInboxList(profile)
-      if (expandedId) {
-        const { data: r } = await supabase
-          .from('message_replies')
-          .select('*')
-          .eq('message_id', expandedId)
-          .order('created_at', { ascending: true })
-        setReplies(prev => ({ ...prev, [expandedId]: r || [] }))
-        const quoteIds = (r || []).map(getQuoteId).filter(Boolean)
-        if (quoteIds.length > 0) {
-          const { data: qs } = await supabase.from('quotes').select('*').in('id', quoteIds)
-          if (qs) setThreadQuotes(prev => ({ ...prev, ...Object.fromEntries(qs.map(q => [q.id, q])) }))
-        }
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+    await loadInboxList(profile)
+    if (expandedId) {
+      const { data: r } = await supabase
+        .from('message_replies')
+        .select('*')
+        .eq('message_id', expandedId)
+        .order('created_at', { ascending: true })
+      setReplies(prev => ({ ...prev, [expandedId]: r || [] }))
+      const quoteIds = (r || []).map(getQuoteId).filter(Boolean)
+      if (quoteIds.length > 0) {
+        const { data: qs } = await supabase.from('quotes').select('*').in('id', quoteIds)
+        if (qs) setThreadQuotes(prev => ({ ...prev, ...Object.fromEntries(qs.map(q => [q.id, q])) }))
       }
     }
-    const id = setInterval(tick, 12000)
+  }
+
+  useRealtimeThreads(!!profile, refresh)
+
+  // Safety-net poll (covers the case where realtime isn't enabled / drops).
+  useEffect(() => {
+    if (!profile) return
+    const id = setInterval(refresh, 30000)
     return () => clearInterval(id)
   }, [profile, expandedId])
 

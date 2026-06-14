@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { getQuoteId, dedupeThreadReplies, conversationPreview, isReceiptBody } from '@/lib/quoteReply'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
+import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
 
@@ -181,23 +182,29 @@ export default function ClientMessages() {
     init()
   }, [authUser, authLoading, router])
 
-  // Live updates: re-pull threads (and the open thread's quotes) on an
-  // interval so a conversation updates while you're sitting on the page —
-  // new replies, quotes, invoices and receipts appear without a manual reload.
-  useEffect(() => {
+  // Re-pull threads (and the open thread's quotes) so a conversation updates
+  // while you sit on the page — new replies, quotes, invoices and receipts
+  // appear without a manual reload. Driven by Supabase Realtime (instant),
+  // with a slow interval + tab-focus refresh as a safety net.
+  async function refresh() {
     if (!user) return
-    async function tick() {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-      const byThread = await loadThreads(user)
-      if (expandedId && byThread[expandedId]) {
-        const quoteIds = byThread[expandedId].map(getQuoteId).filter(Boolean)
-        if (quoteIds.length > 0) {
-          const { data: qs } = await supabase.from('quotes').select('*').in('id', quoteIds)
-          if (qs) setQuotes(prev => ({ ...prev, ...Object.fromEntries(qs.map(q => [q.id, q])) }))
-        }
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+    const byThread = await loadThreads(user)
+    if (expandedId && byThread[expandedId]) {
+      const quoteIds = byThread[expandedId].map(getQuoteId).filter(Boolean)
+      if (quoteIds.length > 0) {
+        const { data: qs } = await supabase.from('quotes').select('*').in('id', quoteIds)
+        if (qs) setQuotes(prev => ({ ...prev, ...Object.fromEntries(qs.map(q => [q.id, q])) }))
       }
     }
-    const id = setInterval(tick, 12000)
+  }
+
+  useRealtimeThreads(!!user, refresh)
+
+  // Safety-net poll (covers the case where realtime isn't enabled / drops).
+  useEffect(() => {
+    if (!user) return
+    const id = setInterval(refresh, 30000)
     return () => clearInterval(id)
   }, [user, expandedId])
 

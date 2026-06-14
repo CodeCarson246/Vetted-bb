@@ -481,3 +481,33 @@ CREATE TRIGGER freelancers_protect_phone
 -- ============================================================
 
 ALTER TABLE quotes ADD COLUMN IF NOT EXISTS client_completed_at timestamptz;
+
+-- ============================================================
+-- SECTION 11 — REALTIME FOR LIVE CONVERSATIONS (2026-06-14)
+-- Run to make /messages and /inbox update instantly via Supabase
+-- Realtime instead of (only) the slow safety-net poll.
+--
+-- The pages subscribe to inserts on messages/message_replies and any
+-- change on quotes; RLS (SECTION 2) already scopes what each user can
+-- SELECT, and Realtime applies those same policies, so users only get
+-- events for their own threads/quotes. The app refetches on each event
+-- (it never trusts the payload), so minimal replica identity is fine —
+-- but we set FULL on quotes so UPDATE events (accept/decline/paid) pass
+-- the RLS check on the changed row.
+-- ============================================================
+
+-- Idempotent: ADD TABLE errors if the table is already published, so guard.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'messages') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'message_replies') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE message_replies;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'quotes') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE quotes;
+  END IF;
+END $$;
+
+ALTER TABLE quotes REPLICA IDENTITY FULL;
