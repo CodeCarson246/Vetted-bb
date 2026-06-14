@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
-import { getQuoteId, dedupeThreadReplies } from '@/lib/quoteReply'
+import { getQuoteId, dedupeThreadReplies, conversationPreview } from '@/lib/quoteReply'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
@@ -138,11 +138,7 @@ export default function ClientMessages() {
             return {
               ...m,
               last_activity_at: last?.created_at || m.created_at,
-              latest_preview: last
-                ? (getQuoteId(last)
-                  ? '📄 Quote received'
-                  : `${last.sender_user_id === u.id ? 'You: ' : ''}${last.body}`)
-                : m.message,
+              latest_preview: last ? conversationPreview(last, u.id) : m.message,
             }
           })
           .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))

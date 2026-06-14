@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
-import { getQuoteId, dedupeThreadReplies } from '@/lib/quoteReply'
+import { getQuoteId, dedupeThreadReplies, conversationPreview } from '@/lib/quoteReply'
 import { parsePrice } from '@/lib/price'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
@@ -131,11 +131,7 @@ export default function Inbox() {
               return {
                 ...m,
                 last_activity_at: last?.created_at || m.created_at,
-                latest_preview: last
-                  ? (getQuoteId(last)
-                    ? '📄 Quote sent'
-                    : `${last.sender_user_id === user.id ? 'You: ' : ''}${last.body}`)
-                  : m.message,
+                latest_preview: last ? conversationPreview(last, user.id) : m.message,
               }
             })
             .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))

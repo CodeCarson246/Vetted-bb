@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getQuoteId, dedupeThreadReplies } from '../lib/quoteReply.js'
+import { getQuoteId, dedupeThreadReplies, quoteReplyKind, conversationPreview } from '../lib/quoteReply.js'
 
 const UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 
@@ -55,4 +55,26 @@ test('drops literal duplicate reply rows by id', () => {
 test('preserves all plain (non-quote) replies', () => {
   const replies = [{ id: 1, body: 'hello' }, { id: 2, body: 'world' }]
   assert.equal(dedupeThreadReplies(replies, {}).length, 2)
+})
+
+test('quoteReplyKind distinguishes quote / invoice / receipt by body', () => {
+  assert.equal(quoteReplyKind({ quote_id: UUID, body: 'Sent quote QT-1' }), 'quote')
+  assert.equal(quoteReplyKind({ quote_id: UUID, body: 'Sent invoice INV-1 …' }), 'invoice')
+  assert.equal(quoteReplyKind({ quote_id: UUID, body: 'Sent receipt for INV-1 …' }), 'receipt')
+  assert.equal(quoteReplyKind({ quote_id: null, body: 'just a message' }), null)
+})
+
+test('conversation preview advances to the latest event (receipt, not quote)', () => {
+  const me = 'me-1'
+  // freelancer (me) sent the receipt → "Receipt sent"; client sees "received"
+  assert.match(conversationPreview({ quote_id: UUID, body: 'Sent receipt for INV-1', sender_user_id: me }, me), /Receipt sent/)
+  assert.match(conversationPreview({ quote_id: UUID, body: 'Sent receipt for INV-1', sender_user_id: 'freelancer' }, me), /Receipt received/)
+  assert.match(conversationPreview({ quote_id: UUID, body: 'Sent invoice INV-1', sender_user_id: 'freelancer' }, me), /Invoice received/)
+})
+
+test('conversation preview shows plain replies with a You: prefix when own', () => {
+  const me = 'me-1'
+  assert.equal(conversationPreview({ body: 'see you monday', sender_user_id: me }, me), 'You: see you monday')
+  assert.equal(conversationPreview({ body: 'thanks!', sender_user_id: 'other' }, me), 'thanks!')
+  assert.equal(conversationPreview(null, me), null)
 })
