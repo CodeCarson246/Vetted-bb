@@ -7,6 +7,7 @@ import { formatParish } from '@/lib/formatParish'
 import { getQuoteId } from '@/lib/quoteReply'
 import { parsePrice } from '@/lib/price'
 import { printSavedQuote } from '@/lib/printQuote'
+import { formatDocDate } from '@/lib/formatDate'
 import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 
@@ -890,7 +891,7 @@ export default function Inbox() {
                                   <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#00267F' }}>
                                     <div>
                                       <p className="text-white font-semibold text-sm">Quote {quoteData.quote_number}</p>
-                                      <p className="text-xs mt-0.5" style={{ color: '#93b8ff' }}>From {r.sender_name} · {new Date(quoteData.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                      <p className="text-xs mt-0.5" style={{ color: '#93b8ff' }}>From {r.sender_name} · {formatDocDate(quoteData.quote_date)}</p>
                                     </div>
                                     <button
                                       onClick={e => { e.stopPropagation(); setViewingQuote(quoteData) }}
@@ -908,7 +909,7 @@ export default function Inbox() {
                                       </div>
                                       <div>
                                         <p className="text-xs text-gray-400">Payment due</p>
-                                        <p className="text-sm font-semibold text-gray-700">{new Date(quoteData.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                        <p className="text-sm font-semibold text-gray-700">{formatDocDate(quoteData.due_date)}</p>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -1427,7 +1428,7 @@ export default function Inbox() {
               <div className="text-right">
                 <p className="text-2xl font-bold" style={{ color: '#00267F' }}>QUOTE</p>
                 <p className="text-xs text-gray-400 mt-1">{viewingQuote.quote_number}</p>
-                <p className="text-xs text-gray-400">{new Date(viewingQuote.quote_date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="text-xs text-gray-400">{formatDocDate(viewingQuote.quote_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
               </div>
             </div>
 
@@ -1477,7 +1478,7 @@ export default function Inbox() {
 
             <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: '#EEF2FF' }}>
               <p className="text-xs font-semibold text-gray-700 mb-0.5">Payment due</p>
-              <p className="text-sm font-bold" style={{ color: '#00267F' }}>{new Date(viewingQuote.due_date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <p className="text-sm font-bold" style={{ color: '#00267F' }}>{formatDocDate(viewingQuote.due_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </div>
 
             {viewingQuote.notes?.trim() && (

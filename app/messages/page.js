@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { getQuoteId } from '@/lib/quoteReply'
 import { printSavedQuote } from '@/lib/printQuote'
+import { formatDocDate } from '@/lib/formatDate'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 
 function EnvelopeIcon({ className }) {
@@ -333,7 +334,7 @@ export default function ClientMessages() {
                                 <div>
                                   <p className="text-white font-semibold text-sm">{asReceipt ? `Receipt ${quoteData.invoice_number}` : asInvoice ? `Invoice ${quoteData.invoice_number}` : `Quote ${quoteData.quote_number}`}</p>
                                   <p className="text-xs mt-0.5" style={{ color: asReceipt ? '#86efac' : '#93b8ff' }}>
-                                    From {msg.freelancers?.name} · {new Date((asInvoice ? quoteData.invoiced_at : quoteData.quote_date) || quoteData.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    From {msg.freelancers?.name} · {formatDocDate((asInvoice ? quoteData.invoiced_at : quoteData.quote_date) || quoteData.quote_date)}
                                   </p>
                                 </div>
                                 <button
@@ -353,8 +354,8 @@ export default function ClientMessages() {
                                   <div>
                                     <p className="text-xs text-gray-400">{asReceipt ? 'Paid' : 'Payment due'}</p>
                                     <p className="text-sm font-semibold" style={{ color: asReceipt ? '#166534' : '#374151' }}>{asReceipt
-                                      ? (quoteData.paid_at ? new Date(quoteData.paid_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
-                                      : (dueDate ? new Date(dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')}</p>
+                                      ? (quoteData.paid_at ? formatDocDate(quoteData.paid_at) : '—')
+                                      : (dueDate ? formatDocDate(dueDate) : '—')}</p>
                                   </div>
                                 </div>
                                 {quoteData.status === 'sent' ? (
@@ -389,7 +390,7 @@ export default function ClientMessages() {
                                     {{
                                       accepted: 'Accepted',
                                       declined: 'Declined',
-                                      invoiced: `Invoice — due ${quoteData.invoice_due_date ? new Date(quoteData.invoice_due_date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'soon'}`,
+                                      invoiced: `Invoice — due ${quoteData.invoice_due_date ? formatDocDate(quoteData.invoice_due_date, { day: 'numeric', month: 'short' }) : 'soon'}`,
                                       completed: 'Job completed',
                                       paid: 'Paid ✓',
                                     }[quoteData.status] || quoteData.status}
@@ -536,9 +537,9 @@ export default function ClientMessages() {
               <div className="text-right">
                 <p className="text-2xl font-bold" style={{ color: viewingQuote.asReceipt ? '#166534' : '#00267F' }}>{viewingQuote.asReceipt ? 'RECEIPT' : viewingQuote.asInvoice ? 'INVOICE' : 'QUOTE'}</p>
                 <p className="text-xs text-gray-400 mt-1">{viewingQuote.asInvoice ? (viewingQuote.quote.invoice_number || viewingQuote.quote.quote_number) : viewingQuote.quote.quote_number}</p>
-                <p className="text-xs text-gray-400">{new Date((viewingQuote.asInvoice ? viewingQuote.quote.invoiced_at : viewingQuote.quote.quote_date) || viewingQuote.quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="text-xs text-gray-400">{formatDocDate((viewingQuote.asInvoice ? viewingQuote.quote.invoiced_at : viewingQuote.quote.quote_date) || viewingQuote.quote.quote_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 {viewingQuote.asReceipt && (
-                  <span className="inline-block mt-2 text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#DCFCE7', color: '#166534' }}>PAID IN FULL{viewingQuote.quote.paid_at ? ` · ${new Date(viewingQuote.quote.paid_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}</span>
+                  <span className="inline-block mt-2 text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#DCFCE7', color: '#166534' }}>PAID IN FULL{viewingQuote.quote.paid_at ? ` · ${formatDocDate(viewingQuote.quote.paid_at)}` : ''}</span>
                 )}
               </div>
             </div>
@@ -585,8 +586,8 @@ export default function ClientMessages() {
             <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: viewingQuote.asReceipt ? '#DCFCE7' : '#EEF2FF' }}>
               <p className="text-xs font-semibold text-gray-700 mb-0.5">{viewingQuote.asReceipt ? 'Paid in full' : 'Payment due'}</p>
               <p className="text-sm font-bold" style={{ color: viewingQuote.asReceipt ? '#166534' : '#00267F' }}>{viewingQuote.asReceipt
-                ? (viewingQuote.quote.paid_at ? `Received ${new Date(viewingQuote.quote.paid_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Received')
-                : new Date((viewingQuote.asInvoice ? viewingQuote.quote.invoice_due_date : viewingQuote.quote.due_date) || viewingQuote.quote.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                ? (viewingQuote.quote.paid_at ? `Received ${formatDocDate(viewingQuote.quote.paid_at, { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Received')
+                : formatDocDate((viewingQuote.asInvoice ? viewingQuote.quote.invoice_due_date : viewingQuote.quote.due_date) || viewingQuote.quote.due_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </div>
             {viewingQuote.quote.notes && (
               <div className="border-t border-gray-100 pt-4 mb-4">

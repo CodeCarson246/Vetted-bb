@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
 import { getQuoteId } from '@/lib/quoteReply'
+import { formatDocDate } from '@/lib/formatDate'
 import Tooltip from '@/components/Tooltip'
 import PushToggle from '@/components/PushToggle'
 import PhoneVerify from '@/components/PhoneVerify'
@@ -1301,7 +1302,7 @@ function DashboardInner() {
                                     <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#00267F' }}>
                                       <div>
                                         <p className="text-white font-semibold text-sm">Quote {quoteData.quote_number}</p>
-                                        <p className="text-xs mt-0.5" style={{ color: '#93b8ff' }}>From {msg.freelancers?.name} · {new Date(quoteData.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                        <p className="text-xs mt-0.5" style={{ color: '#93b8ff' }}>From {msg.freelancers?.name} · {formatDocDate(quoteData.quote_date)}</p>
                                       </div>
                                       <button
                                         onClick={() => setViewingClientQuote({ quote: quoteData, freelancer: msg.freelancers })}
@@ -1319,7 +1320,7 @@ function DashboardInner() {
                                         </div>
                                         <div>
                                           <p className="text-xs text-gray-400">Payment due</p>
-                                          <p className="text-sm font-semibold text-gray-700">{new Date(quoteData.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                          <p className="text-sm font-semibold text-gray-700">{formatDocDate(quoteData.due_date)}</p>
                                         </div>
                                       </div>
                                       <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
@@ -2904,7 +2905,7 @@ function DashboardInner() {
               <div className="text-right">
                 <p className="text-2xl font-bold" style={{ color: '#00267F' }}>QUOTE</p>
                 <p className="text-xs text-gray-400 mt-1">{viewingClientQuote.quote.quote_number}</p>
-                <p className="text-xs text-gray-400">{new Date(viewingClientQuote.quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="text-xs text-gray-400">{formatDocDate(viewingClientQuote.quote.quote_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
               </div>
             </div>
             <div className="h-0.5 mb-6 rounded-full" style={{ backgroundColor: '#F9C000' }} />
@@ -2949,7 +2950,7 @@ function DashboardInner() {
             </div>
             <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: '#EEF2FF' }}>
               <p className="text-xs font-semibold text-gray-700 mb-0.5">Payment due</p>
-              <p className="text-sm font-bold" style={{ color: '#00267F' }}>{new Date(viewingClientQuote.quote.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <p className="text-sm font-bold" style={{ color: '#00267F' }}>{formatDocDate(viewingClientQuote.quote.due_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </div>
             {viewingClientQuote.quote.notes && (
               <div className="border-t border-gray-100 pt-4 mb-4">

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { printSavedQuote } from '@/lib/printQuote'
+import { formatDocDate } from '@/lib/formatDate'
 import { PAYMENT_TERMS, reminderThreshold, daysUntil, termLabel } from '@/lib/paymentTerms'
 
 // Lifecycle: sent → accepted → invoiced → completed → paid (declined terminal)
@@ -94,8 +95,7 @@ function BarList({ rows, accent = '#00267F' }) {
 }
 
 function fmtDate(str) {
-  if (!str) return '—'
-  return new Date(str).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatDocDate(str) || '—'
 }
 
 export default function QuotesPage() {
