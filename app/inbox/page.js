@@ -63,13 +63,20 @@ export default function Inbox() {
   // Opening a thread (or sending into it) scrolls the newest message
   // and composer into view — read the latest first, scroll up for history
   const expandedReplyCount = expandedId ? (replies[expandedId] || []).length : 0
+  // Quote/invoice/receipt cards load lazily after expand; re-scroll once
+  // they resolve so the thread lands fully at the bottom, not short.
+  const expandedQuotesLoaded = expandedId
+    ? (replies[expandedId] || []).map(getQuoteId).filter(Boolean).filter(qid => threadQuotes[qid]).length
+    : 0
   useEffect(() => {
     if (!expandedId) return
-    const t = setTimeout(() => {
-      threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    }, 150)
-    return () => clearTimeout(t)
-  }, [expandedId, expandedReplyCount])
+    const scroll = () => threadEndRef.current?.scrollIntoView({ block: 'end' })
+    // Instant (not smooth) so layout shifts from late-loading cards/images
+    // don't leave it short; a second pass catches that late layout.
+    const t1 = setTimeout(scroll, 60)
+    const t2 = setTimeout(scroll, 400)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [expandedId, expandedReplyCount, expandedQuotesLoaded])
 
   const unreadCount = messages.filter(m => !m.read).length
 
@@ -80,6 +87,75 @@ export default function Inbox() {
   }, [openMenuId])
 
   const { user: authUser, loading: authLoading } = useAuth()
+
+  // Rebuild the thread list (messages + latest-reply previews + client
+  // profiles/ratings). Shared by the initial load and the live-refresh poll.
+  async function loadInboxList(p) {
+    const { data: msgs } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('freelancer_id', p.id)
+      .order('created_at', { ascending: false })
+
+    const messageList = msgs || []
+    if (messageList.length === 0) {
+      setMessages([])
+      return
+    }
+
+    // Latest reply per thread → preview the newest message and sort by activity
+    const { data: latestReplies } = await supabase
+      .from('message_replies')
+      .select('message_id, created_at, body, sender_user_id, quote_id')
+      .in('message_id', messageList.map(m => m.id))
+      .order('created_at', { ascending: false })
+
+    const latestReply = {}
+    ;(latestReplies || []).forEach(r => {
+      if (!latestReply[r.message_id]) latestReply[r.message_id] = r
+    })
+
+    const enriched = messageList
+      .map(m => {
+        const last = latestReply[m.id]
+        return {
+          ...m,
+          last_activity_at: last?.created_at || m.created_at,
+          latest_preview: last ? conversationPreview(last, authUser?.id) : m.message,
+        }
+      })
+      .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))
+    setMessages(enriched)
+
+    // Live client profiles (current name + photo) and aggregate ratings.
+    const clientIds = [...new Set(messageList.map(m => m.sender_user_id).filter(Boolean))]
+    if (clientIds.length > 0) {
+      const { data: cps } = await supabase
+        .from('client_profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', clientIds)
+      const cpMap = {}
+      for (const cp of cps || []) cpMap[cp.user_id] = cp
+      setClientProfiles(cpMap)
+
+      const { data: clientRevs } = await supabase
+        .from('reviews')
+        .select('client_user_id, rating')
+        .in('client_user_id', clientIds)
+        .eq('type', 'freelancer')
+      const agg = {}
+      for (const r of clientRevs || []) {
+        if (!agg[r.client_user_id]) agg[r.client_user_id] = { sum: 0, count: 0 }
+        agg[r.client_user_id].sum += r.rating
+        agg[r.client_user_id].count += 1
+      }
+      const ratings = {}
+      for (const [cid, a] of Object.entries(agg)) {
+        ratings[cid] = { avg: Math.round((a.sum / a.count) * 10) / 10, count: a.count }
+      }
+      setClientRatings(ratings)
+    }
+  }
 
   useEffect(() => {
     if (authLoading) return
@@ -105,72 +181,7 @@ export default function Inbox() {
           .eq('freelancer_id', p.id)
           .order('created_at', { ascending: true })
         setFreelancerServices(svc || [])
-        const { data: msgs } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('freelancer_id', p.id)
-          .order('created_at', { ascending: false })
-
-        const messageList = msgs || []
-        if (messageList.length > 0) {
-          // Fetch the latest reply per thread so rows sort by most recent
-          // activity AND preview the newest message, not the original one
-          const { data: latestReplies } = await supabase
-            .from('message_replies')
-            .select('message_id, created_at, body, sender_user_id, quote_id')
-            .in('message_id', messageList.map(m => m.id))
-            .order('created_at', { ascending: false })
-
-          const latestReply = {}
-          ;(latestReplies || []).forEach(r => {
-            if (!latestReply[r.message_id]) latestReply[r.message_id] = r
-          })
-
-          const enriched = messageList
-            .map(m => {
-              const last = latestReply[m.id]
-              return {
-                ...m,
-                last_activity_at: last?.created_at || m.created_at,
-                latest_preview: last ? conversationPreview(last, user.id) : m.message,
-              }
-            })
-            .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))
-          setMessages(enriched)
-
-          // Live client profiles (current name + photo) and aggregate ratings.
-          // Messages only snapshot the name at send time, so without this
-          // a client's updated photo/name never shows in the inbox.
-          const clientIds = [...new Set(messageList.map(m => m.sender_user_id).filter(Boolean))]
-          if (clientIds.length > 0) {
-            const { data: cps } = await supabase
-              .from('client_profiles')
-              .select('user_id, display_name, avatar_url')
-              .in('user_id', clientIds)
-            const cpMap = {}
-            for (const cp of cps || []) cpMap[cp.user_id] = cp
-            setClientProfiles(cpMap)
-
-            const { data: clientRevs } = await supabase
-              .from('reviews')
-              .select('client_user_id, rating')
-              .in('client_user_id', clientIds)
-              .eq('type', 'freelancer')
-            const agg = {}
-            for (const r of clientRevs || []) {
-              if (!agg[r.client_user_id]) agg[r.client_user_id] = { sum: 0, count: 0 }
-              agg[r.client_user_id].sum += r.rating
-              agg[r.client_user_id].count += 1
-            }
-            const ratings = {}
-            for (const [cid, a] of Object.entries(agg)) {
-              ratings[cid] = { avg: Math.round((a.sum / a.count) * 10) / 10, count: a.count }
-            }
-            setClientRatings(ratings)
-          }
-        } else {
-          setMessages([])
-        }
+        await loadInboxList(p)
       } else {
         // No freelancer profile → this user is a client. /inbox is the
         // freelancer inbox; their messages live at /messages. Redirect there
@@ -184,6 +195,32 @@ export default function Inbox() {
     }
     init()
   }, [authUser, authLoading, router])
+
+  // Live updates: re-pull the thread list (and the open thread's replies +
+  // quotes) on an interval so the inbox updates while you sit on it — new
+  // client messages, replies and quote responses appear without a reload.
+  useEffect(() => {
+    if (!profile) return
+    async function tick() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      await loadInboxList(profile)
+      if (expandedId) {
+        const { data: r } = await supabase
+          .from('message_replies')
+          .select('*')
+          .eq('message_id', expandedId)
+          .order('created_at', { ascending: true })
+        setReplies(prev => ({ ...prev, [expandedId]: r || [] }))
+        const quoteIds = (r || []).map(getQuoteId).filter(Boolean)
+        if (quoteIds.length > 0) {
+          const { data: qs } = await supabase.from('quotes').select('*').in('id', quoteIds)
+          if (qs) setThreadQuotes(prev => ({ ...prev, ...Object.fromEntries(qs.map(q => [q.id, q])) }))
+        }
+      }
+    }
+    const id = setInterval(tick, 12000)
+    return () => clearInterval(id)
+  }, [profile, expandedId])
 
   function openQuote(msg, prefillItems = null) {
     setQuoteMsg(msg)
