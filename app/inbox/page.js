@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
-import { getQuoteId } from '@/lib/quoteReply'
+import { getQuoteId, dedupeThreadReplies } from '@/lib/quoteReply'
 import { parsePrice } from '@/lib/price'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
@@ -45,6 +45,7 @@ export default function Inbox() {
   const [quoteClientName, setQuoteClientName] = useState('')
   const [quoteClientEmail, setQuoteClientEmail] = useState('')
   const [quoteToast, setQuoteToast] = useState(null)
+  const [quoteSaving, setQuoteSaving] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [confirmDeleteReplyId, setConfirmDeleteReplyId] = useState(null)
   const [deleteConfirmMsg, setDeleteConfirmMsg] = useState(null)
@@ -410,6 +411,8 @@ export default function Inbox() {
   }
 
   async function saveQuoteInApp() {
+    if (quoteSaving) return // guard against double-submit creating duplicate quotes
+    setQuoteSaving(true)
     const [qy, qm, qd] = quoteDate.split('-').map(Number)
     const days = termDays(quotePaymentTerms)
     const due = new Date(qy, qm - 1, qd + days) // local date, no UTC flip
@@ -437,6 +440,7 @@ export default function Inbox() {
 
     if (error) {
       alert('Could not send quote. Please try again.')
+      setQuoteSaving(false)
       return
     }
 
@@ -467,6 +471,7 @@ export default function Inbox() {
 
     const recipientName = quoteClientName
     setQuoteMsg(null)
+    setQuoteSaving(false)
     setQuoteToast(`Quote sent to ${recipientName}`)
     setTimeout(() => setQuoteToast(null), 4000)
   }
@@ -881,7 +886,7 @@ export default function Inbox() {
                       {/* Previous replies */}
                       {(replies[msg.id] || []).length > 0 && (
                         <div className="mt-4 flex flex-col gap-3">
-                          {(replies[msg.id] || []).map(r => {
+                          {dedupeThreadReplies(replies[msg.id] || [], threadQuotes).map(r => {
                             const quoteId = getQuoteId(r)
                             const isQuote = !!quoteId
                             const quoteData = quoteId ? (threadQuotes[quoteId] || null) : null
@@ -1113,10 +1118,11 @@ export default function Inbox() {
               <div className="hidden lg:flex items-center gap-2">
                 <button
                   onClick={saveQuoteInApp}
-                  className="px-4 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                  disabled={quoteSaving}
+                  className="px-4 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: '#00267F' }}
                 >
-                  Send in-app
+                  {quoteSaving ? 'Sending…' : 'Send in-app'}
                 </button>
                 <button
                   onClick={sendQuoteToClient}
@@ -1369,10 +1375,11 @@ export default function Inbox() {
           <div className="lg:hidden max-w-5xl mx-auto px-4 sm:px-6 pb-10 no-print flex flex-col gap-3">
             <button
               onClick={saveQuoteInApp}
-              className="w-full py-3 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+              disabled={quoteSaving}
+              className="w-full py-3 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: '#00267F' }}
             >
-              Send in-app
+              {quoteSaving ? 'Sending…' : 'Send in-app'}
             </button>
             <button
               onClick={sendQuoteToClient}

@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
-import { getQuoteId } from '@/lib/quoteReply'
+import { getQuoteId, dedupeThreadReplies } from '@/lib/quoteReply'
 import { formatDocDate } from '@/lib/formatDate'
 import Tooltip from '@/components/Tooltip'
 import PushToggle from '@/components/PushToggle'
@@ -1291,7 +1291,7 @@ function DashboardInner() {
                         {/* Replies and quotes */}
                         {(clientThreadReplies[msg.id] || []).length > 0 && (
                           <div className="mt-3 flex flex-col gap-3">
-                            {(clientThreadReplies[msg.id] || []).map(r => {
+                            {dedupeThreadReplies(clientThreadReplies[msg.id] || [], clientThreadQuotes).map(r => {
                               const quoteId = getQuoteId(r)
                               const isQuote = !!quoteId
                               const quoteData = quoteId ? (clientThreadQuotes[quoteId] || null) : null

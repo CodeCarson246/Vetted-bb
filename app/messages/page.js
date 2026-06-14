@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
-import { getQuoteId } from '@/lib/quoteReply'
+import { getQuoteId, dedupeThreadReplies } from '@/lib/quoteReply'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
@@ -316,7 +316,7 @@ export default function ClientMessages() {
                       </div>
 
                       {/* Replies */}
-                      {(replies[msg.id] || []).map(r => {
+                      {dedupeThreadReplies(replies[msg.id] || [], quotes).map(r => {
                         const quoteId = getQuoteId(r)
                         const isQuote = !!quoteId
                         const quoteData = quoteId ? (quotes[quoteId] || null) : null
