@@ -61,11 +61,14 @@ export default function NotificationBell() {
     if (!user) return
     const channel = supabase
       .channel(`notif-${user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        payload => setItems(prev => [payload.new, ...prev].slice(0, 20)))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        payload => {
+          if (payload.eventType === 'INSERT') setItems(prev => [payload.new, ...prev].slice(0, 20))
+          else load() // update (read toggled) / delete elsewhere → resync
+        })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [user])
+  }, [user, load])
 
   // Close dropdown on outside click
   useEffect(() => {
