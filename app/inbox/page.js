@@ -4,12 +4,13 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
-import { getQuoteId, dedupeThreadReplies, conversationPreview } from '@/lib/quoteReply'
+import { getQuoteId, dedupeThreadReplies, conversationPreview, quoteReplyKind, isReceiptBody } from '@/lib/quoteReply'
 import { parsePrice } from '@/lib/price'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
+import ReceiptLineCard from '@/components/ReceiptLineCard'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -893,13 +894,18 @@ export default function Inbox() {
                             const quoteId = getQuoteId(r)
                             const isQuote = !!quoteId
                             const quoteData = quoteId ? (threadQuotes[quoteId] || null) : null
+                            const kind = quoteReplyKind(r) // 'quote' | 'invoice' | 'receipt'
                             if (isQuote && quoteData) {
+                              const cardTitle = kind === 'receipt' ? `Receipt ${quoteData.invoice_number || quoteData.quote_number}`
+                                : kind === 'invoice' ? `Invoice ${quoteData.invoice_number || quoteData.quote_number}`
+                                : `Quote ${quoteData.quote_number}`
+                              const cardDate = formatDocDate(kind === 'quote' ? quoteData.quote_date : (quoteData.invoiced_at || quoteData.quote_date))
                               return (
                                 <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                                  <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#00267F' }}>
+                                  <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: kind === 'receipt' ? '#166534' : '#00267F' }}>
                                     <div>
-                                      <p className="text-white font-semibold text-sm">Quote {quoteData.quote_number}</p>
-                                      <p className="text-xs mt-0.5" style={{ color: '#93b8ff' }}>From {r.sender_name} · {formatDocDate(quoteData.quote_date)}</p>
+                                      <p className="text-white font-semibold text-sm">{cardTitle}</p>
+                                      <p className="text-xs mt-0.5" style={{ color: kind === 'receipt' ? '#86efac' : '#93b8ff' }}>From {r.sender_name} · {cardDate}</p>
                                     </div>
                                     <button
                                       onClick={e => { e.stopPropagation(); setViewingQuote(quoteData) }}
@@ -916,8 +922,8 @@ export default function Inbox() {
                                         <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
                                       </div>
                                       <div>
-                                        <p className="text-xs text-gray-400">Payment due</p>
-                                        <p className="text-sm font-semibold text-gray-700">{formatDocDate(quoteData.due_date)}</p>
+                                        <p className="text-xs text-gray-400">{kind === 'receipt' ? 'Paid' : 'Payment due'}</p>
+                                        <p className="text-sm font-semibold" style={{ color: kind === 'receipt' ? '#166534' : '#374151' }}>{kind === 'receipt' ? formatDocDate(quoteData.paid_at) : formatDocDate(quoteData.due_date)}</p>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -968,6 +974,10 @@ export default function Inbox() {
                                   )}
                                 </div>
                               )
+                            }
+                            // Legacy receipt line (no resolvable quote) → compact Receipt card.
+                            if (isReceiptBody(r.body)) {
+                              return <div key={r.id}><ReceiptLineCard body={r.body} fromName={r.sender_name} /></div>
                             }
                             // Primary: UUID match (new replies). Fallback: name match (old replies where sender_user_id is NULL).
                             const isOwnReply = !!(

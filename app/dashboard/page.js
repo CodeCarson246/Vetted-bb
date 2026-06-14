@@ -6,8 +6,9 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
-import { getQuoteId, dedupeThreadReplies } from '@/lib/quoteReply'
+import { getQuoteId, dedupeThreadReplies, quoteReplyKind, isReceiptBody } from '@/lib/quoteReply'
 import { formatDocDate } from '@/lib/formatDate'
+import ReceiptLineCard from '@/components/ReceiptLineCard'
 import Tooltip from '@/components/Tooltip'
 import PushToggle from '@/components/PushToggle'
 import PhoneVerify from '@/components/PhoneVerify'
@@ -1295,14 +1296,19 @@ function DashboardInner() {
                               const quoteId = getQuoteId(r)
                               const isQuote = !!quoteId
                               const quoteData = quoteId ? (clientThreadQuotes[quoteId] || null) : null
+                              const kind = quoteReplyKind(r) // 'quote' | 'invoice' | 'receipt'
 
                               if (isQuote && quoteData) {
+                                const cardTitle = kind === 'receipt' ? `Receipt ${quoteData.invoice_number || quoteData.quote_number}`
+                                  : kind === 'invoice' ? `Invoice ${quoteData.invoice_number || quoteData.quote_number}`
+                                  : `Quote ${quoteData.quote_number}`
+                                const cardDate = formatDocDate(kind === 'quote' ? quoteData.quote_date : (quoteData.invoiced_at || quoteData.quote_date))
                                 return (
                                   <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                                    <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#00267F' }}>
+                                    <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: kind === 'receipt' ? '#166534' : '#00267F' }}>
                                       <div>
-                                        <p className="text-white font-semibold text-sm">Quote {quoteData.quote_number}</p>
-                                        <p className="text-xs mt-0.5" style={{ color: '#93b8ff' }}>From {msg.freelancers?.name} · {formatDocDate(quoteData.quote_date)}</p>
+                                        <p className="text-white font-semibold text-sm">{cardTitle}</p>
+                                        <p className="text-xs mt-0.5" style={{ color: kind === 'receipt' ? '#86efac' : '#93b8ff' }}>From {msg.freelancers?.name} · {cardDate}</p>
                                       </div>
                                       <button
                                         onClick={() => setViewingClientQuote({ quote: quoteData, freelancer: msg.freelancers })}
@@ -1319,16 +1325,20 @@ function DashboardInner() {
                                           <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
                                         </div>
                                         <div>
-                                          <p className="text-xs text-gray-400">Payment due</p>
-                                          <p className="text-sm font-semibold text-gray-700">{formatDocDate(quoteData.due_date)}</p>
+                                          <p className="text-xs text-gray-400">{kind === 'receipt' ? 'Paid' : 'Payment due'}</p>
+                                          <p className="text-sm font-semibold" style={{ color: kind === 'receipt' ? '#166534' : '#374151' }}>{kind === 'receipt' ? formatDocDate(quoteData.paid_at) : formatDocDate(quoteData.due_date)}</p>
                                         </div>
                                       </div>
-                                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                                        {quoteData.status}
+                                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: kind === 'receipt' ? '#DCFCE7' : '#EEF2FF', color: kind === 'receipt' ? '#166534' : '#00267F' }}>
+                                        {kind === 'receipt' ? 'Paid ✓' : quoteData.status}
                                       </span>
                                     </div>
                                   </div>
                                 )
+                              }
+
+                              if (isReceiptBody(r.body)) {
+                                return <div key={r.id}><ReceiptLineCard body={r.body} fromName={msg.freelancers?.name} /></div>
                               }
 
                               return (

@@ -3,10 +3,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
-import { getQuoteId, dedupeThreadReplies, conversationPreview } from '@/lib/quoteReply'
+import { getQuoteId, dedupeThreadReplies, conversationPreview, isReceiptBody } from '@/lib/quoteReply'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
+import ReceiptLineCard from '@/components/ReceiptLineCard'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -321,7 +322,7 @@ export default function ClientMessages() {
                           // This reply is the invoice (not the original quote) when its
                           // body announces the invoice — present it as an invoice.
                           // A "Sent receipt" reply is the paid receipt (invoice + PAID stamp).
-                          const asReceipt = (r.body || '').startsWith('Sent receipt') && !!quoteData.paid_at
+                          const asReceipt = (r.body || '').startsWith('Sent receipt')
                           const asInvoice = asReceipt || ((r.body || '').startsWith('Sent invoice') && !!quoteData.invoice_number)
                           const dueDate = asInvoice ? (quoteData.invoice_due_date || quoteData.due_date) : quoteData.due_date
                           return (
@@ -398,6 +399,12 @@ export default function ClientMessages() {
                         }
 
                         if (isQuote && !quoteData) return null
+
+                        // Legacy receipt line (no resolvable quote) → render as a
+                        // compact Receipt card instead of a bare chat line.
+                        if (isReceiptBody(r.body)) {
+                          return <div key={r.id}><ReceiptLineCard body={r.body} fromName={msg.freelancers?.name} /></div>
+                        }
 
                         const isOwn = r.sender_user_id === user?.id
                         return (

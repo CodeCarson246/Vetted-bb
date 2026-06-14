@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getQuoteId, dedupeThreadReplies, quoteReplyKind, conversationPreview } from '../lib/quoteReply.js'
+import { getQuoteId, dedupeThreadReplies, quoteReplyKind, conversationPreview, isReceiptBody, parseReceiptLine } from '../lib/quoteReply.js'
 
 const UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 
@@ -77,4 +77,23 @@ test('conversation preview shows plain replies with a You: prefix when own', () 
   assert.equal(conversationPreview({ body: 'see you monday', sender_user_id: me }, me), 'You: see you monday')
   assert.equal(conversationPreview({ body: 'thanks!', sender_user_id: 'other' }, me), 'thanks!')
   assert.equal(conversationPreview(null, me), null)
+})
+
+test('isReceiptBody detects receipt lines', () => {
+  assert.equal(isReceiptBody('Sent receipt for INV-1 — paid in full on 14 Jun 2026. Total $250.00'), true)
+  assert.equal(isReceiptBody('Sent quote QT-1'), false)
+  assert.equal(isReceiptBody('Sent invoice INV-1 …'), false)
+  assert.equal(isReceiptBody(null), false)
+})
+
+test('parseReceiptLine extracts ref, paid date and total from a legacy line', () => {
+  const info = parseReceiptLine('Sent receipt for INV-20260613-475 — paid in full on 13 June 2026. Total $250.00')
+  assert.deepEqual(info, { ref: 'INV-20260613-475', paidOn: '13 June 2026', total: '250.00' })
+})
+
+test('parseReceiptLine degrades gracefully for unparseable receipt text', () => {
+  // Still a receipt line, but not the canonical format → blank fields, not null
+  assert.deepEqual(parseReceiptLine('Sent receipt (older format)'), { ref: null, paidOn: null, total: null })
+  // Not a receipt at all
+  assert.equal(parseReceiptLine('hello there'), null)
 })
