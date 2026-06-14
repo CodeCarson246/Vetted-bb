@@ -62,9 +62,9 @@ export async function POST(request) {
       return Response.json({ error: 'You cannot review your own profile.' }, { status: 403 })
     }
 
-    // Integrity gate: a client can review only once the freelancer has marked
-    // a job between them as PAID (a quote addressed to this client with
-    // paid_at set). Payment is the freelancer's confirmation the job is done.
+    // Integrity gate: a client can review only once a job between them is
+    // both mutually completed (freelancer + client confirmations) AND marked
+    // PAID by the freelancer.
     const { data: doneJob } = await supabase
       .from('quotes')
       .select('id')
@@ -72,11 +72,13 @@ export async function POST(request) {
       .eq('client_email', user.email)
       .eq('status', 'paid')
       .not('paid_at', 'is', null)
+      .not('completed_at', 'is', null)
+      .not('client_completed_at', 'is', null)
       .limit(1)
       .maybeSingle()
     if (!doneJob) {
       return Response.json(
-        { error: 'You can review this professional once they have marked your job as paid.' },
+        { error: 'You can review this professional once you have both marked the job completed and they have marked it paid.' },
         { status: 403 },
       )
     }
