@@ -320,6 +320,12 @@ function DashboardInner() {
     }
   }
 
+  // Notification deep-links: /dashboard?tab=reviews opens the Reviews tab
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'reviews' || tab === 'overview') setActiveTab(tab)
+  }, [searchParams])
+
   useEffect(() => {
     if (searchParams.get('edit') !== 'true') return
     setShowEditForm(true)

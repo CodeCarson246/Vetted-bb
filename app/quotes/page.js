@@ -147,12 +147,27 @@ export default function QuotesPage() {
     load()
   }, [authUser, authLoading, router])
 
+  // Notify the client of a quote lifecycle event (fire-and-forget)
+  function notifyQuoteEvent(quoteId, event) {
+    supabase.auth.getSession().then(({ data }) => {
+      const token = data.session?.access_token
+      if (token) fetch('/api/notify-quote-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ quote_id: quoteId, event }),
+      }).catch(() => {})
+    })
+  }
+
   async function updateStatus(quoteId, status, extra = {}) {
     setBusyId(quoteId)
     const patch = { status, ...extra }
     const { error } = await supabase.from('quotes').update(patch).eq('id', quoteId)
     if (!error) {
       setQuotes(prev => prev.map(q => q.id === quoteId ? { ...q, ...patch } : q))
+      // Mark transitions (not undos) notify the client
+      if (patch.paid_at) notifyQuoteEvent(quoteId, 'paid')
+      else if (patch.completed_at) notifyQuoteEvent(quoteId, 'completed')
     }
     setBusyId(null)
   }

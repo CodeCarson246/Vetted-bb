@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { validatePassword } from '@/lib/passwordPolicy'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
+import { createNotification } from '@/lib/serverNotify'
 
 // All signups go through here so the password policy is enforced
 // server-side, not just in the form. The route validates against the same
@@ -41,6 +42,19 @@ export async function POST(request) {
 
     if (error) {
       return Response.json({ error: error.message }, { status: 400 })
+    }
+
+    // Welcome notification waiting for them on first login (fire-and-forget)
+    if (data.user?.id) {
+      createNotification(data.user.id, {
+        type: 'welcome',
+        title: 'Welcome to Vetted.bb 👋',
+        body: role === 'freelancer'
+          ? 'Set up your profile, add your services, and start getting hired.'
+          : 'Find and hire verified professionals across Barbados.',
+        link: '/dashboard',
+        dedupeKey: `welcome:${data.user.id}`,
+      })
     }
 
     // session present → auto-confirm projects (client sets it and redirects);

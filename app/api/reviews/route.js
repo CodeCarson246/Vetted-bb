@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rateLimit'
+import { createNotification } from '@/lib/serverNotify'
+import { sendPushToUser } from '@/lib/serverPush'
 
 export const REVIEW_MIN_CHARS = 30
 const COMMENT_MAX_CHARS = 3000
@@ -142,6 +144,19 @@ export async function POST(request) {
         : 0
       await supabase.from('freelancers').update({ rating: avg, review_count: count }).eq('id', freelancer_id)
     }
+
+    // Notify the reviewed freelancer (fire-and-forget)
+    createNotification(freelancer.user_id, {
+      type: 'review',
+      title: `${author} left you a ${rating}-star review`,
+      body: comment.trim().slice(0, 140),
+      link: '/dashboard?tab=reviews',
+    })
+    sendPushToUser(freelancer.user_id, {
+      title: `${author} left you a ${rating}-star review`,
+      body: comment.trim().slice(0, 120),
+      url: '/dashboard?tab=reviews',
+    }).catch(() => {})
 
     return Response.json({ success: true })
   } catch (err) {

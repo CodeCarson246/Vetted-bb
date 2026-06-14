@@ -51,6 +51,17 @@ export default function JobsPage() {
       .eq('id', job.id)
     if (!error) {
       setJobs(prev => prev.map(j => j.id === job.id ? { ...j, client_completed_at, status } : j))
+      // Notify the freelancer when the client confirms completion (not on undo)
+      if (client_completed_at) {
+        supabase.auth.getSession().then(({ data }) => {
+          const token = data.session?.access_token
+          if (token) fetch('/api/notify-quote-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ quote_id: job.id, event: 'completed' }),
+          }).catch(() => {})
+        })
+      }
     }
     setBusyId(null)
   }

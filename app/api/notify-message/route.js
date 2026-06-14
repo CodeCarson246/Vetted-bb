@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { escapeHtml } from '@/lib/escapeHtml'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { sendPushToUser } from '@/lib/serverPush'
+import { createNotification } from '@/lib/serverNotify'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -67,6 +68,14 @@ export async function POST(request) {
       body: subject,
       url: '/inbox',
     }).catch(() => {})
+
+    // In-app notification (fire-and-forget)
+    createNotification(freelancer.user_id, {
+      type: 'message',
+      title: `New message from ${senderName}`,
+      body: subject,
+      link: '/inbox',
+    })
 
     const safeName = escapeHtml(senderName)
     const safeEmail = escapeHtml(senderEmail)

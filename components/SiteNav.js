@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import ThemeToggle from '@/components/ThemeToggle'
+import NotificationBell from '@/components/NotificationBell'
 
 export default function SiteNav() {
   const { user } = useAuth()
@@ -290,6 +291,9 @@ export default function SiteNav() {
                 </svg>
               </a>
 
+              {/* Notifications bell */}
+              <NotificationBell />
+
               {/* Inbox icon */}
               <a
                 href={freelancerProfile ? '/inbox' : '/messages'}
@@ -526,6 +530,7 @@ export default function SiteNav() {
               </svg>
             </a>
           )}
+          {user && <NotificationBell />}
           {user && (
             <a
               href={freelancerProfile ? '/inbox' : '/messages'}

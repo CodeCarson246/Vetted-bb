@@ -100,6 +100,15 @@ export default function ClientMessages() {
       setToast({ message: 'Could not update the quote. Please try again.', type: 'error' })
     } else {
       setQuotes(prev => ({ ...prev, [quoteId]: { ...prev[quoteId], status } }))
+      // Notify the freelancer (fire-and-forget)
+      supabase.auth.getSession().then(({ data }) => {
+        const token = data.session?.access_token
+        if (token) fetch('/api/notify-quote-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ quote_id: quoteId, event: status === 'accepted' ? 'accepted' : 'declined' }),
+        }).catch(() => {})
+      })
       setToast({
         message: status === 'accepted' ? 'Quote accepted — the freelancer has been notified.' : 'Quote declined.',
         type: 'success',

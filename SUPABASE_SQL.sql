@@ -519,3 +519,56 @@ ALTER TABLE quotes REPLICA IDENTITY FULL;
 -- ============================================================
 
 ALTER TABLE quotes ADD COLUMN IF NOT EXISTS receipt_sent_at timestamptz;
+
+-- ============================================================
+-- SECTION 13 — IN-APP NOTIFICATIONS (2026-06-14)
+-- Run before deploying the notifications bell + /notifications page.
+--
+-- One row per notification, addressed to a recipient (user_id). Rows are
+-- created server-side with the service-role key (there is deliberately no
+-- INSERT policy, so one user can't fabricate notifications for another).
+-- Users read/update/delete only their own. dedupe_key makes daily digests
+-- and "saved you" notifications idempotent.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id         uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  type       text        NOT NULL,
+  title      text        NOT NULL,
+  body       text,
+  link       text,
+  read       boolean     DEFAULT false,
+  dedupe_key text,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_time
+  ON notifications (user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_dedupe
+  ON notifications (dedupe_key) WHERE dedupe_key IS NOT NULL;
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+-- Recipients can read / mark-read / delete their own; nobody can INSERT via
+-- the anon/authenticated roles (service role bypasses RLS and is the only
+-- writer — see lib/serverNotify.js).
+DROP POLICY IF EXISTS "Users read own notifications"   ON notifications;
+CREATE POLICY "Users read own notifications"
+  ON notifications FOR SELECT USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users update own notifications" ON notifications;
+CREATE POLICY "Users update own notifications"
+  ON notifications FOR UPDATE USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users delete own notifications" ON notifications;
+CREATE POLICY "Users delete own notifications"
+  ON notifications FOR DELETE USING (user_id = auth.uid());
+
+-- Realtime so the bell badge updates live (idempotent; RLS scopes events).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'notifications') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+  END IF;
+END $$;

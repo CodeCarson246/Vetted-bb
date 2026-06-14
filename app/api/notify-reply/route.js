@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { escapeHtml } from '@/lib/escapeHtml'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { sendPushToUser } from '@/lib/serverPush'
+import { createNotification } from '@/lib/serverNotify'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 
@@ -82,6 +83,22 @@ export async function POST(request) {
         : replyBody.slice(0, 120),
       url: '/messages',
     }).catch(() => {})
+
+    // In-app notification (fire-and-forget)
+    createNotification(msg.sender_user_id, {
+      type: isReceipt ? 'receipt' : isInvoice ? 'invoice' : isReminder ? 'reminder' : isQuote ? 'quote' : 'reply',
+      title: isReceipt
+        ? `${freelancerName} sent you a receipt`
+        : isInvoice
+        ? `${freelancerName} sent you an invoice`
+        : isReminder
+        ? `Payment reminder from ${freelancerName}`
+        : isQuote
+        ? `${freelancerName} sent you a quote`
+        : `${freelancerName} replied`,
+      body: (isInvoice || isReminder || isReceipt) ? replyBody.slice(0, 140) : isQuote ? 'Review and respond in your messages.' : replyBody.slice(0, 140),
+      link: '/messages',
+    })
 
     const safeFreelancer = escapeHtml(freelancerName)
     const safeClientName = escapeHtml(msg.sender_name || '')
