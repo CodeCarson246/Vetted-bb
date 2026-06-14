@@ -73,6 +73,7 @@ export default function FreelancerProfile() {
   const [portfolioLightbox, setPortfolioLightbox] = useState(null)
   const [cart, setCart] = useState([])
   const [cartOpen, setCartOpen] = useState(false)
+  const [servicesHighlight, setServicesHighlight] = useState(false)
   const [lightboxService, setLightboxService] = useState(null)
   const [lightboxSlide, setLightboxSlide] = useState(0)
   const [stickyVisible, setStickyVisible] = useState(false)
@@ -204,6 +205,19 @@ export default function FreelancerProfile() {
     return cart.reduce((sum, item) => sum + (parsePrice(item.price) ?? 0), 0)
   }
 
+  // "Request a Quote" with an empty estimate: a quote request must carry at
+  // least one service, so instead of opening a contentless message we send the
+  // client to the Services section and highlight it to pick services. Once a
+  // service is added the cart drawer drives the itemised enquiry flow.
+  function promptSelectServices() {
+    const el = document.getElementById('services-section')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setServicesHighlight(true)
+      setTimeout(() => setServicesHighlight(false), 2400)
+    }
+  }
+
   async function submitContact(e) {
     e.preventDefault()
     setContactSubmitting(true)
@@ -228,10 +242,10 @@ export default function FreelancerProfile() {
     let error
 
     if (existingThread) {
-      // Step 2 — Thread exists: append as a reply with an inquiry-type label
-      const inquiryLabel = subject.toLowerCase().includes('quote')
-        ? '--- New quote request ---'
-        : subject.toLowerCase().includes('enquiry')
+      // Step 2 — Thread exists: append as a reply with an inquiry-type label.
+      // Quote requests always travel as itemised "service enquiry" messages
+      // built by the estimate drawer; free-form Contact messages are plain.
+      const inquiryLabel = subject.toLowerCase().includes('enquiry')
         ? '--- New service enquiry ---'
         : '--- New message ---'
 
@@ -657,10 +671,7 @@ export default function FreelancerProfile() {
                       if (cart.length > 0) {
                         setCartOpen(true)
                       } else {
-                        const firstName = freelancer.name.split(' ')[0]
-                        setSubject(`Quote request — ${freelancer.trade}`)
-                        setContactMessage(`Hi ${firstName}, I'd like to request a detailed quote for your services. Could you share pricing, availability, and an estimated timeline?`)
-                        setContactOpen(true)
+                        promptSelectServices()
                       }
                     }}
                     className="w-full font-semibold py-2.5 rounded-full border-2 hover:bg-white/10 transition-colors text-center text-sm"
@@ -764,8 +775,13 @@ export default function FreelancerProfile() {
 
         {/* Services */}
         {services.length > 0 ? (
-          <div className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+          <div id="services-section" className="bg-white rounded-2xl px-7 py-6" style={{ border: servicesHighlight ? '1px solid #F9C000' : '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: servicesHighlight ? '0 0 0 3px rgba(249,192,0,0.45)' : '0 2px 12px rgba(0,38,127,0.08)', scrollMarginTop: '90px', transition: 'box-shadow 0.3s ease, border-color 0.3s ease' }}>
             <h2 className="text-base font-bold text-gray-900 mb-5">Services</h2>
+            {servicesHighlight && (
+              <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ backgroundColor: 'rgba(249,192,0,0.12)', color: '#92400E', border: '1px solid rgba(249,192,0,0.4)' }}>
+                Add one or more services below to build your estimate, then send your quote request.
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {services.map(s => (
                 <div
@@ -1626,13 +1642,11 @@ export default function FreelancerProfile() {
           </button>
           <button
             onClick={() => {
+              if (!user) { window.location.href = '/login'; return }
               if (cart.length > 0) {
                 setCartOpen(true)
               } else {
-                const firstName = freelancer.name.split(' ')[0]
-                setSubject(`Quote request — ${freelancer.trade}`)
-                setContactMessage(`Hi ${firstName}, I'd like to request a quote for your services. Could you let me know your availability and pricing?`)
-                setContactOpen(true)
+                promptSelectServices()
               }
             }}
             className="flex-1 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
