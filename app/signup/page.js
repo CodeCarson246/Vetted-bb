@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { passwordChecks, validatePassword, POLICY_KEYS, POLICY_LABELS } from '@/lib/passwordPolicy'
 
 const trustPoints = [
   'Verified freelancers you can trust',
@@ -35,24 +36,46 @@ function SignupContent() {
     }
   }, [searchParams])
 
+  const checks = passwordChecks(password, { name: fullName, email })
+  const pwValid = POLICY_KEYS.every(k => checks[k])
+
   async function handleSubmit(e) {
     e.preventDefault()
-    setLoading(true)
     setError(null)
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, role },
-      },
-    })
+    if (!validatePassword(password, { name: fullName, email }).valid) {
+      setError('Please meet all the password requirements below.')
+      return
+    }
 
-    if (error) {
-      setError(error.message)
-    } else if (data.session) {
+    setLoading(true)
+    // Go through our server route so the password policy is enforced
+    // server-side, not just here in the form.
+    let result
+    try {
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, fullName, role }),
+      })
+      result = await res.json()
+      if (!res.ok) {
+        setError(result.error || 'Could not create your account. Please try again.')
+        setLoading(false)
+        return
+      }
+    } catch {
+      setError('Could not reach the server. Please try again.')
+      setLoading(false)
+      return
+    }
+
+    if (result.session) {
+      // Auto-confirm projects: adopt the session in the browser, then go.
+      await supabase.auth.setSession(result.session)
       router.push(role === 'freelancer' ? '/dashboard?welcome=true' : '/dashboard')
     } else {
+      // Email confirmation required
       setSuccess(true)
     }
     setLoading(false)
@@ -171,9 +194,30 @@ function SignupContent() {
                       required
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      placeholder="At least 6 characters"
+                      placeholder="At least 8 characters"
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-800 bg-white transition-colors"
                     />
+                    {/* Live password requirements checklist */}
+                    <ul className="mt-2.5 flex flex-col gap-1.5">
+                      {POLICY_KEYS.map(key => {
+                        const ok = checks[key]
+                        return (
+                          <li key={key} className="flex items-center gap-2 text-xs" style={{ color: ok ? '#166534' : '#6b7280' }}>
+                            <span
+                              className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: ok ? '#16a34a' : '#e5e7eb' }}
+                            >
+                              {ok ? (
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#9ca3af' }} />
+                              )}
+                            </span>
+                            {POLICY_LABELS[key]}
+                          </li>
+                        )
+                      })}
+                    </ul>
                   </div>
 
                   <div>
@@ -204,7 +248,7 @@ function SignupContent() {
 
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || !pwValid}
                     className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: '#00267F' }}
                   >
