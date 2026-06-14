@@ -174,6 +174,13 @@ export default function Inbox() {
         } else {
           setMessages([])
         }
+      } else {
+        // No freelancer profile → this user is a client. /inbox is the
+        // freelancer inbox; their messages live at /messages. Redirect there
+        // (replace, so the back button doesn't return to this dead end)
+        // instead of showing the freelancer-only empty state.
+        router.replace('/messages')
+        return
       }
 
       setLoading(false)
