@@ -43,16 +43,42 @@ const phases = [
   },
   {
     side: 'right',
-    statusLabel: 'Phase 4 — In Progress',
+    statusLabel: 'Phase 4 — Live',
+    statusBg: '#DCFCE7',
+    statusColor: '#166534',
+    borderTop: '#22C55E',
+    node: 'navy',
+    title: 'Business & Engagement',
+    description: 'Tools that run the whole job and keep both sides in the loop in real time.',
+    tags: ['Invoicing & earnings', 'Paid receipts', 'Notifications centre', 'Live conversations', 'Phone verification'],
+    tagBg: '#DCFCE7',
+    tagColor: '#166534',
+  },
+  {
+    side: 'left',
+    statusLabel: 'Phase 5 — In Progress',
     statusBg: '#FEF3C7',
     statusColor: '#92400E',
     borderTop: '#00267F',
     node: 'pulse',
     title: 'The App',
     description: "A fully native mobile experience on iOS and Android — Barbados's professional services platform, fully in your hands.",
-    tags: ['Phone verification', 'iOS app', 'Android app', 'Booking history', 'In-app payments'],
+    tags: ['iOS app', 'Android app', 'Booking history', 'Instant booking'],
     tagBg: '#EFF6FF',
     tagColor: '#1E40AF',
+  },
+  {
+    side: 'right',
+    statusLabel: 'Phase 6 — Planned',
+    statusBg: '#F3F4F6',
+    statusColor: '#6B7280',
+    borderTop: '#D1D5DB',
+    node: 'future',
+    title: 'Payments & Membership',
+    description: 'Pay and get paid on-platform, and unlock more reach with membership tiers.',
+    tags: ['Secure payment portal', 'Deposits & online payments', 'Membership tiers (Gold)', 'Promoted listings'],
+    tagBg: '#F3F4F6',
+    tagColor: '#6B7280',
   },
 ]
 
@@ -63,6 +89,10 @@ const voteOptions = [
 ]
 
 const changelog = [
+  { date: 'Jun 2026', desc: 'Notifications centre — bell + full page, live updates', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
+  { date: 'Jun 2026', desc: 'Live conversations via realtime (messages update instantly)', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
+  { date: 'Jun 2026', desc: 'Invoicing, earnings dashboard & paid receipts', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
+  { date: 'Jun 2026', desc: 'Phone verification & stronger account security', badge: 'Security', badgeBg: '#FEF3C7', badgeColor: '#92400E' },
   { date: 'Jun 2026', desc: 'Client profiles with two-way ratings', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
   { date: 'Jun 2026', desc: 'Category pages, profile analytics, featured listings', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
   { date: 'Jun 2026', desc: 'Push notifications for messages, replies and quotes', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
@@ -331,7 +361,7 @@ export default function Roadmap() {
             color: '#6B7280',
             marginBottom: '28px',
           }}>
-            Phases 1–3 have shipped. Vote for what we build next.
+            Phases 1–4 have shipped. Vote for what we build next.
           </p>
 
           <div className="rm-vote-grid" style={{ marginBottom: '28px' }}>
