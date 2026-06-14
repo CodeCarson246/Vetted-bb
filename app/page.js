@@ -582,7 +582,7 @@ export default function Home() {
                 Get found by clients who are already looking for you
               </h2>
               <p className="text-sm sm:text-base leading-relaxed mb-8" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                Join Barbados&apos; only professional marketplace with real reviews and verified profiles. Set up your free profile in under 10 minutes.
+                Join Barbados&apos; own professional marketplace with real reviews and verified profiles. Set up your free profile in under 10 minutes.
               </p>
 
               <ul className="flex flex-col gap-3 mb-8">
