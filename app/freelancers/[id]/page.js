@@ -775,7 +775,7 @@ export default function FreelancerProfile() {
 
         {/* Services */}
         {services.length > 0 ? (
-          <div id="services-section" className="bg-white rounded-2xl px-7 py-6" style={{ border: servicesHighlight ? '1px solid #F9C000' : '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: servicesHighlight ? '0 0 0 3px rgba(249,192,0,0.45)' : '0 2px 12px rgba(0,38,127,0.08)', scrollMarginTop: '90px', transition: 'box-shadow 0.3s ease, border-color 0.3s ease' }}>
+          <div id="services-section" className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: servicesHighlight ? '0 0 0 3px rgba(249,192,0,0.6)' : '0 2px 12px rgba(0,38,127,0.08)', scrollMarginTop: '90px', transition: 'box-shadow 0.3s ease' }}>
             <h2 className="text-base font-bold text-gray-900 mb-5">Services</h2>
             {servicesHighlight && (
               <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ backgroundColor: 'rgba(249,192,0,0.12)', color: '#92400E', border: '1px solid rgba(249,192,0,0.4)' }}>
