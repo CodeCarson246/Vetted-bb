@@ -1163,6 +1163,14 @@ export default function FreelancerProfile() {
                         onClick={() => setReviewPhotoLightbox(review.image_url)}
                       />
                     )}
+                    {review.response && (
+                      <div className="mt-3 rounded-xl px-4 py-3" style={{ backgroundColor: '#F1F5FF', borderLeft: '3px solid #00267F' }}>
+                        <p className="text-xs font-semibold mb-1" style={{ color: '#00267F' }}>
+                          Response from {freelancer.company_name?.trim().length > 3 ? freelancer.company_name : freelancer.name}
+                        </p>
+                        <p className="text-gray-600 text-sm leading-relaxed">{review.response}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

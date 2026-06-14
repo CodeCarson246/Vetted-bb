@@ -61,6 +61,9 @@ function DashboardInner() {
   const [activeTab, setActiveTab] = useState('overview')
   const [reviewSubTab, setReviewSubTab] = useState('about') // 'about' | 'left'
   const [reviewRatingFilter, setReviewRatingFilter] = useState('all')
+  const [respondingReviewId, setRespondingReviewId] = useState(null)
+  const [responseDraft, setResponseDraft] = useState('')
+  const [responseSaving, setResponseSaving] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
   const [highlightPhoto, setHighlightPhoto] = useState(false)
   const [confirmRemovePhoto, setConfirmRemovePhoto] = useState(false)
@@ -1050,6 +1053,28 @@ function DashboardInner() {
 
   const clientReviews = reviews.filter(r => r.type === 'client')
   const freelancerReviews = reviews.filter(r => r.type === 'freelancer')
+
+  async function saveReviewResponse(review) {
+    setResponseSaving(true)
+    const text = responseDraft.trim()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    const res = await fetch('/api/review-response', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ review_id: review.id, response: text }),
+    }).catch(() => null)
+    if (res && res.ok) {
+      setReviews(prev => prev.map(r => r.id === review.id
+        ? { ...r, response: text || null, response_at: text ? new Date().toISOString() : null }
+        : r))
+      setRespondingReviewId(null)
+      setResponseDraft('')
+    } else {
+      alert('Could not save your response. Please try again.')
+    }
+    setResponseSaving(false)
+  }
 
   return (
     <main className="min-h-screen page-bg">
@@ -2229,8 +2254,8 @@ function DashboardInner() {
                         </p>
                       ) : (
                         <div className="flex flex-col gap-3">
-                          {filtered.map((review, i) => (
-                            <div key={i} className="rounded-xl p-5 border border-gray-100" style={{ borderLeft: `3px solid ${accent}` }}>
+                          {filtered.map(review => (
+                            <div key={review.id} className="rounded-xl p-5 border border-gray-100" style={{ borderLeft: `3px solid ${accent}` }}>
                               <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-3">
                                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={avatarStyle}>
@@ -2244,6 +2269,37 @@ function DashboardInner() {
                                 <StarRating rating={review.rating} />
                               </div>
                               <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
+
+                              {/* Public response — only on reviews about me */}
+                              {reviewSubTab === 'about' && (
+                                respondingReviewId === review.id ? (
+                                  <div className="mt-3">
+                                    <textarea
+                                      value={responseDraft}
+                                      onChange={e => setResponseDraft(e.target.value)}
+                                      rows={3}
+                                      placeholder="Write a public response…"
+                                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
+                                    />
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <button onClick={() => saveReviewResponse(review)} disabled={responseSaving} className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50" style={{ backgroundColor: '#00267F' }}>
+                                        {responseSaving ? 'Saving…' : 'Post response'}
+                                      </button>
+                                      <button onClick={() => { setRespondingReviewId(null); setResponseDraft('') }} className="text-xs font-medium text-gray-400 hover:text-gray-600">Cancel</button>
+                                    </div>
+                                  </div>
+                                ) : review.response ? (
+                                  <div className="mt-3 rounded-lg px-4 py-3" style={{ backgroundColor: '#F1F5FF', borderLeft: '3px solid #00267F' }}>
+                                    <p className="text-xs font-semibold mb-1" style={{ color: '#00267F' }}>Your response</p>
+                                    <p className="text-gray-600 text-sm leading-relaxed">{review.response}</p>
+                                    <button onClick={() => { setRespondingReviewId(review.id); setResponseDraft(review.response) }} className="text-xs font-semibold mt-2 hover:opacity-80" style={{ color: '#00267F' }}>Edit response</button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => { setRespondingReviewId(review.id); setResponseDraft('') }} className="text-xs font-semibold mt-3 hover:opacity-80" style={{ color: '#00267F' }}>
+                                    Respond to this review →
+                                  </button>
+                                )
+                              )}
                             </div>
                           ))}
                         </div>

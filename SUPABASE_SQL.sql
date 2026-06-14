@@ -572,3 +572,13 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
   END IF;
 END $$;
+
+-- ============================================================
+-- SECTION 14 — REVIEW RESPONSES (2026-06-14)
+-- Lets a freelancer post a public reply under a review about them.
+-- Written via /api/review-response (service role, verifies ownership);
+-- there is no client UPDATE policy on reviews, so this is the only writer.
+-- ============================================================
+
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS response    text;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS response_at timestamptz;
