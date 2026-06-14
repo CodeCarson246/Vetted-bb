@@ -85,6 +85,10 @@
 [data-theme="dark"] .hover\:border-gray-300:hover,
 [data-theme="dark"] .hover\:border-gray-400:hover,
 [data-theme="dark"] .hover\:border-gray-500:hover { border-color: #4C5C82 !important; }
+/* Header auth links (Browse / Log in / Join as client) use navy on a
+   transparent nav — invisible in dark mode, so lift to light blue */
+[data-theme="dark"] .nav-auth-link { color: #93b8ff !important; border-color: #93b8ff !important; }
+[data-theme="dark"] .nav-auth-link:hover { background-color: rgba(147,184,255,0.12) !important; }
 /* Dividers: cover every child (v4 puts the border on all but the last)
    and bare divide-y/border-*, whose v4 default is currentColor — light
    text in dark mode would otherwise paint white lines */

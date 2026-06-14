@@ -207,6 +207,7 @@ export default function SiteNav() {
           {/* Browse Professionals link */}
           <a
             href="/search"
+            className="nav-auth-link"
             style={{
               color: '#00267F',
               fontSize: '0.9rem',
@@ -438,6 +439,7 @@ export default function SiteNav() {
             <>
               <a
                 href="/login"
+                className="nav-auth-link"
                 style={{
                   color: '#00267F',
                   padding: '10px 22px',
@@ -473,7 +475,7 @@ export default function SiteNav() {
                 }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(0,38,127,0.06)')}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                className="hide-below-lg"
+                className="hide-below-lg nav-auth-link"
               >
                 Join as a Client
               </a>

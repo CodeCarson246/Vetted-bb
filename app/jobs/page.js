@@ -148,7 +148,8 @@ export default function JobsPage() {
                           <span className="flex-1">
                             <span className="text-sm font-medium block text-gray-900">Mark job as completed</span>
                             <span className="text-xs text-gray-400">
-                              {mutual ? 'Both confirmed — reviews are open ✓'
+                              {job.status === 'paid' ? 'Paid — you can leave a review ✓'
+                                : mutual ? 'Both confirmed — you can review once the pro marks it paid'
                                 : job.client_completed_at ? `Waiting for ${f?.name || 'the professional'} to confirm`
                                 : job.completed_at ? `${f?.name || 'The professional'} has confirmed — tick to complete`
                                 : 'Tick once the work is finished'}
@@ -169,7 +170,7 @@ export default function JobsPage() {
                             Invoice PDF
                           </button>
                         )}
-                        {mutual && (
+                        {job.status === 'paid' && (
                           <a href={`/freelancers/${f?.id}#leave-review`} className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#16a34a' }}>
                             Leave a review →
                           </a>

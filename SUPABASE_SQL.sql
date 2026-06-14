@@ -511,3 +511,11 @@ BEGIN
 END $$;
 
 ALTER TABLE quotes REPLICA IDENTITY FULL;
+
+-- ============================================================
+-- SECTION 12 — RECEIPT SENT TIMESTAMP (2026-06-14)
+-- Run before deploying the "Receipt sent" indicator on the quotes page.
+-- Records when the paid receipt was sent so the workflow box can show it.
+-- ============================================================
+
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS receipt_sent_at timestamptz;

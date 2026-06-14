@@ -75,11 +75,11 @@ export default function Privacy() {
             <div className="mt-4 flex flex-col gap-4">
               <div className="border border-gray-100 rounded-xl p-5">
                 <p className="font-semibold text-gray-800">Supabase</p>
-                <p className="text-sm mt-1 text-gray-500">We use Supabase as our database, authentication provider, and file storage platform. All user account data, profile information, messages, and reviews are stored in Supabase. Supabase is SOC 2 compliant and stores data in secure, encrypted infrastructure. For more information, see <span className="font-medium" style={{ color: '#00267F' }}>supabase.com/privacy</span>.</p>
+                <p className="text-sm mt-1 text-gray-500">We use Supabase as our database, authentication provider, and file storage platform. All user account data, profile information, messages, and reviews are stored in Supabase. Supabase is SOC 2 compliant and stores data in secure, encrypted infrastructure. For more information, see <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" className="font-medium hover:underline" style={{ color: '#00267F' }}>supabase.com/privacy</a>.</p>
               </div>
               <div className="border border-gray-100 rounded-xl p-5">
                 <p className="font-semibold text-gray-800">Resend</p>
-                <p className="text-sm mt-1 text-gray-500">We use Resend to send transactional emails, such as password reset links and email confirmation messages. Resend receives your email address for the purpose of delivering these messages only. For more information, see <span className="font-medium" style={{ color: '#00267F' }}>resend.com/privacy</span>.</p>
+                <p className="text-sm mt-1 text-gray-500">We use Resend to send transactional emails, such as password reset links and email confirmation messages. Resend receives your email address for the purpose of delivering these messages only. For more information, see <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-medium hover:underline" style={{ color: '#00267F' }}>resend.com/privacy</a>.</p>
               </div>
             </div>
 

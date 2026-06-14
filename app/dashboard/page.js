@@ -59,6 +59,8 @@ function DashboardInner() {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
+  const [reviewSubTab, setReviewSubTab] = useState('about') // 'about' | 'left'
+  const [reviewRatingFilter, setReviewRatingFilter] = useState('all')
   const [showEditForm, setShowEditForm] = useState(false)
   const [highlightPhoto, setHighlightPhoto] = useState(false)
   const [confirmRemovePhoto, setConfirmRemovePhoto] = useState(false)
@@ -2173,52 +2175,64 @@ function DashboardInner() {
                   </div>
                 )}
 
-                {/* Reviews tab */}
-                {activeTab === 'reviews' && (
-                  <div className="flex flex-col gap-8">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4">Reviews about me <span className="text-gray-400 font-normal text-sm">({clientReviews.length})</span></h3>
-                      {clientReviews.length === 0 ? (
-                        <p className="text-sm text-gray-400 py-4">No reviews yet.</p>
-                      ) : (
-                        <div className="flex flex-col gap-3">
-                          {clientReviews.map((review, i) => (
-                            <div key={i} className="rounded-xl p-5 border border-gray-100" style={{ borderLeft: '3px solid #00267F' }}>
-                              <div className="flex items-start justify-between gap-3 mb-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
-                                    {formatDisplayName(review.author)[0]?.toUpperCase()}
-                                  </div>
-                                  <div>
-                                    <p className="font-semibold text-gray-900 text-sm">{formatDisplayName(review.author)}</p>
-                                    <p className="text-xs text-gray-400">{review.date}</p>
-                                  </div>
-                                </div>
-                                <StarRating rating={review.rating} />
-                              </div>
-                              <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                {/* Reviews tab — split into About me / I've left, with a rating filter */}
+                {activeTab === 'reviews' && (() => {
+                  const list = reviewSubTab === 'left' ? freelancerReviews : clientReviews
+                  const filtered = reviewRatingFilter === 'all'
+                    ? list
+                    : list.filter(r => Math.round(r.rating) === Number(reviewRatingFilter))
+                  const accent = reviewSubTab === 'left' ? '#F9C000' : '#00267F'
+                  const avatarStyle = reviewSubTab === 'left'
+                    ? { backgroundColor: '#FEF9E7', color: '#00267F' }
+                    : { backgroundColor: '#00267F', color: '#fff' }
+                  return (
+                    <div className="flex flex-col gap-4">
+                      {/* Sub-tab switch */}
+                      <div className="flex gap-1 bg-gray-50 rounded-full border border-gray-200 p-1 self-start max-w-full overflow-x-auto no-scrollbar">
+                        {[['about', `About me (${clientReviews.length})`], ['left', `I've left (${freelancerReviews.length})`]].map(([v, label]) => (
+                          <button
+                            key={v}
+                            onClick={() => { setReviewSubTab(v); setReviewRatingFilter('all') }}
+                            className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${reviewSubTab === v ? 'text-white' : 'text-gray-500 hover:text-gray-800'}`}
+                            style={reviewSubTab === v ? { backgroundColor: '#00267F' } : {}}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
 
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4">Reviews I've left <span className="text-gray-400 font-normal text-sm">({freelancerReviews.length})</span></h3>
-                      {freelancerReviews.length === 0 ? (
-                        <p className="text-sm text-gray-400 py-4">You haven't reviewed any clients yet.</p>
+                      {/* Rating filter */}
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <select
+                          value={reviewRatingFilter}
+                          onChange={e => setReviewRatingFilter(e.target.value)}
+                          className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
+                        >
+                          <option value="all">All ratings</option>
+                          {[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} star{n > 1 ? 's' : ''}</option>)}
+                        </select>
+                        <span className="text-xs text-gray-400">{filtered.length} {filtered.length === 1 ? 'review' : 'reviews'}</span>
+                      </div>
+
+                      {/* List */}
+                      {filtered.length === 0 ? (
+                        <p className="text-sm text-gray-400 py-4">
+                          {list.length === 0
+                            ? (reviewSubTab === 'left' ? "You haven't reviewed any clients yet." : 'No reviews about you yet.')
+                            : 'No reviews match this rating.'}
+                        </p>
                       ) : (
                         <div className="flex flex-col gap-3">
-                          {freelancerReviews.map((review, i) => (
-                            <div key={i} className="rounded-xl p-5 border border-gray-100" style={{ borderLeft: '3px solid #F9C000' }}>
+                          {filtered.map((review, i) => (
+                            <div key={i} className="rounded-xl p-5 border border-gray-100" style={{ borderLeft: `3px solid ${accent}` }}>
                               <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#FEF9E7', color: '#00267F' }}>
+                                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={avatarStyle}>
                                     {formatDisplayName(review.author)[0]?.toUpperCase()}
                                   </div>
                                   <div>
                                     <p className="font-semibold text-gray-900 text-sm">{formatDisplayName(review.author)}</p>
-                                    <p className="text-xs text-gray-400">{review.date}</p>
+                                    <p className="text-xs text-gray-400">{review.date}{review.service_name ? ` · ${review.service_name}` : ''}</p>
                                   </div>
                                 </div>
                                 <StarRating rating={review.rating} />
@@ -2229,8 +2243,8 @@ function DashboardInner() {
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
 
                 {/* Leave a review tab */}
                 {activeTab === 'leave-a-review' && (

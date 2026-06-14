@@ -377,6 +377,7 @@ export default function QuotesPage() {
     setBusyId(q.id)
     const ref = q.invoice_number || q.quote_number
     const body = `Sent receipt for ${ref} — paid in full on ${fmtDate(q.paid_at)}. Total $${Number(q.total).toFixed(2)}.`
+    const sentAt = new Date().toISOString()
 
     if (q.message_id) {
       await supabase.from('messages').update({ client_read: false }).eq('id', q.message_id)
@@ -394,6 +395,9 @@ export default function QuotesPage() {
         body: JSON.stringify({ message_id: q.message_id, kind: 'receipt', message: body }),
       }).catch(() => {})
     }
+    // Record when the receipt was sent so the workflow box can show it.
+    await supabase.from('quotes').update({ receipt_sent_at: sentAt }).eq('id', q.id)
+    setQuotes(prev => prev.map(x => x.id === q.id ? { ...x, receipt_sent_at: sentAt } : x))
     setReceiptSentIds(prev => new Set(prev).add(q.id))
     setBusyId(null)
   }
@@ -763,6 +767,7 @@ export default function QuotesPage() {
                         {q.completed_at && <span className="text-xs" style={{ color: '#B45309' }}>You confirmed {fmtDate(q.completed_at)}</span>}
                         {q.client_completed_at && <span className="text-xs" style={{ color: '#B45309' }}>Client confirmed {fmtDate(q.client_completed_at)}</span>}
                         {q.paid_at && <span className="text-xs font-semibold" style={{ color: '#166534' }}>Paid {fmtDate(q.paid_at)}</span>}
+                        {q.receipt_sent_at && <span className="text-xs font-semibold" style={{ color: '#166534' }}>Receipt sent {fmtDate(q.receipt_sent_at)}</span>}
                       </div>
                     )}
 
