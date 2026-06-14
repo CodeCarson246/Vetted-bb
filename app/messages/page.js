@@ -35,13 +35,20 @@ export default function ClientMessages() {
   // Opening a thread (or sending into it) scrolls the newest message
   // and composer into view — read the latest first, scroll up for history
   const expandedReplyCount = expandedId ? (replies[expandedId] || []).length : 0
+  // Quote/invoice/receipt cards load lazily after expand; re-scroll once
+  // they resolve so the thread lands fully at the bottom, not short.
+  const expandedQuotesLoaded = expandedId
+    ? (replies[expandedId] || []).map(getQuoteId).filter(Boolean).filter(qid => quotes[qid]).length
+    : 0
   useEffect(() => {
     if (!expandedId) return
-    const t = setTimeout(() => {
-      threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    }, 150)
-    return () => clearTimeout(t)
-  }, [expandedId, expandedReplyCount])
+    const scroll = () => threadEndRef.current?.scrollIntoView({ block: 'end' })
+    // Instant (not smooth) so layout shifts from late-loading cards/images
+    // don't leave it short; a second pass catches that late layout.
+    const t1 = setTimeout(scroll, 60)
+    const t2 = setTimeout(scroll, 400)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [expandedId, expandedReplyCount, expandedQuotesLoaded])
   const [respondingQuoteId, setRespondingQuoteId] = useState(null)
   const [replySending, setReplySending] = useState(false)
 
@@ -103,50 +110,56 @@ export default function ClientMessages() {
 
   const { user: authUser, loading: authLoading } = useAuth()
 
+  // Pull the thread list + every thread's replies, enrich previews and sort
+  // by latest activity. Shared by the initial load and the live-refresh poll.
+  async function loadThreads(u) {
+    const { data: msgs } = await supabase
+      .from('messages')
+      .select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, verified, phone_verified)')
+      .eq('sender_email', u.email)
+      .order('created_at', { ascending: false })
+
+    const list = msgs || []
+    const byThread = {}
+    if (list.length > 0) {
+      const { data: allReplies } = await supabase
+        .from('message_replies')
+        .select('*')
+        .in('message_id', list.map(m => m.id))
+        .order('created_at', { ascending: true })
+
+      for (const r of allReplies || []) {
+        if (!byThread[r.message_id]) byThread[r.message_id] = []
+        byThread[r.message_id].push(r)
+      }
+
+      const enriched = list
+        .map(m => {
+          const thread = byThread[m.id] || []
+          const last = thread[thread.length - 1]
+          return {
+            ...m,
+            last_activity_at: last?.created_at || m.created_at,
+            latest_preview: last ? conversationPreview(last, u.id) : m.message,
+          }
+        })
+        .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))
+      setReplies(byThread)
+      setMessages(enriched)
+    } else {
+      setReplies({})
+      setMessages([])
+    }
+    return byThread
+  }
+
   useEffect(() => {
     if (authLoading) return
     async function init() {
       const u = authUser
       if (!u) { router.push('/login'); return }
       setUser(u)
-      const { data: msgs } = await supabase
-        .from('messages')
-        .select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, verified, phone_verified)')
-        .eq('sender_email', u.email)
-        .order('created_at', { ascending: false })
-
-      // Load every thread's replies up front so the list can preview the
-      // LATEST message and sort by recent activity, not thread creation.
-      const list = msgs || []
-      if (list.length > 0) {
-        const { data: allReplies } = await supabase
-          .from('message_replies')
-          .select('*')
-          .in('message_id', list.map(m => m.id))
-          .order('created_at', { ascending: true })
-
-        const byThread = {}
-        for (const r of allReplies || []) {
-          if (!byThread[r.message_id]) byThread[r.message_id] = []
-          byThread[r.message_id].push(r)
-        }
-        setReplies(byThread)
-
-        const enriched = list
-          .map(m => {
-            const thread = byThread[m.id] || []
-            const last = thread[thread.length - 1]
-            return {
-              ...m,
-              last_activity_at: last?.created_at || m.created_at,
-              latest_preview: last ? conversationPreview(last, u.id) : m.message,
-            }
-          })
-          .sort((a, b) => new Date(b.last_activity_at) - new Date(a.last_activity_at))
-        setMessages(enriched)
-      } else {
-        setMessages([])
-      }
+      await loadThreads(u)
 
       const { data: revs } = await supabase
         .from('reviews')
@@ -167,6 +180,26 @@ export default function ClientMessages() {
     }
     init()
   }, [authUser, authLoading, router])
+
+  // Live updates: re-pull threads (and the open thread's quotes) on an
+  // interval so a conversation updates while you're sitting on the page —
+  // new replies, quotes, invoices and receipts appear without a manual reload.
+  useEffect(() => {
+    if (!user) return
+    async function tick() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      const byThread = await loadThreads(user)
+      if (expandedId && byThread[expandedId]) {
+        const quoteIds = byThread[expandedId].map(getQuoteId).filter(Boolean)
+        if (quoteIds.length > 0) {
+          const { data: qs } = await supabase.from('quotes').select('*').in('id', quoteIds)
+          if (qs) setQuotes(prev => ({ ...prev, ...Object.fromEntries(qs.map(q => [q.id, q])) }))
+        }
+      }
+    }
+    const id = setInterval(tick, 12000)
+    return () => clearInterval(id)
+  }, [user, expandedId])
 
   async function handleExpand(msg) {
     if (expandedId === msg.id) { setExpandedId(null); return }
