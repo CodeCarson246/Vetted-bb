@@ -429,6 +429,13 @@ function DashboardInner() {
       }
     }
 
+    // Alert clients whose saved search matches the new profile (fire-and-forget)
+    fetch('/api/match-saved-searches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ freelancer_id: newProfileId }),
+    }).catch(() => {})
+
     router.push(`/freelancers/${newProfileId}`)
   }
 

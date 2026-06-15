@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useSaved, HeartButton } from '@/lib/useSaved'
+import { useAuth } from '@/lib/auth-context'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import SearchEmptyState from '@/components/SearchEmptyState'
 import Tooltip from '@/components/Tooltip'
@@ -251,7 +252,10 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
 function SearchPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { user } = useAuth()
   const { savedIds, toggleSaved } = useSaved()
+  const [searchSaved, setSearchSaved] = useState(false)
+  const [savingSearch, setSavingSearch] = useState(false)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
   const [allFreelancers, setAllFreelancers] = useState([])
@@ -298,6 +302,22 @@ function SearchPage() {
     setAvailability('all')
     setBudget('all')
     setLocation('')
+  }
+
+  // Re-enable the save button whenever the search changes
+  useEffect(() => { setSearchSaved(false) }, [query, category, location])
+
+  async function saveCurrentSearch() {
+    if (!user) { router.push('/login'); return }
+    setSavingSearch(true)
+    const { error } = await supabase.from('saved_searches').insert({
+      user_id: user.id,
+      query: query.trim() || null,
+      category: category || null,
+      location: location || null,
+    })
+    setSavingSearch(false)
+    if (!error) setSearchSaved(true)
   }
 
   const getMinPrice = (f) => {
@@ -492,7 +512,20 @@ function SearchPage() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-gray-400 mb-4">{filtered.length} freelancer{filtered.length !== 1 ? 's' : ''} found</p>
+            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+              <p className="text-sm text-gray-400">{filtered.length} freelancer{filtered.length !== 1 ? 's' : ''} found</p>
+              {(query.trim() || category || location) && (
+                <button
+                  onClick={saveCurrentSearch}
+                  disabled={savingSearch || searchSaved}
+                  className="text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-colors disabled:opacity-60"
+                  style={{ borderColor: '#00267F', color: '#00267F' }}
+                  title="Get notified when a new matching professional joins"
+                >
+                  {searchSaved ? '✓ Saved — we’ll alert you' : savingSearch ? 'Saving…' : '🔔 Save this search'}
+                </button>
+              )}
+            </div>
 
             {filtered.length === 0 ? (
               <SearchEmptyState query={query} category={category} onClearFilters={clearFilters} />

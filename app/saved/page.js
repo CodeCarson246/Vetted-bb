@@ -20,8 +20,10 @@ export default function SavedProfessionals() {
   const router = useRouter()
   const { user: authUser, loading: authLoading } = useAuth()
   const [saved, setSaved] = useState([])
+  const [searches, setSearches] = useState([])
   const [loading, setLoading] = useState(true)
   const [removingId, setRemovingId] = useState(null)
+  const [removingSearchId, setRemovingSearchId] = useState(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -29,16 +31,23 @@ export default function SavedProfessionals() {
 
     // freelancers(*) rather than an explicit column list — survives schema
     // differences (naming a column that doesn't exist 400s the whole query)
-    supabase
-      .from('saved_professionals')
-      .select('id, freelancer_id, created_at, freelancers(*)')
-      .eq('user_id', authUser.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        // A saved row can outlive its freelancer if the profile was deleted
-        setSaved((data || []).filter(row => row.freelancers))
-        setLoading(false)
-      })
+    Promise.all([
+      supabase
+        .from('saved_professionals')
+        .select('id, freelancer_id, created_at, freelancers(*)')
+        .eq('user_id', authUser.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('saved_searches')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .order('created_at', { ascending: false }),
+    ]).then(([{ data: pros }, { data: srch }]) => {
+      // A saved row can outlive its freelancer if the profile was deleted
+      setSaved((pros || []).filter(row => row.freelancers))
+      setSearches(srch || [])
+      setLoading(false)
+    })
   }, [authUser, authLoading, router])
 
   async function removeSaved(rowId) {
@@ -46,6 +55,24 @@ export default function SavedProfessionals() {
     const { error } = await supabase.from('saved_professionals').delete().eq('id', rowId)
     if (!error) setSaved(prev => prev.filter(r => r.id !== rowId))
     setRemovingId(null)
+  }
+
+  async function removeSearch(id) {
+    setRemovingSearchId(id)
+    const { error } = await supabase.from('saved_searches').delete().eq('id', id)
+    if (!error) setSearches(prev => prev.filter(s => s.id !== id))
+    setRemovingSearchId(null)
+  }
+
+  function searchLabel(s) {
+    const parts = [s.query, s.category, s.location].filter(Boolean)
+    return parts.length ? parts.join(' · ') : 'All professionals'
+  }
+  function searchHref(s) {
+    const p = new URLSearchParams()
+    if (s.query) p.set('q', s.query)
+    if (s.category) p.set('category', s.category)
+    return `/search${p.toString() ? `?${p}` : ''}`
   }
 
   if (loading) {
@@ -137,6 +164,31 @@ export default function SavedProfessionals() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* Saved searches — alerts when new matching pros join */}
+        {searches.length > 0 && (
+          <div className="mt-10">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Saved searches</h2>
+            <p className="text-sm text-gray-500 mb-4">We&apos;ll notify you when a new professional matches one of these.</p>
+            <div className="flex flex-col gap-2">
+              {searches.map(s => (
+                <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3" style={{ borderLeft: '4px solid #F9C000' }}>
+                  <span className="text-lg flex-shrink-0" aria-hidden="true">🔔</span>
+                  <a href={searchHref(s)} className="flex-1 min-w-0 text-sm font-medium text-gray-800 hover:underline" style={{ textDecoration: 'none' }}>
+                    {searchLabel(s)}
+                  </a>
+                  <button
+                    onClick={() => removeSearch(s.id)}
+                    disabled={removingSearchId === s.id}
+                    className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 flex-shrink-0"
+                  >
+                    {removingSearchId === s.id ? 'Removing…' : 'Remove'}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

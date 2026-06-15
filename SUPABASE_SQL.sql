@@ -640,3 +640,30 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.freelancer_response_stats(uuid) TO anon, authenticated;
+
+-- ============================================================
+-- SECTION 17 — SAVED SEARCHES + ALERTS (2026-06-15)
+-- A client saves a search (keyword + category + parish); when a new
+-- freelancer that matches joins, they get a notification. Match runs
+-- server-side in /api/match-saved-searches (service role) on profile
+-- creation; rows here are managed by the owner.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS saved_searches (
+  id         uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  query      text,
+  category   text,
+  location   text,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_searches_user ON saved_searches (user_id);
+
+ALTER TABLE saved_searches ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own saved searches" ON saved_searches;
+CREATE POLICY "Users manage own saved searches"
+  ON saved_searches FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
