@@ -582,3 +582,26 @@ END $$;
 
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS response    text;
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS response_at timestamptz;
+
+-- ============================================================
+-- SECTION 15 — CHAT PHOTOS (2026-06-14)
+-- Lets either party attach a photo to a message reply (e.g. "here's the
+-- leak"). Uploaded to a public chat-photos bucket under the sender's own
+-- folder; the URL is stored on the reply row.
+-- ============================================================
+
+ALTER TABLE message_replies ADD COLUMN IF NOT EXISTS image_url text;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('chat-photos', 'chat-photos', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Authenticated users upload only into their own uid folder; anyone can read
+-- (public bucket — images render via the public URL in the thread).
+DROP POLICY IF EXISTS "chat-photos upload own" ON storage.objects;
+CREATE POLICY "chat-photos upload own" ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'chat-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+DROP POLICY IF EXISTS "chat-photos public read" ON storage.objects;
+CREATE POLICY "chat-photos public read" ON storage.objects FOR SELECT
+  USING (bucket_id = 'chat-photos');

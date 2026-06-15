@@ -9,6 +9,7 @@ import { parsePrice } from '@/lib/price'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
+import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
@@ -30,6 +31,8 @@ export default function Inbox() {
   const [expandedId, setExpandedId] = useState(null)
   const [replies, setReplies] = useState({})
   const [replyText, setReplyText] = useState({})
+  const [replyPhoto, setReplyPhoto] = useState(null)
+  const [photoUploading, setPhotoUploading] = useState(false)
   const [replySending, setReplySending] = useState(false)
   const [quoteMsg, setQuoteMsg] = useState(null)
   const [threadQuotes, setThreadQuotes] = useState({})
@@ -607,9 +610,19 @@ export default function Inbox() {
     window.location.href = `mailto:${quoteClientEmail}?subject=${encodeURIComponent(`Quote ${quoteNumber} — ${profile.company_name || profile.name}`)}&body=${encodeURIComponent(body)}`
   }
 
+  async function attachReplyPhoto(file) {
+    if (!file) return
+    setPhotoUploading(true)
+    const { url, error } = await uploadChatPhoto(file, user?.id)
+    if (error) alert(error)
+    else setReplyPhoto({ url })
+    setPhotoUploading(false)
+  }
+
   async function sendReply(msg) {
     const text = replyText[msg.id]?.trim()
-    if (!text) return
+    const imageUrl = replyPhoto?.url || null
+    if (!text && !imageUrl) return
     setReplySending(true)
     const { data, error } = await supabase
       .from('message_replies')
@@ -617,20 +630,22 @@ export default function Inbox() {
         message_id: msg.id,
         sender_name: profile.name,
         sender_user_id: user?.id,
-        body: text,
+        body: text || '',
+        image_url: imageUrl,
       })
       .select()
       .single()
     if (!error) {
       setReplies(prev => ({ ...prev, [msg.id]: [...(prev[msg.id] || []), data] }))
       setReplyText(prev => ({ ...prev, [msg.id]: '' }))
+      setReplyPhoto(null)
       // Flag the thread unread for the client's header badge
       supabase.from('messages').update({ client_read: false }).eq('id', msg.id).then(() => {})
       // Email + push the client (fire-and-forget)
       fetch('/api/notify-reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message_id: msg.id, message: text }),
+        body: JSON.stringify({ message_id: msg.id, message: text || '📷 Photo' }),
       }).catch(() => {})
     }
     setReplySending(false)
@@ -1052,7 +1067,12 @@ export default function Inbox() {
                                         {r.sender_name}
                                         {isOwnReply && isVerified(profile) && <VerifiedBadge size={13} />}
                                       </p>
-                                      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
+                                      {r.body && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>}
+                                      {r.image_url && (
+                                        <a href={r.image_url} target="_blank" rel="noopener noreferrer">
+                                          <img src={r.image_url} alt="Shared photo" className="mt-2 rounded-lg" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 10 }} />
+                                        </a>
+                                      )}
                                       {!isOwnReply && (() => {
                                         const prefill = quoteItemsFromEnquiry(r.body)
                                         if (prefill.length === 0) return null
@@ -1099,17 +1119,29 @@ export default function Inbox() {
                           rows={3}
                           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
                         />
+                        {replyPhoto && (
+                          <div className="relative inline-block" style={{ width: 'fit-content' }}>
+                            <img src={replyPhoto.url} alt="Attachment preview" className="rounded-lg" style={{ maxHeight: 80, borderRadius: 8 }} />
+                            <button onClick={e => { e.stopPropagation(); setReplyPhoto(null) }} aria-label="Remove photo" className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: '#111827', fontSize: 12, lineHeight: 1 }}>×</button>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between gap-3">
-                          <button
-                            onClick={e => { e.stopPropagation(); openQuote(msg) }}
-                            className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity flex-shrink-0"
-                            style={{ backgroundColor: '#00267F' }}
-                          >
-                            Create quote →
-                          </button>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={e => { e.stopPropagation(); openQuote(msg) }}
+                              className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity"
+                              style={{ backgroundColor: '#00267F' }}
+                            >
+                              Create quote →
+                            </button>
+                            <label onClick={e => e.stopPropagation()} className="text-sm font-medium px-3 py-2 rounded-full border border-gray-200 text-gray-600 hover:border-gray-400 cursor-pointer transition-colors" style={{ opacity: photoUploading ? 0.5 : 1 }}>
+                              {photoUploading ? 'Uploading…' : '📷'}
+                              <input type="file" accept="image/*" hidden disabled={photoUploading} onChange={e => { attachReplyPhoto(e.target.files?.[0]); e.target.value = '' }} />
+                            </label>
+                          </div>
                           <button
                             onClick={e => { e.stopPropagation(); sendReply(msg) }}
-                            disabled={replySending || !replyText[msg.id]?.trim()}
+                            disabled={replySending || photoUploading || (!replyText[msg.id]?.trim() && !replyPhoto)}
                             className="text-sm font-semibold px-5 py-2 rounded-full hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                             style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                           >

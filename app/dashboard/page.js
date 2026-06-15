@@ -1383,7 +1383,12 @@ function DashboardInner() {
                                   </div>
                                   <div className="flex-1 bg-white border border-gray-100 rounded-xl px-4 py-3">
                                     <p className="text-xs font-semibold text-gray-700 mb-1">{r.sender_name}</p>
-                                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
+                                    {r.body && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>}
+                                    {r.image_url && (
+                                      <a href={r.image_url} target="_blank" rel="noopener noreferrer">
+                                        <img src={r.image_url} alt="Shared photo" className="mt-2 rounded-lg" style={{ maxWidth: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 10 }} />
+                                      </a>
+                                    )}
                                     <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                                   </div>
                                 </div>

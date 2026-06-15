@@ -7,6 +7,7 @@ import { getQuoteId, dedupeThreadReplies, conversationPreview, isReceiptBody } f
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
+import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
 
@@ -52,10 +53,23 @@ export default function ClientMessages() {
   }, [expandedId, expandedReplyCount, expandedQuotesLoaded])
   const [respondingQuoteId, setRespondingQuoteId] = useState(null)
   const [replySending, setReplySending] = useState(false)
+  const [replyPhoto, setReplyPhoto] = useState(null) // { url } for the open thread
+  const [photoUploading, setPhotoUploading] = useState(false)
+
+  async function attachReplyPhoto(file) {
+    if (!file) return
+    setPhotoUploading(true)
+    const { url, error } = await uploadChatPhoto(file, user.id)
+    if (error) setToast({ message: error, type: 'error' })
+    else setReplyPhoto({ url })
+    setPhotoUploading(false)
+    setTimeout(() => setToast(null), 4000)
+  }
 
   async function sendReply(msg) {
     const text = (newReplies[msg.id] || '').trim()
-    if (!text) return
+    const imageUrl = replyPhoto?.url || null
+    if (!text && !imageUrl) return
     setReplySending(true)
     const senderName = user.user_metadata?.full_name || user.email.split('@')[0]
     const { data, error } = await supabase
@@ -65,6 +79,7 @@ export default function ClientMessages() {
         sender_name: senderName,
         sender_user_id: user.id,
         body: text,
+        image_url: imageUrl,
       })
       .select()
       .single()
@@ -74,6 +89,7 @@ export default function ClientMessages() {
     } else {
       setReplies(prev => ({ ...prev, [msg.id]: [...(prev[msg.id] || []), data] }))
       setNewReplies(prev => ({ ...prev, [msg.id]: '' }))
+      setReplyPhoto(null)
       // Resurface the thread as unread in the freelancer's inbox
       supabase.from('messages').update({ read: false }).eq('id', msg.id).then(() => {})
       // Email + push notification to the freelancer (fire-and-forget)
@@ -85,7 +101,7 @@ export default function ClientMessages() {
           senderName,
           senderEmail: user.email,
           subject: `Re: ${msg.subject || 'your conversation'}`,
-          message: text,
+          message: text || '📷 Photo',
         }),
       }).catch(() => {})
     }
@@ -472,7 +488,12 @@ export default function ClientMessages() {
                                 {isOwn ? 'You' : r.sender_name}
                                 {!isOwn && isVerified(msg.freelancers) && <VerifiedBadge size={13} />}
                               </p>
-                              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>
+                              {r.body && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>}
+                              {r.image_url && (
+                                <a href={r.image_url} target="_blank" rel="noopener noreferrer">
+                                  <img src={r.image_url} alt="Shared photo" className="mt-2 rounded-lg" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 10 }} />
+                                </a>
+                              )}
                               <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
                           </div>
@@ -492,10 +513,20 @@ export default function ClientMessages() {
                           rows={3}
                           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
                         />
-                        <div className="flex justify-end">
+                        {replyPhoto && (
+                          <div className="relative inline-block" style={{ width: 'fit-content' }}>
+                            <img src={replyPhoto.url} alt="Attachment preview" className="rounded-lg" style={{ maxHeight: 80, borderRadius: 8 }} />
+                            <button onClick={() => setReplyPhoto(null)} aria-label="Remove photo" className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: '#111827', fontSize: 12, lineHeight: 1 }}>×</button>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <label className="text-sm font-medium px-3 py-2 rounded-full border border-gray-200 text-gray-600 hover:border-gray-400 cursor-pointer transition-colors" style={{ opacity: photoUploading ? 0.5 : 1 }}>
+                            {photoUploading ? 'Uploading…' : '📷 Photo'}
+                            <input type="file" accept="image/*" hidden disabled={photoUploading} onChange={e => { attachReplyPhoto(e.target.files?.[0]); e.target.value = '' }} />
+                          </label>
                           <button
                             onClick={() => sendReply(msg)}
-                            disabled={replySending || !newReplies[msg.id]?.trim()}
+                            disabled={replySending || photoUploading || (!newReplies[msg.id]?.trim() && !replyPhoto)}
                             className="text-sm font-semibold px-5 py-2 rounded-full hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                             style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                           >
