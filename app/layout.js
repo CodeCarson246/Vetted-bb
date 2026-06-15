@@ -1,6 +1,7 @@
 import "./globals.css";
 import SiteNav from '@/components/SiteNav'
 import SiteFooter from '@/components/SiteFooter'
+import InstallPrompt from '@/components/InstallPrompt'
 import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata = {
@@ -66,6 +67,7 @@ export default function RootLayout({ children }) {
           <SiteNav />
           {children}
           <SiteFooter />
+          <InstallPrompt />
         </AuthProvider>
       </body>
     </html>

@@ -118,8 +118,8 @@ export default function NotificationBell() {
 
       {open && (
         <div
-          className="bg-white"
-          style={{ position: 'absolute', right: 0, top: 48, width: 340, maxWidth: '90vw', borderRadius: 14, border: '1px solid var(--border-card, #e5e7eb)', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', overflow: 'hidden', zIndex: 100 }}
+          className="bg-white notif-dropdown"
+          style={{ borderRadius: 14, border: '1px solid var(--border-card, #e5e7eb)', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', overflow: 'hidden', zIndex: 200 }}
         >
           <div className="border-b border-gray-100" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
             <span className="text-gray-900" style={{ fontWeight: 600, fontSize: 14 }}>Notifications</span>

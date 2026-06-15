@@ -24,7 +24,8 @@ export default function PushToggle({ userId }) {
     } else {
       const result = await enablePush(userId)
       setStatus(result === 'subscribed' ? 'subscribed' : result === 'denied' ? 'denied' : status)
-      if (result === 'error') alert('Could not enable notifications. Please try again.')
+      if (result === 'not-configured') alert('Push notifications aren’t set up on the server yet. Please try again later.')
+      else if (result === 'error') alert('Could not enable notifications. Please try again.')
     }
     setBusy(false)
   }

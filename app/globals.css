@@ -89,6 +89,13 @@
    transparent nav — invisible in dark mode, so lift to light blue */
 [data-theme="dark"] .nav-auth-link { color: #93b8ff !important; border-color: #93b8ff !important; }
 [data-theme="dark"] .nav-auth-link:hover { background-color: rgba(147,184,255,0.12) !important; }
+
+/* Notifications dropdown: anchored under the bell on desktop; on phones
+   pin it across the viewport (with margins) so it can't clip off-screen */
+.notif-dropdown { position: absolute; right: 0; top: 40px; width: 340px; max-width: 92vw; }
+@media (max-width: 640px) {
+  .notif-dropdown { position: fixed; top: 60px; left: 12px; right: 12px; width: auto; max-width: none; }
+}
 /* Dividers: cover every child (v4 puts the border on all but the last)
    and bare divide-y/border-*, whose v4 default is currentColor — light
    text in dark mode would otherwise paint white lines */
