@@ -78,6 +78,7 @@ export default function FreelancerProfile() {
   const [lightboxSlide, setLightboxSlide] = useState(0)
   const [stickyVisible, setStickyVisible] = useState(false)
   const [messageCount, setMessageCount] = useState(0)
+  const [responseStats, setResponseStats] = useState(null)
   const [quoteBannerDismissed, setQuoteBannerDismissed] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('quoting_banner_dismissed') === '1'
     return false
@@ -126,13 +127,14 @@ export default function FreelancerProfile() {
       if (f) {
         // Message contents are private under RLS; the inquiry count used
         // for social proof comes from a security-definer function instead.
-        const [{ data: r }, { data: s }, { data: msgCount }, { data: ab }, { data: as }, { data: portfolio }] = await Promise.all([
+        const [{ data: r }, { data: s }, { data: msgCount }, { data: ab }, { data: as }, { data: portfolio }, { data: respStats }] = await Promise.all([
           supabase.from('reviews').select('*').eq('freelancer_id', f.id),
           supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
           supabase.rpc('freelancer_message_count', { f_id: f.id }),
           supabase.from('availability_blocks').select('*').eq('freelancer_id', f.id).order('start_time', { ascending: true }),
           supabase.from('availability_settings').select('*').eq('freelancer_id', f.id).single(),
           supabase.from('portfolio_items').select('*').eq('freelancer_id', f.id).order('created_at', { ascending: true }),
+          supabase.rpc('freelancer_response_stats', { f_id: f.id }),
         ])
 
         const allReviews = r || []
@@ -156,6 +158,7 @@ export default function FreelancerProfile() {
         setServices(s || [])
         setPortfolioItems(portfolio || [])
         setMessageCount(msgCount || 0)
+        setResponseStats(Array.isArray(respStats) ? respStats[0] : respStats)
         setAvailabilityBlocks(ab || [])
         setAvailabilitySettings(as || null)
       }
@@ -583,7 +586,16 @@ export default function FreelancerProfile() {
                       ? createdAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
                       : null
                     const showInquiries = messageCount >= 5
-                    if (!memberSince && !showInquiries) return null
+                    // "Typically replies within X" — only with a meaningful sample
+                    const rs = responseStats
+                    const showResponse = rs && rs.sample >= 3 && rs.median_minutes != null
+                    const responseText = showResponse ? (() => {
+                      const m = Number(rs.median_minutes)
+                      if (m < 60) return `Typically replies within ${Math.max(1, Math.round(m))} min`
+                      if (m < 1440) return `Typically replies within ${Math.round(m / 60)} hr`
+                      return `Typically replies within ${Math.round(m / 1440)} day${Math.round(m / 1440) === 1 ? '' : 's'}`
+                    })() : null
+                    if (!memberSince && !showInquiries && !showResponse) return null
                     return (
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
                         {memberSince && (
@@ -600,6 +612,14 @@ export default function FreelancerProfile() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
                             {messageCount} inquiries received
+                          </span>
+                        )}
+                        {showResponse && (
+                          <span className="text-xs flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            {responseText}
                           </span>
                         )}
                       </div>

@@ -605,3 +605,38 @@ CREATE POLICY "chat-photos upload own" ON storage.objects FOR INSERT
 DROP POLICY IF EXISTS "chat-photos public read" ON storage.objects;
 CREATE POLICY "chat-photos public read" ON storage.objects FOR SELECT
   USING (bucket_id = 'chat-photos');
+
+-- ============================================================
+-- SECTION 16 — RESPONSE-TIME SIGNAL (2026-06-14)
+-- Public "typically replies within X / responds to Y% of enquiries" badge.
+-- Messages are private under RLS, so (like freelancer_message_count) this
+-- SECURITY DEFINER function returns only timing AGGREGATES — no content —
+-- for the last 90 days. median_minutes = time from a thread's first message
+-- to the freelancer's first reply.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.freelancer_response_stats(f_id uuid)
+RETURNS TABLE (median_minutes numeric, response_rate numeric, sample int)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH f AS (SELECT user_id FROM freelancers WHERE id = f_id),
+  threads AS (
+    SELECT m.id, m.created_at,
+      (SELECT min(r.created_at) FROM message_replies r, f
+        WHERE r.message_id = m.id AND r.sender_user_id = f.user_id) AS first_reply
+    FROM messages m
+    WHERE m.freelancer_id = f_id
+      AND m.created_at > now() - interval '90 days'
+  )
+  SELECT
+    round(percentile_cont(0.5) WITHIN GROUP (
+      ORDER BY extract(epoch FROM (first_reply - created_at)) / 60
+    ) FILTER (WHERE first_reply IS NOT NULL))::numeric AS median_minutes,
+    round((count(*) FILTER (WHERE first_reply IS NOT NULL))::numeric / nullif(count(*), 0), 2) AS response_rate,
+    count(*)::int AS sample
+  FROM threads;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.freelancer_response_stats(uuid) TO anon, authenticated;
