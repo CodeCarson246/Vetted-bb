@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
+import { formatResponseTime } from '@/lib/formatResponseTime'
 import { useSaved } from '@/lib/useSaved'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import Tooltip from '@/components/Tooltip'
@@ -589,12 +590,7 @@ export default function FreelancerProfile() {
                     // "Typically replies within X" — only with a meaningful sample
                     const rs = responseStats
                     const showResponse = rs && rs.sample >= 3 && rs.median_minutes != null
-                    const responseText = showResponse ? (() => {
-                      const m = Number(rs.median_minutes)
-                      if (m < 60) return `Typically replies within ${Math.max(1, Math.round(m))} min`
-                      if (m < 1440) return `Typically replies within ${Math.round(m / 60)} hr`
-                      return `Typically replies within ${Math.round(m / 1440)} day${Math.round(m / 1440) === 1 ? '' : 's'}`
-                    })() : null
+                    const responseText = showResponse ? formatResponseTime(rs.median_minutes) : null
                     if (!memberSince && !showInquiries && !showResponse) return null
                     return (
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
