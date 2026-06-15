@@ -101,15 +101,16 @@ export default function NotificationBell() {
       <button
         onClick={() => setOpen(o => !o)}
         aria-label="Notifications"
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', color: '#00267F' }}
-        className="nav-auth-link"
+        style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', padding: 6, border: 'none', background: 'none', cursor: 'pointer', color: '#6B7280', transition: 'color 0.15s' }}
+        onMouseEnter={e => (e.currentTarget.style.color = '#00267F')}
+        onMouseLeave={e => (e.currentTarget.style.color = '#6B7280')}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
         {unread > 0 && (
-          <span style={{ position: 'absolute', top: 4, right: 4, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999, backgroundColor: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+          <span style={{ position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999, backgroundColor: '#ef4444', color: '#fff', fontSize: '0.65rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}

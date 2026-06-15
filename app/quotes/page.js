@@ -106,6 +106,9 @@ export default function QuotesPage() {
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [quoteSort, setQuoteSort] = useState('newest') // 'newest' | 'oldest'
+  const [quoteYear, setQuoteYear] = useState('all')
+  const [quoteMonth, setQuoteMonth] = useState('all')
   const [invoicingId, setInvoicingId] = useState(null)
   const [invoiceTerms, setInvoiceTerms] = useState('net14')
   const [busyId, setBusyId] = useState(null)
@@ -274,6 +277,22 @@ export default function QuotesPage() {
   }
 
   const filtered = filter === 'all' ? quotes : quotes.filter(q => q.status === filter)
+
+  // Quotes-list month/year filter + sort (by quote date, falling back to created)
+  const quoteDateOf = q => q.quote_date || q.created_at || ''
+  const quoteYearOptions = [...new Set(quotes.map(q => quoteDateOf(q).slice(0, 4)).filter(Boolean))].sort().reverse()
+  const MONTH_OPTS = [['01','Jan'],['02','Feb'],['03','Mar'],['04','Apr'],['05','May'],['06','Jun'],['07','Jul'],['08','Aug'],['09','Sep'],['10','Oct'],['11','Nov'],['12','Dec']]
+  const displayed = filtered
+    .filter(q => {
+      const d = quoteDateOf(q)
+      if (quoteYear !== 'all' && d.slice(0, 4) !== quoteYear) return false
+      if (quoteMonth !== 'all' && d.slice(5, 7) !== quoteMonth) return false
+      return true
+    })
+    .sort((a, b) => {
+      const cmp = quoteDateOf(a).localeCompare(quoteDateOf(b))
+      return quoteSort === 'oldest' ? cmp : -cmp
+    })
   const sumWhere = statuses => quotes
     .filter(q => statuses.includes(q.status))
     .reduce((sum, q) => sum + (Number(q.total) || 0), 0)
@@ -691,7 +710,26 @@ export default function QuotesPage() {
           ))}
         </div>
 
-        {filtered.length === 0 ? (
+        {/* Sort + month/year filter */}
+        <div className="flex flex-wrap items-center gap-2 mb-5">
+          <select value={quoteSort} onChange={e => setQuoteSort(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+          <select value={quoteMonth} onChange={e => setQuoteMonth(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white">
+            <option value="all">All months</option>
+            {MONTH_OPTS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+          </select>
+          <select value={quoteYear} onChange={e => setQuoteYear(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white">
+            <option value="all">All years</option>
+            {quoteYearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          {(quoteMonth !== 'all' || quoteYear !== 'all') && (
+            <button onClick={() => { setQuoteMonth('all'); setQuoteYear('all') }} className="text-xs text-gray-500 hover:text-gray-800 font-medium">Clear dates</button>
+          )}
+        </div>
+
+        {displayed.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
             <p className="font-medium text-gray-900 mb-1">
               {quotes.length === 0 ? 'No quotes yet' : 'Nothing here'}
@@ -713,7 +751,7 @@ export default function QuotesPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {filtered.map(q => (
+            {displayed.map(q => (
               <div key={q.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                 {/* Row header */}
                 <button
