@@ -23,9 +23,13 @@ export default function PushToggle({ userId }) {
       if (result === 'unsubscribed') setStatus('unsubscribed')
     } else {
       const result = await enablePush(userId)
-      setStatus(result === 'subscribed' ? 'subscribed' : result === 'denied' ? 'denied' : status)
-      if (result === 'not-configured') alert('Push notifications aren’t set up on the server yet. Please try again later.')
-      else if (result === 'error') alert('Could not enable notifications. Please try again.')
+      if (result.status === 'subscribed') setStatus('subscribed')
+      else if (result.status === 'denied') setStatus('denied')
+      else if (result.status === 'not-configured') {
+        alert('Push notifications aren’t set up in this build yet (the notification key is missing). This usually means the site needs a fresh deploy after adding the keys.')
+      } else if (result.status === 'error') {
+        alert('Could not enable notifications:\n\n' + (result.error || 'Unknown error') + '\n\nPlease share this exact message so we can fix it.')
+      }
     }
     setBusy(false)
   }
