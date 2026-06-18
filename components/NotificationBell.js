@@ -67,7 +67,11 @@ export default function NotificationBell() {
           if (payload.eventType === 'INSERT') setItems(prev => [payload.new, ...prev].slice(0, 20))
           else load() // update (read toggled) / delete elsewhere → resync
         })
-      .subscribe()
+      .subscribe(status => {
+        // SUBSCRIBED = realtime is live. CHANNEL_ERROR/TIMED_OUT = realtime
+        // isn't delivering (publication/config) → we rely on the fallback poll.
+        if (status !== 'SUBSCRIBED') console.warn('[notif] realtime status:', status)
+      })
     return () => { supabase.removeChannel(channel) }
   }, [user, load])
 
