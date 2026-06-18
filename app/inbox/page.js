@@ -974,7 +974,7 @@ export default function Inbox() {
                                       View & download
                                     </button>
                                   </div>
-                                  <div className="px-4 py-3 flex items-center justify-between bg-gray-50">
+                                  <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-50">
                                     <div className="flex items-center gap-4">
                                       <div>
                                         <p className="text-xs text-gray-400">Total</p>
@@ -985,7 +985,7 @@ export default function Inbox() {
                                         <p className="text-sm font-semibold" style={{ color: kind === 'receipt' ? '#166534' : '#374151' }}>{kind === 'receipt' ? formatDocDate(quoteData.paid_at) : formatDocDate(quoteData.due_date)}</p>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 flex-wrap">
                                       <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
                                         {quoteData.status === 'invoiced' ? 'Invoiced' : quoteData.status}
                                       </span>

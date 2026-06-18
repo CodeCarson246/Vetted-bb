@@ -165,6 +165,13 @@ export default function QuotesPage() {
   async function updateStatus(quoteId, status, extra = {}) {
     setBusyId(quoteId)
     const patch = { status, ...extra }
+    // Marking a job PAID inherently confirms it's done — auto-set the
+    // freelancer's completion if they hadn't ticked it, so the client isn't
+    // blocked from reviewing (the gate needs both completions + paid).
+    if (patch.paid_at && status === 'paid') {
+      const q = quotes.find(x => x.id === quoteId)
+      if (q && !q.completed_at && !patch.completed_at) patch.completed_at = patch.paid_at
+    }
     const { error } = await supabase.from('quotes').update(patch).eq('id', quoteId)
     if (!error) {
       setQuotes(prev => prev.map(q => q.id === quoteId ? { ...q, ...patch } : q))
