@@ -71,6 +71,18 @@ export default function NotificationBell() {
     return () => { supabase.removeChannel(channel) }
   }, [user, load])
 
+  // Fallback poll + tab-focus refresh, so the badge still updates within ~30s
+  // even if realtime is unavailable on the connection.
+  useEffect(() => {
+    if (!user) return
+    const id = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') load()
+    }, 30000)
+    const onVisible = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
+  }, [user, load])
+
   // Close dropdown on outside click
   useEffect(() => {
     if (!open) return
