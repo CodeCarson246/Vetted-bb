@@ -60,8 +60,12 @@ export default function NotificationBell() {
   // Realtime: new notifications for me appear instantly
   useEffect(() => {
     if (!user) return
+    // Unique channel name per subscription — a stable name collides with the
+    // not-yet-torn-down old channel on re-subscribe (Strict Mode / setAuth
+    // rejoin), which Realtime reports as "mismatch between server and client
+    // bindings for postgres changes".
     const channel = supabase
-      .channel(`notif-${user.id}`)
+      .channel(`notif-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         payload => {
           if (payload.eventType === 'INSERT') setItems(prev => [payload.new, ...prev].slice(0, 20))
