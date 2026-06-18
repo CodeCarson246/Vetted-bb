@@ -67,10 +67,10 @@ export default function NotificationBell() {
           if (payload.eventType === 'INSERT') setItems(prev => [payload.new, ...prev].slice(0, 20))
           else load() // update (read toggled) / delete elsewhere → resync
         })
-      .subscribe(status => {
+      .subscribe((status, err) => {
         // SUBSCRIBED = realtime is live. CHANNEL_ERROR/TIMED_OUT = realtime
-        // isn't delivering (publication/config) → we rely on the fallback poll.
-        if (status !== 'SUBSCRIBED') console.warn('[notif] realtime status:', status)
+        // isn't delivering → fallback poll covers it. Log the server's reason.
+        if (status !== 'SUBSCRIBED') console.warn('[notif] realtime status:', status, err?.message || err || '')
       })
     return () => { supabase.removeChannel(channel) }
   }, [user, load])
@@ -81,7 +81,7 @@ export default function NotificationBell() {
     if (!user) return
     const id = setInterval(() => {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') load()
-    }, 30000)
+    }, 12000)
     const onVisible = () => { if (document.visibilityState === 'visible') load() }
     document.addEventListener('visibilitychange', onVisible)
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
