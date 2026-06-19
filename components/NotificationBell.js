@@ -46,6 +46,7 @@ export default function NotificationBell() {
   // Initial load + once-a-day profile-view digest sync
   useEffect(() => {
     if (!uid) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setItems runs after the await, not synchronously
     load()
     const key = `pvsync:${uid}:${new Date().toISOString().slice(0, 10)}`
     if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(key)) {

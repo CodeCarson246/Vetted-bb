@@ -9,7 +9,13 @@ import { useState, useEffect } from 'react'
 export default function InstallPrompt() {
   const [deferred, setDeferred] = useState(null)
   const [show, setShow] = useState(false)
-  const [isIOS, setIsIOS] = useState(false)
+  // Derived once from the UA, not via effect setState. SSR returns false;
+  // it's only read once `show` is true (set later), so no hydration mismatch.
+  const [isIOS] = useState(() => {
+    if (typeof navigator === 'undefined') return false
+    const ua = navigator.userAgent || ''
+    return /iPhone|iPad|iPod/i.test(ua) && /Safari/i.test(ua) && !/CriOS|FxiOS/i.test(ua)
+  })
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -22,18 +28,16 @@ export default function InstallPrompt() {
     if (!mobile) return
 
     if (/iPhone|iPad|iPod/i.test(ua)) {
-      // iOS Safari only — Chrome/Firefox on iOS can't add to home screen well
-      if (/Safari/i.test(ua) && !/CriOS|FxiOS/i.test(ua)) {
-        setIsIOS(true)
-        setShow(true)
-      }
+      // iOS Safari has no beforeinstallprompt — decide on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount decision; no external event to subscribe to on iOS
+      if (isIOS) setShow(true)
       return
     }
 
     const onBIP = (e) => { e.preventDefault(); setDeferred(e); setShow(true) }
     window.addEventListener('beforeinstallprompt', onBIP)
     return () => window.removeEventListener('beforeinstallprompt', onBIP)
-  }, [])
+  }, [isIOS])
 
   function dismiss() {
     setShow(false)

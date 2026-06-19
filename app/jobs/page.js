@@ -1,8 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { printSavedQuote } from '@/lib/printQuote'
 
 function fmtDate(str) {
@@ -18,24 +19,30 @@ export default function JobsPage() {
   const [busyId, setBusyId] = useState(null)
   const [confirmAction, setConfirmAction] = useState(null)
 
+  // Quotes addressed to this client (RLS matches client_email to the
+  // logged-in email). Only those that became real jobs.
+  const load = useCallback(async () => {
+    if (!authUser) return
+    const { data } = await supabase
+      .from('quotes')
+      .select('*, freelancers(id, name, company_name, trade, location, email, avatar_url)')
+      .eq('client_email', authUser.email)
+      .in('status', ['accepted', 'invoiced', 'completed', 'paid'])
+      .order('created_at', { ascending: false })
+    setJobs(data || [])
+    setLoading(false)
+  }, [authUser])
+
   useEffect(() => {
     if (authLoading) return
     if (!authUser) { router.push('/login'); return }
-
-    async function load() {
-      // Quotes addressed to this client (RLS matches client_email to the
-      // logged-in email). Only those that became real jobs.
-      const { data } = await supabase
-        .from('quotes')
-        .select('*, freelancers(id, name, company_name, trade, location, email, avatar_url)')
-        .eq('client_email', authUser.email)
-        .in('status', ['accepted', 'invoiced', 'completed', 'paid'])
-        .order('created_at', { ascending: false })
-      setJobs(data || [])
-      setLoading(false)
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setJobs runs after the await, not synchronously
     load()
-  }, [authUser, authLoading, router])
+  }, [authUser, authLoading, router, load])
+
+  // Live-refresh when a quote changes (e.g. the pro marks the job paid /
+  // complete) + on tab focus, so the page never shows stale state.
+  useRealtimeThreads(!!authUser, load)
 
   async function setClientCompleted(job, done) {
     setBusyId(job.id)
