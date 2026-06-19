@@ -53,7 +53,8 @@ export default function InstallPrompt() {
   return (
     <div
       style={{
-        position: 'fixed', bottom: 12, left: 12, right: 12, zIndex: 300,
+        // sit above any bottom sticky action bar (e.g. the mobile profile CTA bar)
+        position: 'fixed', bottom: 84, left: 12, right: 12, zIndex: 300,
         maxWidth: 460, margin: '0 auto',
         backgroundColor: '#00267F', color: '#fff', borderRadius: 14,
         boxShadow: '0 8px 30px rgba(0,0,0,0.3)', padding: '14px 16px',
