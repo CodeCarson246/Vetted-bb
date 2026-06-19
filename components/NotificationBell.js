@@ -24,26 +24,30 @@ function timeAgo(iso) {
 export default function NotificationBell() {
   const router = useRouter()
   const { user } = useAuth()
+  // Key effects on the stable user id, not the user object — auth refreshes
+  // hand back a new object with the same id, and re-subscribing the realtime
+  // channel on every such change caused constant CLOSED/re-subscribe churn.
+  const uid = user?.id
   const [items, setItems] = useState([])
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
   const unread = items.filter(n => !n.read).length
 
   const load = useCallback(async () => {
-    if (!user) return
+    if (!uid) return
     const { data } = await supabase
       .from('notifications')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(20)
     setItems(data || [])
-  }, [user])
+  }, [uid])
 
   // Initial load + once-a-day profile-view digest sync
   useEffect(() => {
-    if (!user) return
+    if (!uid) return
     load()
-    const key = `pvsync:${user.id}:${new Date().toISOString().slice(0, 10)}`
+    const key = `pvsync:${uid}:${new Date().toISOString().slice(0, 10)}`
     if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(key)) {
       sessionStorage.setItem(key, '1')
       supabase.auth.getSession().then(({ data }) => {
@@ -55,41 +59,42 @@ export default function NotificationBell() {
         }
       })
     }
-  }, [user, load])
+  }, [uid, load])
 
   // Realtime: new notifications for me appear instantly
   useEffect(() => {
-    if (!user) return
+    if (!uid) return
     // Unique channel name per subscription — a stable name collides with the
-    // not-yet-torn-down old channel on re-subscribe (Strict Mode / setAuth
-    // rejoin), which Realtime reports as "mismatch between server and client
-    // bindings for postgres changes".
+    // not-yet-torn-down old channel on re-subscribe (setAuth rejoin), which
+    // Realtime reports as "mismatch between server and client bindings".
     const channel = supabase
-      .channel(`notif-${user.id}-${Math.random().toString(36).slice(2)}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+      .channel(`notif-${uid}-${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${uid}` },
         payload => {
           if (payload.eventType === 'INSERT') setItems(prev => [payload.new, ...prev].slice(0, 20))
           else load() // update (read toggled) / delete elsewhere → resync
         })
       .subscribe((status, err) => {
-        // SUBSCRIBED = realtime is live. CHANNEL_ERROR/TIMED_OUT = realtime
-        // isn't delivering → fallback poll covers it. Log the server's reason.
-        if (status !== 'SUBSCRIBED') console.warn('[notif] realtime status:', status, err?.message || err || '')
+        // Only flag real failures. CLOSED/CLOSING are normal on teardown, and
+        // SUBSCRIBED is success — don't log those.
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[notif] realtime status:', status, err?.message || err || '')
+        }
       })
     return () => { supabase.removeChannel(channel) }
-  }, [user, load])
+  }, [uid, load])
 
-  // Fallback poll + tab-focus refresh, so the badge still updates within ~30s
+  // Fallback poll + tab-focus refresh, so the badge still updates within ~12s
   // even if realtime is unavailable on the connection.
   useEffect(() => {
-    if (!user) return
+    if (!uid) return
     const id = setInterval(() => {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') load()
     }, 12000)
     const onVisible = () => { if (document.visibilityState === 'visible') load() }
     document.addEventListener('visibilitychange', onVisible)
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
-  }, [user, load])
+  }, [uid, load])
 
   // Close dropdown on outside click
   useEffect(() => {
