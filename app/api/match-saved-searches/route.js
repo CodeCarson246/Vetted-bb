@@ -38,7 +38,7 @@ export async function POST(request) {
       if (s.category) params.set('category', s.category)
       const link = `/search${params.toString() ? `?${params}` : ''}`
 
-      createNotification(s.user_id, {
+      await createNotification(s.user_id, {
         type: 'saved_search',
         title: `New ${label} on Vetted.bb matches your saved search`,
         body: `${f.name} just joined${f.location ? ` in ${f.location}` : ''}.`,

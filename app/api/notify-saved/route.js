@@ -34,7 +34,7 @@ export async function POST(request) {
     }
 
     const saverName = user.user_metadata?.full_name || 'Someone'
-    createNotification(freelancer.user_id, {
+    await createNotification(freelancer.user_id, {
       type: 'saved',
       title: `${saverName} saved your profile`,
       body: 'A client added you to their saved professionals.',

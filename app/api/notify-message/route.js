@@ -69,8 +69,10 @@ export async function POST(request) {
       url: '/inbox',
     }).catch(() => {})
 
-    // In-app notification (fire-and-forget)
-    createNotification(freelancer.user_id, {
+    // In-app notification — AWAIT so the insert finishes before this
+    // serverless function returns (an un-awaited insert gets dropped when
+    // the function freezes after the response).
+    await createNotification(freelancer.user_id, {
       type: 'message',
       title: `New message from ${senderName}`,
       body: subject,

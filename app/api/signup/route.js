@@ -46,7 +46,7 @@ export async function POST(request) {
 
     // Welcome notification waiting for them on first login (fire-and-forget)
     if (data.user?.id) {
-      createNotification(data.user.id, {
+      await createNotification(data.user.id, {
         type: 'welcome',
         title: 'Welcome to Vetted.bb 👋',
         body: role === 'freelancer'

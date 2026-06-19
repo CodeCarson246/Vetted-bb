@@ -79,8 +79,8 @@ export async function POST(request) {
     }
 
     if (recipient && payload) {
-      createNotification(recipient, payload)
-      sendPushToUser(recipient, { title: payload.title, body: payload.body || '', url: payload.link }).catch(() => {})
+      await createNotification(recipient, payload)
+      await sendPushToUser(recipient, { title: payload.title, body: payload.body || '', url: payload.link }).catch(() => {})
     }
 
     return Response.json({ success: true })

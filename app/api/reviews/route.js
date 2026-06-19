@@ -145,8 +145,8 @@ export async function POST(request) {
       await supabase.from('freelancers').update({ rating: avg, review_count: count }).eq('id', freelancer_id)
     }
 
-    // Notify the reviewed freelancer (fire-and-forget)
-    createNotification(freelancer.user_id, {
+    // Notify the reviewed freelancer (awaited so the insert completes)
+    await createNotification(freelancer.user_id, {
       type: 'review',
       title: `${author} left you a ${rating}-star review`,
       body: comment.trim().slice(0, 140),

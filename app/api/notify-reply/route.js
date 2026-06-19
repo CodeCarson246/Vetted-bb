@@ -84,8 +84,8 @@ export async function POST(request) {
       url: '/messages',
     }).catch(() => {})
 
-    // In-app notification (fire-and-forget)
-    createNotification(msg.sender_user_id, {
+    // In-app notification — awaited so the insert completes before return
+    await createNotification(msg.sender_user_id, {
       type: isReceipt ? 'receipt' : isInvoice ? 'invoice' : isReminder ? 'reminder' : isQuote ? 'quote' : 'reply',
       title: isReceipt
         ? `${freelancerName} sent you a receipt`

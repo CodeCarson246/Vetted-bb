@@ -36,7 +36,7 @@ export async function POST(request) {
       .gte('viewed_at', astMidnightUtc.toISOString())
 
     if (count && count > 0) {
-      createNotification(user.id, {
+      await createNotification(user.id, {
         type: 'profile_views',
         title: `${count} ${count === 1 ? 'person' : 'people'} viewed your profile today`,
         body: 'Keep your profile fresh to turn views into enquiries.',
