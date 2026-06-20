@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import ThemeToggle from '@/components/ThemeToggle'
 import NotificationBell from '@/components/NotificationBell'
+import MessagePreview from '@/components/MessagePreview'
 
 export default function SiteNav() {
   const { user } = useAuth()
@@ -294,43 +295,8 @@ export default function SiteNav() {
               {/* Notifications bell */}
               <NotificationBell />
 
-              {/* Inbox icon */}
-              <a
-                href={freelancerProfile ? '/inbox' : '/messages'}
-                style={{
-                  position: 'relative',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '6px',
-                  color: '#6B7280',
-                  textDecoration: 'none',
-                }}
-              >
-                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                {unreadCount > 0 && (
-                  <span style={{
-                    position: 'absolute',
-                    top: -2,
-                    right: -2,
-                    minWidth: 16,
-                    height: 16,
-                    backgroundColor: '#ef4444',
-                    color: 'white',
-                    fontSize: '0.65rem',
-                    borderRadius: '999px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    padding: '0 2px',
-                    lineHeight: 1,
-                  }}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </a>
+              {/* Inbox icon — preview dropdown */}
+              <MessagePreview freelancerProfile={freelancerProfile} unreadCount={unreadCount} />
 
               {/* Avatar + dropdown */}
               <div ref={dropdownRef} style={{ position: 'relative', marginLeft: '4px' }}>
@@ -532,25 +498,7 @@ export default function SiteNav() {
           )}
           {user && <NotificationBell />}
           {user && (
-            <a
-              href={freelancerProfile ? '/inbox' : '/messages'}
-              title="Messages"
-              style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', padding: 6, color: '#6B7280', textDecoration: 'none' }}
-            >
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              {unreadCount > 0 && (
-                <span style={{
-                  position: 'absolute', top: 0, right: 0, minWidth: 15, height: 15,
-                  backgroundColor: '#ef4444', color: 'white', fontSize: '0.6rem',
-                  borderRadius: '999px', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontWeight: 700, padding: '0 2px', lineHeight: 1,
-                }}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </a>
+            <MessagePreview freelancerProfile={freelancerProfile} unreadCount={unreadCount} />
           )}
           <ThemeToggle />
         </span>
