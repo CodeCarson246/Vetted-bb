@@ -332,8 +332,9 @@ export default function ClientMessages() {
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-3 min-h-0">
+        {/* Messages — block (not flex) so cards/bubbles keep their natural
+            height; a flex column shrinks children into thin lines when full. */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3 min-h-0">
           {/* Original enquiry (you → right) */}
           <div className="flex justify-end">
             <div className="max-w-[80%]">
@@ -512,6 +513,9 @@ export default function ClientMessages() {
 
   return (
     <main className="bg-gray-50 overflow-hidden" style={{ height: 'calc(100dvh - 68px)' }}>
+      {/* Hide the global footer on mobile so the chat fills the viewport and
+          never scrolls past the reply box. Removed when this page unmounts. */}
+      <style>{`@media (max-width: 767px){ footer{ display:none !important } }`}</style>
       <div className="h-full flex max-w-[1500px] mx-auto bg-white border-x border-gray-100 min-h-0 overflow-hidden">
         {/* LEFT — thread list */}
         <aside className={`${activeMsg ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] flex-shrink-0 flex-col border-r border-gray-100 min-h-0`}>
@@ -534,13 +538,10 @@ export default function ClientMessages() {
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-bold text-gray-900">My messages</h1>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-500">{messages.length} conversation{messages.length !== 1 ? 's' : ''}</span>
-                {messages.length > 0 && (
-                  <button onClick={() => setSelectMode(true)} className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: '#00267F' }}>Select</button>
-                )}
-              </div>
+              <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
+              {messages.length > 0 && (
+                <button onClick={() => setSelectMode(true)} className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: '#00267F' }}>Select</button>
+              )}
             </>
           )}
         </div>
