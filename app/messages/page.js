@@ -419,6 +419,8 @@ export default function ClientMessages() {
             if (r._deleted) {
               return <div key={r.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}><p className="text-xs italic text-gray-400 py-1">Message deleted</p></div>
             }
+            // Skip empty stubs so they don't render as a stray thin line.
+            if (!r.body?.trim() && !r.image_url) return null
             return (
               <div key={r.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                 <div className="max-w-[80%]">
@@ -509,8 +511,8 @@ export default function ClientMessages() {
   const activeMsg = messages.find(m => m.id === expandedId) || null
 
   return (
-    <main className="bg-gray-50" style={{ height: 'calc(100vh - 68px)' }}>
-      <div className="h-full flex max-w-[1500px] mx-auto bg-white border-x border-gray-100">
+    <main className="bg-gray-50 overflow-hidden" style={{ height: 'calc(100dvh - 68px)' }}>
+      <div className="h-full flex max-w-[1500px] mx-auto bg-white border-x border-gray-100 min-h-0 overflow-hidden">
         {/* LEFT — thread list */}
         <aside className={`${activeMsg ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] flex-shrink-0 flex-col border-r border-gray-100 min-h-0`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
@@ -562,62 +564,47 @@ export default function ClientMessages() {
               >
                 {/* Message header row */}
                 <div
-                  className="px-5 py-4 cursor-pointer"
+                  className="px-4 py-3 flex items-center gap-3 cursor-pointer"
                   onClick={() => selectMode ? toggleSelect(msg.id) : handleExpand(msg)}
                 >
-                  <div className="flex items-start gap-4">
-                    {selectMode ? (
-                      <span
-                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors"
-                        style={selected.has(msg.id) ? { backgroundColor: '#00267F', borderColor: '#00267F' } : { backgroundColor: '#fff', borderColor: '#d1d5db' }}
-                      >
-                        {selected.has(msg.id) && (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                        )}
-                      </span>
-                    ) : (
-                      <a
-                        href={`/freelancers/${msg.freelancers?.id}`}
-                        onClick={e => e.stopPropagation()}
-                        title={`View ${msg.freelancers?.name || 'freelancer'}'s profile`}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden hover:opacity-85 transition-opacity"
-                        style={{ backgroundColor: '#00267F' }}
-                      >
-                        {msg.freelancers?.avatar_url
-                          ? <img src={msg.freelancers.avatar_url} alt={msg.freelancers.name} className="w-full h-full object-cover" />
-                          : (msg.freelancers?.name || '?').split(' ').map(n => n[0]).join('')}
-                      </a>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <a
-                            href={`/freelancers/${msg.freelancers?.id}`}
-                            onClick={e => e.stopPropagation()}
-                            className="text-sm font-semibold text-gray-900 hover:underline underline-offset-2"
-                            style={{ textDecorationColor: '#00267F' }}
-                          >
-                            {msg.freelancers?.name || 'Freelancer'}
-                          </a>
-                          {isVerified(msg.freelancers) && <VerifiedBadge size={14} />}
-                          <span className="text-xs text-gray-400">{msg.freelancers?.trade}</span>
-                          {msg.client_read === false && (
-                            <span className="text-xs text-white font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#00267F' }}>
-                              New
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-400 flex-shrink-0">
-                          {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {selectMode ? (
+                    <span
+                      className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors"
+                      style={selected.has(msg.id) ? { backgroundColor: '#00267F', borderColor: '#00267F' } : { backgroundColor: 'transparent', borderColor: '#d1d5db' }}
+                    >
+                      {selected.has(msg.id) && (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      )}
+                    </span>
+                  ) : (
+                    <div
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden"
+                      style={{ backgroundColor: '#00267F' }}
+                    >
+                      {msg.freelancers?.avatar_url
+                        ? <img src={msg.freelancers.avatar_url} alt={msg.freelancers.name} className="w-full h-full object-cover" />
+                        : (msg.freelancers?.name || '?').split(' ').map(n => n[0]).join('')}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1 min-w-0">
+                        <span className={`text-sm truncate ${msg.client_read === false ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
+                          {msg.freelancers?.name || 'Freelancer'}
                         </span>
-                      </div>
-                      <p className={`text-sm mt-0.5 ${msg.client_read === false ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{msg.subject}</p>
-                      <p className={`text-sm mt-0.5 truncate ${msg.client_read === false ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>
+                        {isVerified(msg.freelancers) && <VerifiedBadge size={13} />}
+                      </span>
+                      <span className="text-[11px] text-gray-400 flex-shrink-0">
+                        {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className={`text-sm truncate flex-1 ${msg.client_read === false ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
                         {msg.latest_preview || msg.message}
                       </p>
+                      {msg.client_read === false && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#00267F' }} />}
                     </div>
                   </div>
-
                 </div>
               </div>
             ))}
@@ -627,7 +614,7 @@ export default function ClientMessages() {
         </aside>
 
         {/* MIDDLE — conversation pane */}
-        <section className={`${activeMsg ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0 bg-gray-50`}>
+        <section className={`${activeMsg ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0 min-h-0 bg-gray-50`}>
           {activeMsg ? renderConversation(activeMsg) : (
             <div className="flex-1 overflow-y-auto">
               <div className="flex flex-col items-center justify-center text-center px-6 py-16">

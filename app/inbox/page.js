@@ -910,6 +910,9 @@ export default function Inbox() {
             if (r._deleted) {
               return <div key={r.id} className={`flex ${isOwnReply ? 'justify-end' : 'justify-start'}`}><p className="text-xs italic text-gray-400 py-1">Message deleted</p></div>
             }
+            // Skip empty stubs (e.g. quote replies whose card rendered above) —
+            // an empty bubble shows as a stray thin line.
+            if (!r.body?.trim() && !r.image_url) return null
             const replyPrefill = !isOwnReply ? quoteItemsFromEnquiry(r.body) : []
             return (
               <div key={r.id} className={`flex ${isOwnReply ? 'justify-end' : 'justify-start'}`}>
@@ -1012,8 +1015,8 @@ export default function Inbox() {
   const activeMsg = messages.find(m => m.id === expandedId) || null
 
   return (
-    <main className="bg-gray-50" style={{ height: 'calc(100vh - 68px)' }}>
-      <div className="h-full flex max-w-[1500px] mx-auto bg-white border-x border-gray-100">
+    <main className="bg-gray-50 overflow-hidden" style={{ height: 'calc(100dvh - 68px)' }}>
+      <div className="h-full flex max-w-[1500px] mx-auto bg-white border-x border-gray-100 min-h-0 overflow-hidden">
         {/* LEFT — thread list */}
         <aside className={`${activeMsg ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] flex-shrink-0 flex-col border-r border-gray-100 min-h-0`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
@@ -1088,75 +1091,40 @@ export default function Inbox() {
                 onClick={() => selectMode ? toggleSelect(msg.id) : handleExpand(msg)}
                 className={`group cursor-pointer border-b border-gray-100 transition-colors ${selected.has(msg.id) ? 'bg-blue-50' : expandedId === msg.id ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
               >
-                <div className="px-5 py-4">
-                  <div className="flex items-start gap-4">
-                    {selectMode ? (
-                      <span
-                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors"
-                        style={selected.has(msg.id) ? { backgroundColor: '#00267F', borderColor: '#00267F' } : { backgroundColor: '#fff', borderColor: '#d1d5db' }}
-                      >
-                        {selected.has(msg.id) && (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                        )}
+                <div className="px-4 py-3 flex items-center gap-3">
+                  {selectMode ? (
+                    <span
+                      className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors"
+                      style={selected.has(msg.id) ? { backgroundColor: '#00267F', borderColor: '#00267F' } : { backgroundColor: 'transparent', borderColor: '#d1d5db' }}
+                    >
+                      {selected.has(msg.id) && (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      )}
+                    </span>
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0 overflow-hidden">
+                      {clientProfiles[msg.sender_user_id]?.avatar_url
+                        ? <img src={clientProfiles[msg.sender_user_id].avatar_url} alt={msg.sender_name} className="w-full h-full object-cover" />
+                        : msg.sender_name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-sm truncate ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
+                        {clientProfiles[msg.sender_user_id]?.display_name || msg.sender_name}
                       </span>
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0 overflow-hidden">
-                        {clientProfiles[msg.sender_user_id]?.avatar_url
-                          ? <img src={clientProfiles[msg.sender_user_id].avatar_url} alt={msg.sender_name} className="w-full h-full object-cover" />
-                          : msg.sender_name?.[0]?.toUpperCase() || '?'}
-                      </div>
-                    )}
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {msg.sender_user_id ? (
-                            <a
-                              href={`/clients/${msg.sender_user_id}`}
-                              onClick={e => e.stopPropagation()}
-                              title="View this client's profile"
-                              className={`text-sm hover:underline underline-offset-2 ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}
-                            >
-                              {clientProfiles[msg.sender_user_id]?.display_name || msg.sender_name}
-                            </a>
-                          ) : (
-                            <span className={`text-sm ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
-                              {msg.sender_name}
-                            </span>
-                          )}
-                          {clientRatings[msg.sender_user_id] && (
-                            <span
-                              className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                              style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#92400E' }}
-                              title="How other freelancers rated this client"
-                            >
-                              ★ {clientRatings[msg.sender_user_id].avg} ({clientRatings[msg.sender_user_id].count})
-                            </span>
-                          )}
-                          {!msg.read && (
-                            <span className="text-xs text-white px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: '#00267F' }}>
-                              Unread
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-400 flex-shrink-0">
-                          {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-gray-400 mt-0.5">{msg.sender_email}</p>
-                      <p className={`text-sm mt-1 ${!msg.read ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-                        {msg.subject}
+                      <span className="text-[11px] text-gray-400 flex-shrink-0">
+                        {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className={`text-sm truncate flex-1 ${!msg.read ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                        {msg.latest_preview || msg.message}
                       </p>
-
-                      <p className="text-sm text-gray-500 mt-1 truncate">
-                        {(msg.latest_preview || msg.message).length > 80
-                          ? (msg.latest_preview || msg.message).slice(0, 80) + '…'
-                          : (msg.latest_preview || msg.message)}
-                      </p>
+                      {!msg.read && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#00267F' }} />}
                     </div>
                   </div>
-
                 </div>
               </div>
             ))}
@@ -1166,7 +1134,7 @@ export default function Inbox() {
         </aside>
 
         {/* MIDDLE — conversation pane */}
-        <section className={`${activeMsg ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0 bg-gray-50`}>
+        <section className={`${activeMsg ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0 min-h-0 bg-gray-50`}>
           {activeMsg ? renderConversation(activeMsg) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
               <EnvelopeIcon className="w-12 h-12 text-gray-200 mb-3" />
