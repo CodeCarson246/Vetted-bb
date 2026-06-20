@@ -791,6 +791,216 @@ export default function Inbox() {
     setDeletingThread(false)
   }
 
+  // ── Conversation pane (middle column) ─────────────────────────────
+  function renderConversation(msg) {
+    const clientName = clientProfiles[msg.sender_user_id]?.display_name || msg.sender_name
+    const clientAvatar = clientProfiles[msg.sender_user_id]?.avatar_url
+    const prefillTop = quoteItemsFromEnquiry(msg.message)
+    const fmtTime = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    return (
+      <>
+        {/* Conversation header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+          <button onClick={() => setExpandedId(null)} className="md:hidden text-gray-500 p-1 -ml-1" aria-label="Back to list">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 overflow-hidden flex-shrink-0">
+            {clientAvatar ? <img src={clientAvatar} alt={clientName} className="w-full h-full object-cover" /> : (clientName?.[0]?.toUpperCase() || '?')}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">{clientName}</p>
+            <p className="text-xs text-gray-400 truncate">{msg.subject}</p>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-3 min-h-0">
+          {/* Original enquiry (client → left) */}
+          <div className="flex justify-start">
+            <div className="max-w-[80%]">
+              <div className="rounded-2xl rounded-tl-md px-4 py-2.5 bg-white border border-gray-100">
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1 ml-1">{fmtTime(msg.created_at)}</p>
+            </div>
+          </div>
+          {prefillTop.length > 0 && (
+            <button onClick={() => openQuote(msg, prefillTop)} className="self-start text-xs font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-opacity inline-flex items-center gap-1.5" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+              {prefillTop.length === 1 ? '⚡ Quote this service →' : '⚡ Quote these services →'}
+            </button>
+          )}
+
+          {dedupeThreadReplies(replies[msg.id] || [], threadQuotes).map(r => {
+            const quoteId = getQuoteId(r)
+            const quoteData = quoteId ? (threadQuotes[quoteId] || null) : null
+            const kind = quoteReplyKind(r)
+            if (quoteId && quoteData) {
+              const cardTitle = kind === 'receipt' ? `Receipt ${quoteData.invoice_number || quoteData.quote_number}`
+                : kind === 'invoice' ? `Invoice ${quoteData.invoice_number || quoteData.quote_number}`
+                : `Quote ${quoteData.quote_number}`
+              const cardDate = formatDocDate(kind === 'quote' ? quoteData.quote_date : (quoteData.invoiced_at || quoteData.quote_date))
+              return (
+                <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: kind === 'receipt' ? '#166534' : '#00267F' }}>
+                    <div>
+                      <p className="text-white font-semibold text-sm">{cardTitle}</p>
+                      <p className="text-xs mt-0.5" style={{ color: kind === 'receipt' ? '#86efac' : '#93b8ff' }}>From {r.sender_name} · {cardDate}</p>
+                    </div>
+                    <button onClick={() => setViewingQuote(quoteData)} className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+                      View & download
+                    </button>
+                  </div>
+                  <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-50">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400">Total</p>
+                        <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">{kind === 'receipt' ? 'Paid' : 'Payment due'}</p>
+                        <p className="text-sm font-semibold" style={{ color: kind === 'receipt' ? '#166534' : '#374151' }}>{kind === 'receipt' ? formatDocDate(quoteData.paid_at) : formatDocDate(quoteData.due_date)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                        {quoteData.status === 'invoiced' ? 'Invoiced' : quoteData.status}
+                      </span>
+                      {quoteData.status === 'accepted' && (
+                        <button onClick={() => setInvoicingQuoteId(invoicingQuoteId === quoteData.id ? null : quoteData.id)} className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+                          Send invoice →
+                        </button>
+                      )}
+                      {confirmDeleteQuoteId === quoteData.id ? (
+                        <span className="text-xs text-gray-500 flex items-center gap-1">
+                          Delete?{' '}
+                          <button onClick={() => handleDeleteQuote(quoteData.id, r.id)} className="text-red-600 font-semibold hover:text-red-800">Yes</button>
+                          {' · '}
+                          <button onClick={() => setConfirmDeleteQuoteId(null)} className="text-gray-500 font-semibold hover:text-gray-700">No</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteQuoteId(quoteData.id)} className="text-xs text-red-500 hover:text-red-700">
+                          Delete quote
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {invoicingQuoteId === quoteData.id && quoteData.status === 'accepted' && (
+                    <div className="px-4 py-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-end gap-3">
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Payment terms</label>
+                        <select value={invoiceTerms} onChange={e => setInvoiceTerms(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white">
+                          {INVOICE_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
+                      </div>
+                      <button onClick={() => sendInvoiceFromInbox(quoteData, r.message_id)} disabled={invoiceBusy} className="text-xs font-semibold px-4 py-2.5 rounded-full hover:opacity-90 transition-opacity disabled:opacity-50 flex-shrink-0" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+                        {invoiceBusy ? 'Sending…' : 'Send invoice'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+            if (isReceiptBody(r.body)) {
+              return <div key={r.id}><ReceiptLineCard body={r.body} fromName={r.sender_name} /></div>
+            }
+            const isOwnReply = !!(
+              (r.sender_user_id && user?.id && r.sender_user_id === user.id) ||
+              (!r.sender_user_id && r.sender_name === profile?.name)
+            )
+            if (r._deleted) {
+              return <div key={r.id} className={`flex ${isOwnReply ? 'justify-end' : 'justify-start'}`}><p className="text-xs italic text-gray-400 py-1">Message deleted</p></div>
+            }
+            const replyPrefill = !isOwnReply ? quoteItemsFromEnquiry(r.body) : []
+            return (
+              <div key={r.id} className={`flex ${isOwnReply ? 'justify-end' : 'justify-start'}`}>
+                <div className="max-w-[80%]">
+                  <div className={`rounded-2xl px-4 py-2.5 ${isOwnReply ? 'rounded-tr-md text-white' : 'rounded-tl-md bg-white border border-gray-100 text-gray-700'}`} style={isOwnReply ? { backgroundColor: '#00267F' } : undefined}>
+                    {r.body && <p className="text-sm leading-relaxed whitespace-pre-wrap">{r.body}</p>}
+                    {r.image_url && (
+                      <a href={r.image_url} target="_blank" rel="noopener noreferrer">
+                        <img src={r.image_url} alt="Shared photo" className="mt-2 rounded-lg" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 10 }} />
+                      </a>
+                    )}
+                    {replyPrefill.length > 0 && (
+                      <button onClick={() => openQuote(msg, replyPrefill)} className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+                        {replyPrefill.length === 1 ? '⚡ Quote this service →' : '⚡ Quote these services →'}
+                      </button>
+                    )}
+                  </div>
+                  <div className={`flex items-center gap-2 mt-1 ${isOwnReply ? 'justify-end mr-1' : 'ml-1'}`}>
+                    <p className="text-[11px] text-gray-400">{fmtTime(r.created_at)}</p>
+                    {isOwnReply && (confirmDeleteReplyId === r.id ? (
+                      <span className="text-[11px] text-gray-500">Delete? <button onClick={() => handleDeleteReply(r.id)} className="text-red-600 font-semibold">Yes</button> · <button onClick={() => setConfirmDeleteReplyId(null)} className="text-gray-500 font-semibold">No</button></span>
+                    ) : (
+                      <button onClick={() => setConfirmDeleteReplyId(r.id)} className="text-[11px] text-red-400 hover:text-red-600">Delete</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <div ref={threadEndRef} />
+        </div>
+
+        {/* Composer */}
+        <div className="border-t border-gray-100 bg-white px-4 py-3 flex-shrink-0">
+          {replyPhoto && (
+            <div className="relative inline-block mb-2" style={{ width: 'fit-content' }}>
+              <img src={replyPhoto.url} alt="Attachment preview" className="rounded-lg" style={{ maxHeight: 80, borderRadius: 8 }} />
+              <button onClick={() => setReplyPhoto(null)} aria-label="Remove photo" className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: '#111827', fontSize: 12, lineHeight: 1 }}>×</button>
+            </div>
+          )}
+          <div className="flex items-end gap-2">
+            <button onClick={() => openQuote(msg)} title="Create quote" className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-opacity text-sm font-bold" style={{ backgroundColor: '#00267F' }}>$</button>
+            <label className="flex-shrink-0 w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:border-gray-400 cursor-pointer flex items-center justify-center" style={{ opacity: photoUploading ? 0.5 : 1 }}>
+              {photoUploading ? '…' : '📷'}
+              <input type="file" accept="image/*" hidden disabled={photoUploading} onChange={e => { attachReplyPhoto(e.target.files?.[0]); e.target.value = '' }} />
+            </label>
+            <textarea value={replyText[msg.id] || ''} onChange={e => setReplyText(prev => ({ ...prev, [msg.id]: e.target.value }))} placeholder="Write a reply…" rows={1} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-2xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" style={{ maxHeight: 120 }} />
+            <button onClick={() => sendReply(msg)} disabled={replySending || photoUploading || (!replyText[msg.id]?.trim() && !replyPhoto)} className="flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+              {replySending ? '…' : 'Send'}
+            </button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // ── Contact details (right column) ────────────────────────────────
+  function renderDetails(msg) {
+    const cp = clientProfiles[msg.sender_user_id]
+    const name = cp?.display_name || msg.sender_name
+    const rating = clientRatings[msg.sender_user_id]
+    return (
+      <>
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-2xl font-semibold text-gray-600 overflow-hidden mb-3">
+            {cp?.avatar_url ? <img src={cp.avatar_url} alt={name} className="w-full h-full object-cover" /> : (name?.[0]?.toUpperCase() || '?')}
+          </div>
+          <p className="font-bold text-gray-900">{name}</p>
+          {rating && <span className="mt-2 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#92400E' }}>★ {rating.avg} ({rating.count})</span>}
+        </div>
+        <div className="border-t border-gray-100 pt-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Details</p>
+          <div className="flex flex-col gap-3 text-sm">
+            {msg.sender_email && (
+              <div className="flex items-center gap-2 text-gray-600">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                <span className="truncate">{msg.sender_email}</span>
+              </div>
+            )}
+            {msg.sender_user_id && (
+              <a href={`/clients/${msg.sender_user_id}`} className="flex items-center gap-2 hover:underline" style={{ color: '#00267F' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                View client profile
+              </a>
+            )}
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -799,10 +1009,14 @@ export default function Inbox() {
     )
   }
 
+  const activeMsg = messages.find(m => m.id === expandedId) || null
+
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="max-w-3xl mx-auto px-4 sm:px-8 py-10">
-        <div className="flex items-center justify-between mb-8">
+    <main className="bg-gray-50" style={{ height: 'calc(100vh - 68px)' }}>
+      <div className="h-full flex max-w-[1500px] mx-auto bg-white border-x border-gray-100">
+        {/* LEFT — thread list */}
+        <aside className={`${activeMsg ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] flex-shrink-0 flex-col border-r border-gray-100 min-h-0`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
           {selectMode ? (
             <>
               <span className="text-sm font-medium text-gray-700">{selected.size} selected</span>
@@ -832,8 +1046,9 @@ export default function Inbox() {
           )}
         </div>
 
+        <div className="flex-1 overflow-y-auto min-h-0">
         {!profile ? (
-          <div className="bg-white rounded-2xl p-8 border border-gray-100 text-center">
+          <div className="bg-white rounded-2xl p-8 border border-gray-100 text-center m-4">
             <p className="text-gray-500 text-sm">You need a freelancer profile to receive messages.</p>
             <a href="/dashboard" className="mt-4 inline-block text-sm font-medium hover:opacity-80" style={{ color: '#00267F' }}>Create a profile →</a>
           </div>
@@ -866,14 +1081,14 @@ export default function Inbox() {
             })()}
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
             {messages.map(msg => (
               <div
                 key={msg.id}
                 onClick={() => selectMode ? toggleSelect(msg.id) : handleExpand(msg)}
-                className={`group bg-white rounded-2xl border transition-all cursor-pointer ${selected.has(msg.id) ? 'border-blue-300 bg-blue-50' : expandedId === msg.id ? 'border-gray-200 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
+                className={`group cursor-pointer border-b border-gray-100 transition-colors ${selected.has(msg.id) ? 'bg-blue-50' : expandedId === msg.id ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
               >
-                <div className="p-5 sm:p-6">
+                <div className="px-5 py-4">
                   <div className="flex items-start gap-4">
                     {selectMode ? (
                       <span
@@ -934,243 +1149,37 @@ export default function Inbox() {
                         {msg.subject}
                       </p>
 
-                      {expandedId !== msg.id && (
-                        <p className="text-sm text-gray-500 mt-1 truncate">
-                          {(msg.latest_preview || msg.message).length > 100
-                            ? (msg.latest_preview || msg.message).slice(0, 100) + '…'
-                            : (msg.latest_preview || msg.message)}
-                        </p>
-                      )}
+                      <p className="text-sm text-gray-500 mt-1 truncate">
+                        {(msg.latest_preview || msg.message).length > 80
+                          ? (msg.latest_preview || msg.message).slice(0, 80) + '…'
+                          : (msg.latest_preview || msg.message)}
+                      </p>
                     </div>
                   </div>
 
-                  {!selectMode && expandedId === msg.id && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 ml-14">
-                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
-                      {(() => {
-                        const prefill = quoteItemsFromEnquiry(msg.message)
-                        if (prefill.length === 0) return null
-                        return (
-                          <button
-                            onClick={e => { e.stopPropagation(); openQuote(msg, prefill) }}
-                            className="mt-3 text-xs font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
-                            style={{ backgroundColor: '#F9C000', color: '#00267F' }}
-                          >
-                            {prefill.length === 1 ? '⚡ Quote this service →' : '⚡ Quote these services →'}
-                          </button>
-                        )
-                      })()}
-                      {/* Previous replies */}
-                      {(replies[msg.id] || []).length > 0 && (
-                        <div className="mt-4 flex flex-col gap-3">
-                          {dedupeThreadReplies(replies[msg.id] || [], threadQuotes).map(r => {
-                            const quoteId = getQuoteId(r)
-                            const isQuote = !!quoteId
-                            const quoteData = quoteId ? (threadQuotes[quoteId] || null) : null
-                            const kind = quoteReplyKind(r) // 'quote' | 'invoice' | 'receipt'
-                            if (isQuote && quoteData) {
-                              const cardTitle = kind === 'receipt' ? `Receipt ${quoteData.invoice_number || quoteData.quote_number}`
-                                : kind === 'invoice' ? `Invoice ${quoteData.invoice_number || quoteData.quote_number}`
-                                : `Quote ${quoteData.quote_number}`
-                              const cardDate = formatDocDate(kind === 'quote' ? quoteData.quote_date : (quoteData.invoiced_at || quoteData.quote_date))
-                              return (
-                                <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                                  <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: kind === 'receipt' ? '#166534' : '#00267F' }}>
-                                    <div>
-                                      <p className="text-white font-semibold text-sm">{cardTitle}</p>
-                                      <p className="text-xs mt-0.5" style={{ color: kind === 'receipt' ? '#86efac' : '#93b8ff' }}>From {r.sender_name} · {cardDate}</p>
-                                    </div>
-                                    <button
-                                      onClick={e => { e.stopPropagation(); setViewingQuote(quoteData) }}
-                                      className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity"
-                                      style={{ backgroundColor: '#F9C000', color: '#00267F' }}
-                                    >
-                                      View & download
-                                    </button>
-                                  </div>
-                                  <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-50">
-                                    <div className="flex items-center gap-4">
-                                      <div>
-                                        <p className="text-xs text-gray-400">Total</p>
-                                        <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-xs text-gray-400">{kind === 'receipt' ? 'Paid' : 'Payment due'}</p>
-                                        <p className="text-sm font-semibold" style={{ color: kind === 'receipt' ? '#166534' : '#374151' }}>{kind === 'receipt' ? formatDocDate(quoteData.paid_at) : formatDocDate(quoteData.due_date)}</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                                        {quoteData.status === 'invoiced' ? 'Invoiced' : quoteData.status}
-                                      </span>
-                                      {quoteData.status === 'accepted' && (
-                                        <button onClick={e => { e.stopPropagation(); setInvoicingQuoteId(invoicingQuoteId === quoteData.id ? null : quoteData.id) }} className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
-                                          Send invoice →
-                                        </button>
-                                      )}
-                                      {confirmDeleteQuoteId === quoteData.id ? (
-                                        <span className="text-xs text-gray-500 flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                          Delete?{' '}
-                                          <button onClick={e => { e.stopPropagation(); handleDeleteQuote(quoteData.id, r.id) }} className="text-red-600 font-semibold hover:text-red-800">Yes</button>
-                                          {' · '}
-                                          <button onClick={e => { e.stopPropagation(); setConfirmDeleteQuoteId(null) }} className="text-gray-500 font-semibold hover:text-gray-700">No</button>
-                                        </span>
-                                      ) : (
-                                        <button onClick={e => { e.stopPropagation(); setConfirmDeleteQuoteId(quoteData.id) }} className="text-xs text-red-500 hover:text-red-700">
-                                          Delete quote
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {/* Inline invoice sender */}
-                                  {invoicingQuoteId === quoteData.id && quoteData.status === 'accepted' && (
-                                    <div className="px-4 py-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-end gap-3" onClick={e => e.stopPropagation()}>
-                                      <div className="flex-1">
-                                        <label className="block text-xs font-semibold text-gray-600 mb-1">Payment terms</label>
-                                        <select
-                                          value={invoiceTerms}
-                                          onChange={e => setInvoiceTerms(e.target.value)}
-                                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white"
-                                        >
-                                          {INVOICE_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                        </select>
-                                      </div>
-                                      <button
-                                        onClick={() => sendInvoiceFromInbox(quoteData, r.message_id)}
-                                        disabled={invoiceBusy}
-                                        className="text-xs font-semibold px-4 py-2.5 rounded-full hover:opacity-90 transition-opacity disabled:opacity-50 flex-shrink-0"
-                                        style={{ backgroundColor: '#F9C000', color: '#00267F' }}
-                                      >
-                                        {invoiceBusy ? 'Sending…' : 'Send invoice'}
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            }
-                            // Legacy receipt line (no resolvable quote) → compact Receipt card.
-                            if (isReceiptBody(r.body)) {
-                              return <div key={r.id}><ReceiptLineCard body={r.body} fromName={r.sender_name} /></div>
-                            }
-                            // Primary: UUID match (new replies). Fallback: name match (old replies where sender_user_id is NULL).
-                            const isOwnReply = !!(
-                              (r.sender_user_id && user?.id && r.sender_user_id === user.id) ||
-                              (!r.sender_user_id && r.sender_name === profile?.name)
-                            )
-                            return (
-                              <div key={r.id} className="flex items-start gap-3 group/reply">
-                                {r._deleted ? (
-                                  <>
-                                    <div className="w-7 h-7 flex-shrink-0" />
-                                    <p className="text-sm italic text-gray-400 py-1">Message deleted</p>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#00267F' }}>
-                                      {(() => {
-                                        const av = isOwnReply
-                                          ? profile?.avatar_url
-                                          : clientProfiles[r.sender_user_id]?.avatar_url
-                                        return av
-                                          ? <img src={av} alt={r.sender_name} className="w-full h-full object-cover" />
-                                          : r.sender_name[0]?.toUpperCase()
-                                      })()}
-                                    </div>
-                                    <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
-                                      <p className="text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
-                                        {r.sender_name}
-                                        {isOwnReply && isVerified(profile) && <VerifiedBadge size={13} />}
-                                      </p>
-                                      {r.body && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>}
-                                      {r.image_url && (
-                                        <a href={r.image_url} target="_blank" rel="noopener noreferrer">
-                                          <img src={r.image_url} alt="Shared photo" className="mt-2 rounded-lg" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 10 }} />
-                                        </a>
-                                      )}
-                                      {!isOwnReply && (() => {
-                                        const prefill = quoteItemsFromEnquiry(r.body)
-                                        if (prefill.length === 0) return null
-                                        return (
-                                          <button
-                                            onClick={e => { e.stopPropagation(); openQuote(msg, prefill) }}
-                                            className="mt-2 text-xs font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
-                                            style={{ backgroundColor: '#F9C000', color: '#00267F' }}
-                                          >
-                                            {prefill.length === 1 ? '⚡ Quote this service →' : '⚡ Quote these services →'}
-                                          </button>
-                                        )
-                                      })()}
-                                      <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                                      {isOwnReply && (
-                                        confirmDeleteReplyId === r.id ? (
-                                          <span className="text-xs text-gray-500 mt-1.5 flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                            Delete this reply?{' '}
-                                            <button onClick={e => { e.stopPropagation(); handleDeleteReply(r.id) }} className="text-red-600 font-semibold hover:text-red-800">Yes</button>
-                                            {' · '}
-                                            <button onClick={e => { e.stopPropagation(); setConfirmDeleteReplyId(null) }} className="text-gray-500 font-semibold hover:text-gray-700">No</button>
-                                          </span>
-                                        ) : (
-                                          <button onClick={e => { e.stopPropagation(); setConfirmDeleteReplyId(r.id) }} className="text-xs text-red-500 hover:text-red-700 mt-1.5 block">
-                                            Delete
-                                          </button>
-                                        )
-                                      )}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-
-                      {/* Reply box */}
-                      <div className="mt-4 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
-                        <textarea
-                          value={replyText[msg.id] || ''}
-                          onChange={e => setReplyText(prev => ({ ...prev, [msg.id]: e.target.value }))}
-                          placeholder="Write a reply..."
-                          rows={3}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
-                        />
-                        {replyPhoto && (
-                          <div className="relative inline-block" style={{ width: 'fit-content' }}>
-                            <img src={replyPhoto.url} alt="Attachment preview" className="rounded-lg" style={{ maxHeight: 80, borderRadius: 8 }} />
-                            <button onClick={e => { e.stopPropagation(); setReplyPhoto(null) }} aria-label="Remove photo" className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: '#111827', fontSize: 12, lineHeight: 1 }}>×</button>
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <button
-                              onClick={e => { e.stopPropagation(); openQuote(msg) }}
-                              className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity"
-                              style={{ backgroundColor: '#00267F' }}
-                            >
-                              Create quote →
-                            </button>
-                            <label onClick={e => e.stopPropagation()} className="text-sm font-medium px-3 py-2 rounded-full border border-gray-200 text-gray-600 hover:border-gray-400 cursor-pointer transition-colors" style={{ opacity: photoUploading ? 0.5 : 1 }}>
-                              {photoUploading ? 'Uploading…' : '📷'}
-                              <input type="file" accept="image/*" hidden disabled={photoUploading} onChange={e => { attachReplyPhoto(e.target.files?.[0]); e.target.value = '' }} />
-                            </label>
-                          </div>
-                          <button
-                            onClick={e => { e.stopPropagation(); sendReply(msg) }}
-                            disabled={replySending || photoUploading || (!replyText[msg.id]?.trim() && !replyPhoto)}
-                            className="text-sm font-semibold px-5 py-2 rounded-full hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ backgroundColor: '#F9C000', color: '#00267F' }}
-                          >
-                            {replySending ? 'Sending...' : 'Send reply'}
-                          </button>
-                        </div>
-                      </div>
-                      {/* Auto-scroll target — newest message + composer in view */}
-                      <div ref={threadEndRef} />
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
           </div>
+        )}
+        </div>
+        </aside>
+
+        {/* MIDDLE — conversation pane */}
+        <section className={`${activeMsg ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0 bg-gray-50`}>
+          {activeMsg ? renderConversation(activeMsg) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+              <EnvelopeIcon className="w-12 h-12 text-gray-200 mb-3" />
+              <p className="text-sm text-gray-400">Select a conversation to read it here.</p>
+            </div>
+          )}
+        </section>
+
+        {/* RIGHT — contact details pane */}
+        {activeMsg && (
+          <aside className="hidden lg:flex w-[300px] flex-shrink-0 flex-col border-l border-gray-100 overflow-y-auto p-6">
+            {renderDetails(activeMsg)}
+          </aside>
         )}
       </div>
 

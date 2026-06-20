@@ -312,6 +312,192 @@ export default function ClientMessages() {
     setTimeout(() => setToast(null), 4000)
   }
 
+  // ── Conversation pane (middle column) ─────────────────────────────
+  function renderConversation(msg) {
+    const f = msg.freelancers
+    const fmtTime = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    return (
+      <>
+        {/* Conversation header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+          <button onClick={() => setExpandedId(null)} className="md:hidden text-gray-500 p-1 -ml-1" aria-label="Back to list">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <a href={`/freelancers/${f?.id}`} className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold overflow-hidden flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
+            {f?.avatar_url ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" /> : (f?.name || '?').split(' ').map(n => n[0]).join('')}
+          </a>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1">{f?.name}{isVerified(f) && <VerifiedBadge size={13} />}</p>
+            <p className="text-xs text-gray-400 truncate">{msg.subject}</p>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-3 min-h-0">
+          {/* Original enquiry (you → right) */}
+          <div className="flex justify-end">
+            <div className="max-w-[80%]">
+              <div className="rounded-2xl rounded-tr-md px-4 py-2.5 text-white" style={{ backgroundColor: '#00267F' }}>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1 mr-1 text-right">{fmtTime(msg.created_at)}</p>
+            </div>
+          </div>
+
+          {dedupeThreadReplies(replies[msg.id] || [], quotes).map(r => {
+            const quoteId = getQuoteId(r)
+            const quoteData = quoteId ? (quotes[quoteId] || null) : null
+            if (quoteId && quoteData) {
+              const asReceipt = (r.body || '').startsWith('Sent receipt')
+              const asInvoice = asReceipt || ((r.body || '').startsWith('Sent invoice') && !!quoteData.invoice_number)
+              const dueDate = asInvoice ? (quoteData.invoice_due_date || quoteData.due_date) : quoteData.due_date
+              return (
+                <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: asReceipt ? '#166534' : '#00267F' }}>
+                    <div>
+                      <p className="text-white font-semibold text-sm">{asReceipt ? `Receipt ${quoteData.invoice_number}` : asInvoice ? `Invoice ${quoteData.invoice_number}` : `Quote ${quoteData.quote_number}`}</p>
+                      <p className="text-xs mt-0.5" style={{ color: asReceipt ? '#86efac' : '#93b8ff' }}>
+                        From {f?.name} · {formatDocDate((asInvoice ? quoteData.invoiced_at : quoteData.quote_date) || quoteData.quote_date)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewingQuote({ quote: quoteData, freelancer: f, asInvoice, asReceipt })}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                    >
+                      View &amp; download
+                    </button>
+                  </div>
+                  <div className="px-4 py-3 flex items-center justify-between bg-gray-50">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400">Total</p>
+                        <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">{asReceipt ? 'Paid' : 'Payment due'}</p>
+                        <p className="text-sm font-semibold" style={{ color: asReceipt ? '#166534' : '#374151' }}>{asReceipt
+                          ? (quoteData.paid_at ? formatDocDate(quoteData.paid_at) : '—')
+                          : (dueDate ? formatDocDate(dueDate) : '—')}</p>
+                      </div>
+                    </div>
+                    {quoteData.status === 'sent' ? (
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => respondToQuote(quoteData.id, 'accepted')} disabled={respondingQuoteId === quoteData.id} className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50" style={{ backgroundColor: '#16a34a' }}>
+                          Accept
+                        </button>
+                        <button onClick={() => respondToQuote(quoteData.id, 'declined')} disabled={respondingQuoteId === quoteData.id} className="text-xs font-semibold px-3.5 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-gray-500 transition-colors disabled:opacity-50">
+                          Decline
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{
+                        accepted: { backgroundColor: '#DCFCE7', color: '#166534' },
+                        declined: { backgroundColor: '#FEE2E2', color: '#991B1B' },
+                        invoiced: { backgroundColor: '#FEF3C7', color: '#92400E' },
+                        completed: { backgroundColor: '#E0E7FF', color: '#3730A3' },
+                        paid: { backgroundColor: '#DCFCE7', color: '#166534' },
+                      }[quoteData.status] || { backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                        {{
+                          accepted: 'Accepted',
+                          declined: 'Declined',
+                          invoiced: `Invoice — due ${quoteData.invoice_due_date ? formatDocDate(quoteData.invoice_due_date, { day: 'numeric', month: 'short' }) : 'soon'}`,
+                          completed: 'Job completed',
+                          paid: 'Paid ✓',
+                        }[quoteData.status] || quoteData.status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+            if (quoteId && !quoteData) return null
+            if (isReceiptBody(r.body)) {
+              return <div key={r.id}><ReceiptLineCard body={r.body} fromName={f?.name} /></div>
+            }
+            const isOwn = r.sender_user_id === user?.id
+            if (r._deleted) {
+              return <div key={r.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}><p className="text-xs italic text-gray-400 py-1">Message deleted</p></div>
+            }
+            return (
+              <div key={r.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                <div className="max-w-[80%]">
+                  <div className={`rounded-2xl px-4 py-2.5 ${isOwn ? 'rounded-tr-md text-white' : 'rounded-tl-md bg-white border border-gray-100 text-gray-700'}`} style={isOwn ? { backgroundColor: '#00267F' } : undefined}>
+                    {r.body && <p className="text-sm leading-relaxed whitespace-pre-wrap">{r.body}</p>}
+                    {r.image_url && (
+                      <a href={r.image_url} target="_blank" rel="noopener noreferrer">
+                        <img src={r.image_url} alt="Shared photo" className="mt-2 rounded-lg" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 10 }} />
+                      </a>
+                    )}
+                  </div>
+                  <p className={`text-[11px] text-gray-400 mt-1 ${isOwn ? 'mr-1 text-right' : 'ml-1'}`}>{fmtTime(r.created_at)}</p>
+                </div>
+              </div>
+            )
+          })}
+          <div ref={threadEndRef} />
+        </div>
+
+        {/* Composer */}
+        <div className="border-t border-gray-100 bg-white px-4 py-3 flex-shrink-0">
+          {replyPhoto && (
+            <div className="relative inline-block mb-2" style={{ width: 'fit-content' }}>
+              <img src={replyPhoto.url} alt="Attachment preview" className="rounded-lg" style={{ maxHeight: 80, borderRadius: 8 }} />
+              <button onClick={() => setReplyPhoto(null)} aria-label="Remove photo" className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: '#111827', fontSize: 12, lineHeight: 1 }}>×</button>
+            </div>
+          )}
+          <div className="flex items-end gap-2">
+            <label className="flex-shrink-0 w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:border-gray-400 cursor-pointer flex items-center justify-center" style={{ opacity: photoUploading ? 0.5 : 1 }}>
+              {photoUploading ? '…' : '📷'}
+              <input type="file" accept="image/*" hidden disabled={photoUploading} onChange={e => { attachReplyPhoto(e.target.files?.[0]); e.target.value = '' }} />
+            </label>
+            <textarea value={newReplies[msg.id] || ''} onChange={e => setNewReplies(prev => ({ ...prev, [msg.id]: e.target.value }))} placeholder={`Reply to ${f?.name || 'the freelancer'}…`} rows={1} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-2xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" style={{ maxHeight: 120 }} />
+            <button onClick={() => sendReply(msg)} disabled={replySending || photoUploading || (!newReplies[msg.id]?.trim() && !replyPhoto)} className="flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
+              {replySending ? '…' : 'Send'}
+            </button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // ── Freelancer details (right column) ─────────────────────────────
+  function renderDetails(msg) {
+    const f = msg.freelancers
+    return (
+      <>
+        <div className="flex flex-col items-center text-center mb-6">
+          <a href={`/freelancers/${f?.id}`} className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-semibold overflow-hidden mb-3" style={{ backgroundColor: '#00267F' }}>
+            {f?.avatar_url ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" /> : (f?.name || '?').split(' ').map(n => n[0]).join('')}
+          </a>
+          <p className="font-bold text-gray-900 flex items-center gap-1">{f?.name}{isVerified(f) && <VerifiedBadge size={14} />}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{f?.trade}</p>
+        </div>
+        <div className="border-t border-gray-100 pt-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Details</p>
+          <div className="flex flex-col gap-3 text-sm">
+            {f?.email && (
+              <div className="flex items-center gap-2 text-gray-600">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                <span className="truncate">{f.email}</span>
+              </div>
+            )}
+            {f?.location && (
+              <div className="flex items-center gap-2 text-gray-600">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><circle cx="12" cy="11" r="3" /></svg>
+                <span>{f.location}</span>
+              </div>
+            )}
+            <a href={`/freelancers/${f?.id}`} className="flex items-center gap-2 hover:underline" style={{ color: '#00267F' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              View full profile
+            </a>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -320,11 +506,14 @@ export default function ClientMessages() {
     )
   }
 
-  return (
-    <main className="min-h-screen bg-gray-50">
+  const activeMsg = messages.find(m => m.id === expandedId) || null
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-8 py-10">
-        <div className="flex items-center justify-between mb-8">
+  return (
+    <main className="bg-gray-50" style={{ height: 'calc(100vh - 68px)' }}>
+      <div className="h-full flex max-w-[1500px] mx-auto bg-white border-x border-gray-100">
+        {/* LEFT — thread list */}
+        <aside className={`${activeMsg ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] flex-shrink-0 flex-col border-r border-gray-100 min-h-0`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
           {selectMode ? (
             <>
               <span className="text-sm font-medium text-gray-700">{selected.size} selected</span>
@@ -354,8 +543,9 @@ export default function ClientMessages() {
           )}
         </div>
 
+        <div className="flex-1 overflow-y-auto min-h-0">
         {messages.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
+          <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center m-4">
             <EnvelopeIcon className="w-10 h-10 text-gray-300 mx-auto mb-4" />
             <p className="font-medium text-gray-900 mb-1">No messages yet</p>
             <p className="text-sm text-gray-500 mb-6">Contact a freelancer to start a conversation.</p>
@@ -364,15 +554,15 @@ export default function ClientMessages() {
             </a>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
             {messages.map(msg => (
               <div
                 key={msg.id}
-                className={`bg-white rounded-2xl border transition-all ${selected.has(msg.id) ? 'border-blue-300 bg-blue-50' : expandedId === msg.id ? 'border-gray-200 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
+                className={`cursor-pointer border-b border-gray-100 transition-colors ${selected.has(msg.id) ? 'bg-blue-50' : expandedId === msg.id ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
               >
                 {/* Message header row */}
                 <div
-                  className="p-5 sm:p-6 cursor-pointer"
+                  className="px-5 py-4 cursor-pointer"
                   onClick={() => selectMode ? toggleSelect(msg.id) : handleExpand(msg)}
                 >
                   <div className="flex items-start gap-4">
@@ -422,211 +612,30 @@ export default function ClientMessages() {
                         </span>
                       </div>
                       <p className={`text-sm mt-0.5 ${msg.client_read === false ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{msg.subject}</p>
-                      {expandedId !== msg.id && (
-                        <p className={`text-sm mt-0.5 truncate ${msg.client_read === false ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>
-                          {msg.latest_preview || msg.message}
-                        </p>
-                      )}
+                      <p className={`text-sm mt-0.5 truncate ${msg.client_read === false ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>
+                        {msg.latest_preview || msg.message}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Expanded thread */}
-                  {!selectMode && expandedId === msg.id && (
-                    <div className="mt-5 pt-5 border-t border-gray-100 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
-
-                      {/* Original message */}
-                      <div className="flex items-start gap-3">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: '#93b8ff' }}>
-                          {myClientProfile?.avatar_url
-                            ? <img src={myClientProfile.avatar_url} alt="You" className="w-full h-full object-cover" />
-                            : (user?.user_metadata?.full_name || user?.email || '?')[0].toUpperCase()}
-                        </div>
-                        <div className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
-                          <p className="text-xs font-semibold text-gray-500 mb-1">You</p>
-                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
-                          <p className="text-xs text-gray-400 mt-1.5">{new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-                      </div>
-
-                      {/* Replies */}
-                      {dedupeThreadReplies(replies[msg.id] || [], quotes).map(r => {
-                        const quoteId = getQuoteId(r)
-                        const isQuote = !!quoteId
-                        const quoteData = quoteId ? (quotes[quoteId] || null) : null
-
-                        if (isQuote && quoteData) {
-                          // This reply is the invoice (not the original quote) when its
-                          // body announces the invoice — present it as an invoice.
-                          // A "Sent receipt" reply is the paid receipt (invoice + PAID stamp).
-                          const asReceipt = (r.body || '').startsWith('Sent receipt')
-                          const asInvoice = asReceipt || ((r.body || '').startsWith('Sent invoice') && !!quoteData.invoice_number)
-                          const dueDate = asInvoice ? (quoteData.invoice_due_date || quoteData.due_date) : quoteData.due_date
-                          return (
-                            <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                              <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: asReceipt ? '#166534' : '#00267F' }}>
-                                <div>
-                                  <p className="text-white font-semibold text-sm">{asReceipt ? `Receipt ${quoteData.invoice_number}` : asInvoice ? `Invoice ${quoteData.invoice_number}` : `Quote ${quoteData.quote_number}`}</p>
-                                  <p className="text-xs mt-0.5" style={{ color: asReceipt ? '#86efac' : '#93b8ff' }}>
-                                    From {msg.freelancers?.name} · {formatDocDate((asInvoice ? quoteData.invoiced_at : quoteData.quote_date) || quoteData.quote_date)}
-                                  </p>
-                                </div>
-                                <button
-                                  onClick={() => setViewingQuote({ quote: quoteData, freelancer: msg.freelancers, asInvoice, asReceipt })}
-                                  className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity"
-                                  style={{ backgroundColor: '#F9C000', color: '#00267F' }}
-                                >
-                                  View &amp; download
-                                </button>
-                              </div>
-                              <div className="px-4 py-3 flex items-center justify-between bg-gray-50">
-                                <div className="flex items-center gap-4">
-                                  <div>
-                                    <p className="text-xs text-gray-400">Total</p>
-                                    <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-gray-400">{asReceipt ? 'Paid' : 'Payment due'}</p>
-                                    <p className="text-sm font-semibold" style={{ color: asReceipt ? '#166534' : '#374151' }}>{asReceipt
-                                      ? (quoteData.paid_at ? formatDocDate(quoteData.paid_at) : '—')
-                                      : (dueDate ? formatDocDate(dueDate) : '—')}</p>
-                                  </div>
-                                </div>
-                                {quoteData.status === 'sent' ? (
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => respondToQuote(quoteData.id, 'accepted')}
-                                      disabled={respondingQuoteId === quoteData.id}
-                                      className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                                      style={{ backgroundColor: '#16a34a' }}
-                                    >
-                                      Accept
-                                    </button>
-                                    <button
-                                      onClick={() => respondToQuote(quoteData.id, 'declined')}
-                                      disabled={respondingQuoteId === quoteData.id}
-                                      className="text-xs font-semibold px-3.5 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-gray-500 transition-colors disabled:opacity-50"
-                                    >
-                                      Decline
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span
-                                    className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                                    style={{
-                                      accepted:  { backgroundColor: '#DCFCE7', color: '#166534' },
-                                      declined:  { backgroundColor: '#FEE2E2', color: '#991B1B' },
-                                      invoiced:  { backgroundColor: '#FEF3C7', color: '#92400E' },
-                                      completed: { backgroundColor: '#E0E7FF', color: '#3730A3' },
-                                      paid:      { backgroundColor: '#DCFCE7', color: '#166534' },
-                                    }[quoteData.status] || { backgroundColor: '#EEF2FF', color: '#00267F' }}
-                                  >
-                                    {{
-                                      accepted: 'Accepted',
-                                      declined: 'Declined',
-                                      invoiced: `Invoice — due ${quoteData.invoice_due_date ? formatDocDate(quoteData.invoice_due_date, { day: 'numeric', month: 'short' }) : 'soon'}`,
-                                      completed: 'Job completed',
-                                      paid: 'Paid ✓',
-                                    }[quoteData.status] || quoteData.status}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        }
-
-                        if (isQuote && !quoteData) return null
-
-                        // Legacy receipt line (no resolvable quote) → render as a
-                        // compact Receipt card instead of a bare chat line.
-                        if (isReceiptBody(r.body)) {
-                          return <div key={r.id}><ReceiptLineCard body={r.body} fromName={msg.freelancers?.name} /></div>
-                        }
-
-                        const isOwn = r.sender_user_id === user?.id
-                        return (
-                          <div key={r.id} className="flex items-start gap-3">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden" style={{ backgroundColor: isOwn ? '#93b8ff' : '#00267F' }}>
-                              {isOwn
-                                ? (myClientProfile?.avatar_url
-                                  ? <img src={myClientProfile.avatar_url} alt="You" className="w-full h-full object-cover" />
-                                  : (user?.user_metadata?.full_name || user?.email || '?')[0].toUpperCase())
-                                : msg.freelancers?.avatar_url
-                                ? <img src={msg.freelancers.avatar_url} alt={msg.freelancers.name} className="w-full h-full object-cover" />
-                                : (msg.freelancers?.name || '?')[0]?.toUpperCase()}
-                            </div>
-                            <div className={`flex-1 rounded-xl px-4 py-3 ${isOwn ? 'bg-gray-50' : 'bg-white border border-gray-100'}`}>
-                              <p className="text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
-                                {isOwn ? 'You' : r.sender_name}
-                                {!isOwn && isVerified(msg.freelancers) && <VerifiedBadge size={13} />}
-                              </p>
-                              {r.body && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{r.body}</p>}
-                              {r.image_url && (
-                                <a href={r.image_url} target="_blank" rel="noopener noreferrer">
-                                  <img src={r.image_url} alt="Shared photo" className="mt-2 rounded-lg" style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 10 }} />
-                                </a>
-                              )}
-                              <p className="text-xs text-gray-400 mt-1.5">{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                            </div>
-                          </div>
-                        )
-                      })}
-
-                      {(replies[msg.id] || []).length === 0 && (
-                        <p className="text-xs text-gray-400 text-center py-2">No replies yet. The freelancer will respond here.</p>
-                      )}
-
-                      {/* Reply composer */}
-                      <div className="flex flex-col gap-2">
-                        <textarea
-                          value={newReplies[msg.id] || ''}
-                          onChange={e => setNewReplies(prev => ({ ...prev, [msg.id]: e.target.value }))}
-                          placeholder={`Reply to ${msg.freelancers?.name || 'the freelancer'}...`}
-                          rows={3}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
-                        />
-                        {replyPhoto && (
-                          <div className="relative inline-block" style={{ width: 'fit-content' }}>
-                            <img src={replyPhoto.url} alt="Attachment preview" className="rounded-lg" style={{ maxHeight: 80, borderRadius: 8 }} />
-                            <button onClick={() => setReplyPhoto(null)} aria-label="Remove photo" className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: '#111827', fontSize: 12, lineHeight: 1 }}>×</button>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center">
-                          <label className="text-sm font-medium px-3 py-2 rounded-full border border-gray-200 text-gray-600 hover:border-gray-400 cursor-pointer transition-colors" style={{ opacity: photoUploading ? 0.5 : 1 }}>
-                            {photoUploading ? 'Uploading…' : '📷 Photo'}
-                            <input type="file" accept="image/*" hidden disabled={photoUploading} onChange={e => { attachReplyPhoto(e.target.files?.[0]); e.target.value = '' }} />
-                          </label>
-                          <button
-                            onClick={() => sendReply(msg)}
-                            disabled={replySending || photoUploading || (!newReplies[msg.id]?.trim() && !replyPhoto)}
-                            className="text-sm font-semibold px-5 py-2 rounded-full hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ backgroundColor: '#F9C000', color: '#00267F' }}
-                          >
-                            {replySending ? 'Sending…' : 'Send reply'}
-                          </button>
-                        </div>
-                      </div>
-
-                      <a
-                        href={`/freelancers/${msg.freelancers?.id}`}
-                        className="text-xs font-medium hover:opacity-80 transition-opacity text-center mt-1"
-                        style={{ color: '#00267F' }}
-                      >
-                        View {msg.freelancers?.name}&apos;s profile →
-                      </a>
-                      {/* Auto-scroll target — newest message + composer in view */}
-                      <div ref={threadEndRef} />
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+        </div>
+        </aside>
 
-      {/* My reviews */}
+        {/* MIDDLE — conversation pane */}
+        <section className={`${activeMsg ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0 bg-gray-50`}>
+          {activeMsg ? renderConversation(activeMsg) : (
+            <div className="flex-1 overflow-y-auto">
+              <div className="flex flex-col items-center justify-center text-center px-6 py-16">
+                <EnvelopeIcon className="w-12 h-12 text-gray-200 mb-3" />
+                <p className="text-sm text-gray-400">Select a conversation to read it here.</p>
+              </div>
       {myReviews.length > 0 && (
-        <div className="max-w-3xl mx-auto px-4 sm:px-8 pb-10">
+        <div className="max-w-2xl mx-auto px-4 sm:px-8 pb-10">
           <h2 className="text-xl font-bold text-gray-900 mb-5">My reviews</h2>
           <div className="flex flex-col gap-3">
             {myReviews.map(review => (
@@ -661,6 +670,17 @@ export default function ClientMessages() {
           </div>
         </div>
       )}
+            </div>
+          )}
+        </section>
+
+        {/* RIGHT — freelancer details pane */}
+        {activeMsg && (
+          <aside className="hidden lg:flex w-[300px] flex-shrink-0 flex-col border-l border-gray-100 overflow-y-auto p-6">
+            {renderDetails(activeMsg)}
+          </aside>
+        )}
+      </div>
 
       {/* Delete confirmation modal — deleteConfirmMsg is an array of msgs */}
       {deleteConfirmMsg && (
