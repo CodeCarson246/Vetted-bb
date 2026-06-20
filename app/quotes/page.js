@@ -94,6 +94,79 @@ function BarList({ rows, accent = '#00267F' }) {
   )
 }
 
+const CHART_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+// Round a max value up to a clean axis ceiling (e.g. 1340 -> 1500).
+function niceCeil(v) {
+  if (v <= 0) return 100
+  const pow = Math.pow(10, Math.floor(Math.log10(v)))
+  const n = v / pow
+  const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10
+  return step * pow
+}
+
+// Bucket paid transactions into a time series for the earnings chart.
+//  '30d'  -> one point per day for the last 30 days
+//  '12m'  -> one point per month for the last 12 months
+function chartSeriesFor(tx, range) {
+  const now = new Date()
+  const out = []
+  if (range === '30d') {
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+      const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
+      const value = tx.reduce((s, t) => (t.date >= d && t.date < next ? s + t.amount : s), 0)
+      out.push({ value, label: d.getDate() === 1 || i === 29 || i === 0 ? `${CHART_MONTHS[d.getMonth()]} ${d.getDate()}` : '', full: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) })
+    }
+  } else {
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const next = new Date(d.getFullYear(), d.getMonth() + 1, 1)
+      const value = tx.reduce((s, t) => (t.date >= d && t.date < next ? s + t.amount : s), 0)
+      out.push({ value, label: `${CHART_MONTHS[d.getMonth()]}${d.getMonth() === 0 ? ` ${String(d.getFullYear()).slice(2)}` : ''}`, full: `${CHART_MONTHS[d.getMonth()]} ${d.getFullYear()}` })
+    }
+  }
+  return out
+}
+
+/** Area + line chart for earnings over time (real paid invoices). */
+function EarningsChart({ series }) {
+  const W = 740, H = 240, padL = 48, padR = 14, padT = 14, padB = 30
+  const n = series.length
+  const rawMax = Math.max(0, ...series.map(s => s.value))
+  const max = niceCeil(rawMax)
+  const x = i => padL + (n <= 1 ? 0 : (i / (n - 1)) * (W - padL - padR))
+  const y = v => padT + (1 - v / max) * (H - padT - padB)
+  const pts = series.map((s, i) => [x(i), y(s.value)])
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ')
+  const area = `${line} L${x(n - 1).toFixed(1)} ${y(0).toFixed(1)} L${x(0).toFixed(1)} ${y(0).toFixed(1)} Z`
+  const ticks = [0, max / 2, max]
+  const fmtTick = v => v >= 1000 ? `$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `$${Math.round(v)}`
+  if (rawMax === 0) {
+    return <div className="h-[200px] flex items-center justify-center text-sm text-gray-400">No earnings in this period.</div>
+  }
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 'auto' }} role="img" aria-label="Earnings over time">
+      <defs>
+        <linearGradient id="earnFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#00267F" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="#00267F" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {ticks.map((t, i) => (
+        <g key={i}>
+          <line x1={padL} y1={y(t)} x2={W - padR} y2={y(t)} stroke="#eef0f4" strokeWidth="1" />
+          <text x={padL - 8} y={y(t) + 3} textAnchor="end" fontSize="10" fill="#9ca3af">{fmtTick(t)}</text>
+        </g>
+      ))}
+      <path d={area} fill="url(#earnFill)" />
+      <path d={line} fill="none" stroke="#00267F" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      {pts.map((p, i) => series[i].value > 0 ? <circle key={i} cx={p[0]} cy={p[1]} r="3" fill="#fff" stroke="#00267F" strokeWidth="2" /> : null)}
+      {series.map((s, i) => s.label ? <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#9ca3af">{s.label}</text> : null)}
+    </svg>
+  )
+}
+
 function fmtDate(str) {
   return formatDocDate(str) || '—'
 }
@@ -120,6 +193,7 @@ export default function QuotesPage() {
   const [selClient, setSelClient] = useState('all')
   const [remindedIds, setRemindedIds] = useState(() => new Set())
   const [receiptSentIds, setReceiptSentIds] = useState(() => new Set())
+  const [chartRange, setChartRange] = useState('12m') // '30d' | '12m'
 
   useEffect(() => {
     if (authLoading) return
@@ -376,6 +450,54 @@ export default function QuotesPage() {
   const byClient = aggregateBy(filteredEntries, e => e.client)
     .sort((a, b) => b.value - a.value).slice(0, 8)
 
+  // ── Trends, time series + transaction feed (real paid invoices) ──
+  const paidTx = paidQuotes
+    .map(q => ({
+      id: q.id,
+      ref: q.invoice_number || q.quote_number || '—',
+      client: q.client_name?.trim() || q.client_email || 'Client',
+      title: (q.items?.[0]?.description || '').split('—')[0].trim() || 'Job',
+      items: (q.items || []).length,
+      date: new Date(q.paid_at),
+      amount: Number(q.total) || 0,
+      _q: q,
+    }))
+    .sort((a, b) => b.date - a.date)
+
+  const nowRef = new Date()
+  const sumRange = (from, to) => paidTx.reduce((s, t) => (t.date >= from && t.date < to ? s + t.amount : s), 0)
+  const startOfMonth = new Date(nowRef.getFullYear(), nowRef.getMonth(), 1)
+  const startOfNextMonth = new Date(nowRef.getFullYear(), nowRef.getMonth() + 1, 1)
+  const startOfLastMonth = new Date(nowRef.getFullYear(), nowRef.getMonth() - 1, 1)
+  const thisMonthTotal = sumRange(startOfMonth, startOfNextMonth)
+  const lastMonthTotal = sumRange(startOfLastMonth, startOfMonth)
+  const monthDelta = lastMonthTotal > 0 ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100 : null
+  const mondayOffset = (nowRef.getDay() + 6) % 7
+  const startOfWeek = new Date(nowRef.getFullYear(), nowRef.getMonth(), nowRef.getDate() - mondayOffset)
+  const startOfLastWeek = new Date(startOfWeek); startOfLastWeek.setDate(startOfWeek.getDate() - 7)
+  const thisWeekTotal = sumRange(startOfWeek, startOfNextMonth > nowRef ? new Date(nowRef.getTime() + 86400000) : nowRef)
+  const lastWeekTotal = sumRange(startOfLastWeek, startOfWeek)
+  const weekDelta = lastWeekTotal > 0 ? ((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100 : null
+  const paidThisMonth = paidTx.filter(t => t.date >= startOfMonth).length
+  const chartSeries = chartSeriesFor(paidTx, chartRange)
+
+  function exportEarningsCsv() {
+    const rows = [['Reference', 'Client', 'Job', 'Date paid', 'Amount']]
+    for (const t of paidTx) {
+      rows.push([t.ref, t.client, t.title, t.date.toISOString().slice(0, 10), t.amount.toFixed(2)])
+    }
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `vetted-earnings-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   // ── Outstanding payments: invoiced but not yet paid ──
   const outstanding = quotes
     .filter(q => ['invoiced', 'completed'].includes(q.status) && q.invoice_due_date)
@@ -593,6 +715,48 @@ export default function QuotesPage() {
               </div>
             ) : (
               <>
+                {/* Trend cards (real money) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {[
+                    { label: 'This month', value: `$${thisMonthTotal.toFixed(0)}`, delta: monthDelta, sub: 'vs last month' },
+                    { label: 'This week', value: `$${thisWeekTotal.toFixed(0)}`, delta: weekDelta, sub: 'vs last week' },
+                    { label: 'Pending payment', value: `$${outstandingTotal.toFixed(0)}`, sub: `${outstanding.length} invoice${outstanding.length === 1 ? '' : 's'}` },
+                    { label: 'Paid jobs', value: paidThisMonth, sub: 'this month' },
+                  ].map(c => (
+                    <div key={c.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
+                      <p className="text-xs text-gray-500">{c.label}</p>
+                      <p className="text-xl sm:text-2xl font-bold tabular-nums mt-1" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{c.value}</p>
+                      {c.delta !== null && c.delta !== undefined ? (
+                        <p className="text-xs mt-1 font-medium" style={{ color: c.delta >= 0 ? '#16a34a' : '#ef4444' }}>
+                          {c.delta >= 0 ? '↑' : '↓'} {Math.abs(c.delta).toFixed(0)}% <span className="text-gray-400 font-normal">{c.sub}</span>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-1">{c.sub}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Earnings over time chart */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <h2 className="font-semibold text-gray-900">Earnings over time</h2>
+                    <div className="flex gap-1 bg-gray-100 rounded-full p-1">
+                      {[['30d', 'Last 30 days'], ['12m', 'Last 12 months']].map(([v, label]) => (
+                        <button
+                          key={v}
+                          onClick={() => setChartRange(v)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap ${chartRange === v ? 'text-white' : 'text-gray-500 hover:text-gray-800'}`}
+                          style={chartRange === v ? { backgroundColor: '#00267F' } : {}}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <EarningsChart series={chartSeries} />
+                </div>
+
                 {/* Drill-down filters — combine freely: "Service A in June 2026" */}
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -694,6 +858,49 @@ export default function QuotesPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Recent transactions */}
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-gray-100">
+                    <h2 className="font-semibold text-gray-900">Recent transactions</h2>
+                    <button
+                      onClick={exportEarningsCsv}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-full border transition-colors hover:border-gray-400"
+                      style={{ borderColor: '#00267F', color: '#00267F' }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+                      Export CSV
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[520px]">
+                      <thead>
+                        <tr className="text-left text-xs text-gray-400 uppercase tracking-wide">
+                          <th className="font-semibold px-5 sm:px-6 py-3">Job</th>
+                          <th className="font-semibold px-3 py-3">Client</th>
+                          <th className="font-semibold px-3 py-3">Date paid</th>
+                          <th className="font-semibold px-5 sm:px-6 py-3 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paidTx.slice(0, 10).map(t => (
+                          <tr key={t.id} className="border-t border-gray-50">
+                            <td className="px-5 sm:px-6 py-3">
+                              <span className="font-semibold" style={{ color: '#00267F' }}>{t.ref}</span>
+                              <span className="block text-xs text-gray-400 truncate max-w-[180px]">{t.title}{t.items > 1 ? ` +${t.items - 1} more` : ''}</span>
+                            </td>
+                            <td className="px-3 py-3 text-gray-600 capitalize">{t.client}</td>
+                            <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{fmtDate(t._q.paid_at)}</td>
+                            <td className="px-5 sm:px-6 py-3 text-right font-bold tabular-nums" style={{ color: '#16a34a' }}>${t.amount.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {paidTx.length > 10 && (
+                    <p className="text-xs text-gray-400 text-center py-3 border-t border-gray-50">Showing 10 of {paidTx.length} paid jobs · Export CSV for the full list</p>
+                  )}
+                </div>
               </>
             )}
             <p className="text-xs text-gray-400 text-center">
