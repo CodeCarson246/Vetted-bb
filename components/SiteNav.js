@@ -42,6 +42,7 @@ export default function SiteNav() {
     }
 
     let interval
+    let onRefresh
     supabase
       .from('freelancers')
       .select('id, name, avatar_url')
@@ -62,11 +63,16 @@ export default function SiteNav() {
         refreshUnread(fp?.id || null)
         // Keep the badge fresh while the tab stays open
         interval = setInterval(() => refreshUnread(fp?.id || null), 60_000)
+        // Let pages trigger an immediate refresh (e.g. after reading a thread
+        // on the same page, where pathname doesn't change).
+        onRefresh = () => refreshUnread(fp?.id || null)
+        window.addEventListener('vetted:refresh-unread', onRefresh)
       })
 
     return () => {
       cancelled = true
       if (interval) clearInterval(interval)
+      if (onRefresh) window.removeEventListener('vetted:refresh-unread', onRefresh)
     }
     // pathname dependency: refetch the count on every page navigation so
     // reading a thread (or receiving one) updates the badge immediately

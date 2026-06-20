@@ -250,6 +250,12 @@ export default function ClientMessages() {
     if (msg.client_read === false) {
       supabase.from('messages').update({ client_read: true }).eq('id', msg.id).then(() => {})
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, client_read: true } : m))
+      // Clear the matching bell notifications and refresh the nav badge now —
+      // reading here, rather than via the bell, must still mark them read.
+      supabase.from('notifications').update({ read: true })
+        .eq('user_id', user.id).eq('read', false)
+        .in('type', ['reply', 'quote', 'invoice', 'receipt', 'reminder']).then(() => {})
+      window.dispatchEvent(new Event('vetted:refresh-unread'))
     }
 
     const r = replies[msg.id] || []

@@ -667,6 +667,11 @@ export default function Inbox() {
     if (!msg.read) {
       await supabase.from('messages').update({ read: true }).eq('id', msg.id)
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, read: true } : m))
+      // Clear the matching bell notifications and refresh the nav badge now —
+      // reading here, rather than via the bell, must still mark them read.
+      supabase.from('notifications').update({ read: true })
+        .eq('user_id', user.id).eq('read', false).eq('type', 'message').then(() => {})
+      window.dispatchEvent(new Event('vetted:refresh-unread'))
     }
     const { data: r } = await supabase
       .from('message_replies')
