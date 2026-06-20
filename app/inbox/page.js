@@ -53,8 +53,15 @@ export default function Inbox() {
   const [quoteSaving, setQuoteSaving] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [confirmDeleteReplyId, setConfirmDeleteReplyId] = useState(null)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState(new Set())
   const [deleteConfirmMsg, setDeleteConfirmMsg] = useState(null)
   const [deletingThread, setDeletingThread] = useState(false)
+
+  function toggleSelect(id) {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function exitSelectMode() { setSelectMode(false); setSelected(new Set()) }
   const [toast, setToast] = useState(null)
   const [confirmDeleteQuoteId, setConfirmDeleteQuoteId] = useState(null)
   const [invoicingQuoteId, setInvoicingQuoteId] = useState(null)
@@ -759,30 +766,27 @@ export default function Inbox() {
     }
   }
 
-  async function deleteConversation(msg) {
+  async function deleteConversations(msgs) {
     setDeletingThread(true)
     setDeleteConfirmMsg(null)
-    // Optimistic remove from list
-    setMessages(prev => prev.filter(m => m.id !== msg.id))
-    if (expandedId === msg.id) setExpandedId(null)
+    const ids = msgs.map(m => m.id)
+    setMessages(prev => prev.filter(m => !ids.includes(m.id)))
+    if (ids.includes(expandedId)) setExpandedId(null)
+    exitSelectMode()
 
-    // Supabase: DELETE FROM quotes WHERE message_id = msg.id
-    await supabase.from('quotes').delete().eq('message_id', msg.id)
-    // Supabase: DELETE FROM message_replies WHERE message_id = msg.id
-    await supabase.from('message_replies').delete().eq('message_id', msg.id)
-    // Supabase: DELETE FROM messages WHERE id = msg.id
-    const { error } = await supabase.from('messages').delete().eq('id', msg.id)
+    await supabase.from('quotes').delete().in('message_id', ids)
+    await supabase.from('message_replies').delete().in('message_id', ids)
+    const { error } = await supabase.from('messages').delete().in('id', ids)
 
     if (error) {
-      // Restore on failure
       setMessages(prev =>
-        [...prev, msg].sort((a, b) =>
+        [...prev, ...msgs].sort((a, b) =>
           new Date(b.last_activity_at || b.created_at) - new Date(a.last_activity_at || a.created_at)
         )
       )
-      showToast('Failed to delete conversation. Please try again.', true)
+      showToast('Failed to delete. Please try again.', true)
     } else {
-      showToast('Conversation deleted')
+      showToast(msgs.length === 1 ? 'Conversation deleted' : `${msgs.length} conversations deleted`)
     }
     setDeletingThread(false)
   }
@@ -799,9 +803,32 @@ export default function Inbox() {
     <main className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-10">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
-          {unreadCount > 0 && (
-            <span className="text-sm text-gray-500">{unreadCount} unread</span>
+          {selectMode ? (
+            <>
+              <span className="text-sm font-medium text-gray-700">{selected.size} selected</span>
+              <div className="flex items-center gap-3">
+                {selected.size > 0 && (
+                  <button
+                    onClick={() => setDeleteConfirmMsg(messages.filter(m => selected.has(m.id)))}
+                    className="text-sm font-semibold px-4 py-1.5 rounded-full text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: '#DC2626' }}
+                  >
+                    Delete ({selected.size})
+                  </button>
+                )}
+                <button onClick={exitSelectMode} className="text-sm font-medium text-gray-500 hover:text-gray-700">Cancel</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
+              <div className="flex items-center gap-3">
+                {unreadCount > 0 && <span className="text-sm text-gray-500">{unreadCount} unread</span>}
+                {messages.length > 0 && (
+                  <button onClick={() => setSelectMode(true)} className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: '#00267F' }}>Select</button>
+                )}
+              </div>
+            </>
           )}
         </div>
 
@@ -843,17 +870,27 @@ export default function Inbox() {
             {messages.map(msg => (
               <div
                 key={msg.id}
-                onClick={() => handleExpand(msg)}
-                className={`group bg-white rounded-2xl border transition-all cursor-pointer ${expandedId === msg.id ? 'border-gray-200 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
+                onClick={() => selectMode ? toggleSelect(msg.id) : handleExpand(msg)}
+                className={`group bg-white rounded-2xl border transition-all cursor-pointer ${selected.has(msg.id) ? 'border-blue-300 bg-blue-50' : expandedId === msg.id ? 'border-gray-200 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
               >
                 <div className="p-5 sm:p-6">
                   <div className="flex items-start gap-4">
-                    {/* Avatar — live client photo when they have a profile */}
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0 overflow-hidden">
-                      {clientProfiles[msg.sender_user_id]?.avatar_url
-                        ? <img src={clientProfiles[msg.sender_user_id].avatar_url} alt={msg.sender_name} className="w-full h-full object-cover" />
-                        : msg.sender_name?.[0]?.toUpperCase() || '?'}
-                    </div>
+                    {selectMode ? (
+                      <span
+                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors"
+                        style={selected.has(msg.id) ? { backgroundColor: '#00267F', borderColor: '#00267F' } : { backgroundColor: '#fff', borderColor: '#d1d5db' }}
+                      >
+                        {selected.has(msg.id) && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        )}
+                      </span>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0 overflow-hidden">
+                        {clientProfiles[msg.sender_user_id]?.avatar_url
+                          ? <img src={clientProfiles[msg.sender_user_id].avatar_url} alt={msg.sender_name} className="w-full h-full object-cover" />
+                          : msg.sender_name?.[0]?.toUpperCase() || '?'}
+                      </div>
+                    )}
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
@@ -887,21 +924,9 @@ export default function Inbox() {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <span className="text-xs text-gray-400">
-                            {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                          <button
-                            onClick={e => { e.stopPropagation(); setDeleteConfirmMsg(msg) }}
-                            className="p-1.5 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors sm:opacity-0 sm:group-hover:opacity-100 opacity-100"
-                            title="Delete conversation"
-                            aria-label="Delete conversation"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
-                            </svg>
-                          </button>
-                        </div>
+                        <span className="text-xs text-gray-400 flex-shrink-0">
+                          {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
                       </div>
 
                       <p className="text-xs text-gray-400 mt-0.5">{msg.sender_email}</p>
@@ -919,19 +944,8 @@ export default function Inbox() {
                     </div>
                   </div>
 
-                  {expandedId === msg.id && (
+                  {!selectMode && expandedId === msg.id && (
                     <div className="mt-4 pt-4 border-t border-gray-100 ml-14">
-                      <div className="flex justify-end mb-3">
-                        <button
-                          onClick={e => { e.stopPropagation(); setDeleteConfirmMsg(msg) }}
-                          className="text-xs text-red-400 hover:text-red-600 transition-colors flex items-center gap-1 py-1"
-                        >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
-                          </svg>
-                          Delete conversation
-                        </button>
-                      </div>
                       <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                       {(() => {
                         const prefill = quoteItemsFromEnquiry(msg.message)
@@ -1160,7 +1174,7 @@ export default function Inbox() {
         )}
       </div>
 
-      {/* Delete conversation confirmation modal */}
+      {/* Delete confirmation modal — deleteConfirmMsg is an array of msgs */}
       {deleteConfirmMsg && (
         <div
           className="fixed inset-0 z-[300] flex items-center justify-center px-4"
@@ -1168,24 +1182,23 @@ export default function Inbox() {
           onClick={() => setDeleteConfirmMsg(null)}
         >
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-gray-900 text-base mb-2">Delete this conversation?</h3>
+            <h3 className="font-bold text-gray-900 text-base mb-2">
+              {deleteConfirmMsg.length === 1 ? 'Delete this conversation?' : `Delete ${deleteConfirmMsg.length} conversations?`}
+            </h3>
             <p className="text-sm text-gray-500 mb-6">
-              This will permanently delete the entire conversation with <span className="font-semibold text-gray-700">{deleteConfirmMsg.sender_name}</span>. This cannot be undone.
+              {deleteConfirmMsg.length === 1
+                ? <>This will permanently delete the entire conversation with <span className="font-semibold text-gray-700">{deleteConfirmMsg[0].sender_name}</span>.</>
+                : 'This will permanently delete the selected conversations.'} This cannot be undone.
             </p>
             <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirmMsg(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">Cancel</button>
               <button
-                onClick={() => setDeleteConfirmMsg(null)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => deleteConversation(deleteConfirmMsg)}
+                onClick={() => deleteConversations(deleteConfirmMsg)}
                 disabled={deletingThread}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50"
                 style={{ backgroundColor: '#DC2626' }}
               >
-                {deletingThread ? 'Deleting…' : 'Delete conversation'}
+                {deletingThread ? 'Deleting…' : deleteConfirmMsg.length === 1 ? 'Delete' : `Delete ${deleteConfirmMsg.length}`}
               </button>
             </div>
           </div>
