@@ -53,6 +53,8 @@ export default function ClientMessages() {
   }, [expandedId, expandedReplyCount, expandedQuotesLoaded])
   const [respondingQuoteId, setRespondingQuoteId] = useState(null)
   const [replySending, setReplySending] = useState(false)
+  const [deleteConfirmMsg, setDeleteConfirmMsg] = useState(null)
+  const [deletingThread, setDeletingThread] = useState(false)
   const [replyPhoto, setReplyPhoto] = useState(null) // { url } for the open thread
   const [photoUploading, setPhotoUploading] = useState(false)
 
@@ -262,6 +264,30 @@ export default function ClientMessages() {
     return (replies[msg.id] || []).length > 0
   }
 
+  async function deleteConversation(msg) {
+    setDeletingThread(true)
+    setDeleteConfirmMsg(null)
+    setMessages(prev => prev.filter(m => m.id !== msg.id))
+    if (expandedId === msg.id) setExpandedId(null)
+
+    await supabase.from('quotes').delete().eq('message_id', msg.id)
+    await supabase.from('message_replies').delete().eq('message_id', msg.id)
+    const { error } = await supabase.from('messages').delete().eq('id', msg.id)
+
+    if (error) {
+      setMessages(prev =>
+        [...prev, msg].sort((a, b) =>
+          new Date(b.last_activity_at || b.created_at) - new Date(a.last_activity_at || a.created_at)
+        )
+      )
+      setToast({ message: 'Failed to delete conversation. Please try again.', type: 'error' })
+    } else {
+      setToast({ message: 'Conversation deleted', type: 'success' })
+    }
+    setDeletingThread(false)
+    setTimeout(() => setToast(null), 4000)
+  }
+
   async function handleDeleteReview(reviewId) {
     const { error } = await supabase
       .from('reviews')
@@ -346,9 +372,21 @@ export default function ClientMessages() {
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-gray-400 flex-shrink-0">
-                          {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className="text-xs text-gray-400">
+                            {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                          <button
+                            onClick={e => { e.stopPropagation(); setDeleteConfirmMsg(msg) }}
+                            className="p-1.5 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors sm:opacity-0 sm:group-hover:opacity-100 opacity-100"
+                            title="Delete conversation"
+                            aria-label="Delete conversation"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                       <p className={`text-sm mt-0.5 ${msg.client_read === false ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{msg.subject}</p>
                       {expandedId !== msg.id && (
@@ -362,6 +400,17 @@ export default function ClientMessages() {
                   {/* Expanded thread */}
                   {expandedId === msg.id && (
                     <div className="mt-5 pt-5 border-t border-gray-100 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+                      <div className="flex justify-end">
+                        <button
+                          onClick={e => { e.stopPropagation(); setDeleteConfirmMsg(msg) }}
+                          className="text-xs text-red-400 hover:text-red-600 transition-colors flex items-center gap-1 py-1"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+                          </svg>
+                          Delete conversation
+                        </button>
+                      </div>
 
                       {/* Original message */}
                       <div className="flex items-start gap-3">
@@ -587,6 +636,38 @@ export default function ClientMessages() {
                 <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Delete conversation confirmation modal */}
+      {deleteConfirmMsg && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setDeleteConfirmMsg(null)}
+        >
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-gray-900 text-base mb-2">Delete this conversation?</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              This will permanently delete your conversation with <span className="font-semibold text-gray-700">{deleteConfirmMsg.freelancers?.name || 'this professional'}</span>. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmMsg(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteConversation(deleteConfirmMsg)}
+                disabled={deletingThread}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: '#DC2626' }}
+              >
+                {deletingThread ? 'Deleting…' : 'Delete conversation'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -64,8 +64,8 @@ export async function POST(request) {
     // Browser push first (fire-and-forget) — the email below is the
     // reliable channel, push is the instant one.
     sendPushToUser(freelancer.user_id, {
-      title: `New message from ${senderName}`,
-      body: subject,
+      title: `💬 ${senderName} sent you a message`,
+      body: message ? message.slice(0, 120) : subject,
       url: '/inbox',
     }).catch(() => {})
 
@@ -74,8 +74,8 @@ export async function POST(request) {
     // the function freezes after the response).
     await createNotification(freelancer.user_id, {
       type: 'message',
-      title: `New message from ${senderName}`,
-      body: subject,
+      title: `${senderName} sent you a message`,
+      body: message ? message.slice(0, 120) : subject,
       link: '/inbox',
     })
 

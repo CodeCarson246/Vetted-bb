@@ -13,6 +13,11 @@ self.addEventListener('push', (event) => {
     body: data.body || 'You have a new notification.',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
+    // Group notifications by URL so multiple messages from the same
+    // section collapse into one instead of stacking individually.
+    tag: data.tag || data.url || 'vetted-general',
+    renotify: true,
+    vibrate: [100, 50, 100],
     data: { url: data.url || '/inbox' },
   }
 
