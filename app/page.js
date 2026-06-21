@@ -614,36 +614,41 @@ export default function Home() {
             </div>
 
             {/* Illustration */}
-            <div className="flex-shrink-0 flex items-center justify-center w-full sm:w-64">
-              <div className="relative w-56 h-56 flex items-center justify-center">
+            <div className="flex-shrink-0 flex items-center justify-center w-full sm:w-72">
+              <div className="relative w-64 h-64 flex items-center justify-center">
                 {/* Outer glow ring */}
                 <div className="absolute inset-0 rounded-full" style={{ backgroundColor: 'rgba(249,192,0,0.08)', border: '1px solid rgba(249,192,0,0.15)' }} />
-                {/* Inner content */}
-                <div className="relative flex flex-col items-center gap-3">
-                  {/* Top row: two profile blobs */}
-                  <div className="flex gap-3">
-                    {[['🔧','Plumber'],['💇','Stylist']].map(([icon, label]) => (
-                      <div key={label} className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
-                        <span className="text-2xl">{icon}</span>
-                        <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>{label}</span>
-                        <span className="text-xs font-semibold" style={{ color: '#F9C000' }}>★ 4.9</span>
+                {/* Triangular cluster of three uniform cards, sized to sit inside the ring */}
+                <div className="relative flex flex-col items-center gap-2.5">
+                  <div className="flex gap-2.5">
+                    {[['🔧', 'Plumber', '4.9'], ['💇', 'Stylist', '4.9']].map(([icon, label, rating]) => (
+                      <div
+                        key={label}
+                        className="w-[72px] h-[80px] flex flex-col items-center justify-center gap-1 rounded-2xl"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                      >
+                        <span className="text-2xl leading-none">{icon}</span>
+                        <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>{label}</span>
+                        <span className="text-[11px] font-semibold" style={{ color: '#F9C000' }}>★ {rating}</span>
                       </div>
                     ))}
                   </div>
-                  {/* Bottom centre: third card */}
-                  <div className="flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
-                    <span className="text-2xl">💻</span>
-                    <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>Developer</span>
-                    <span className="text-xs font-semibold" style={{ color: '#F9C000' }}>★ 5.0</span>
+                  <div
+                    className="w-[72px] h-[80px] flex flex-col items-center justify-center gap-1 rounded-2xl"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  >
+                    <span className="text-2xl leading-none">💻</span>
+                    <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>Developer</span>
+                    <span className="text-[11px] font-semibold" style={{ color: '#F9C000' }}>★ 5.0</span>
                   </div>
-                  {/* Verified badge floating */}
-                  <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#00267F" strokeWidth="0"/>
-                      <path d="M9 12l2 2 4-4" stroke="#F9C000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Verified
-                  </div>
+                </div>
+                {/* Verified badge — sits on the upper-right of the ring */}
+                <div className="absolute flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-md" style={{ top: '8%', right: '4%', backgroundColor: '#F9C000', color: '#00267F' }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#00267F" strokeWidth="0" />
+                    <path d="M9 12l2 2 4-4" stroke="#F9C000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Verified
                 </div>
               </div>
             </div>
