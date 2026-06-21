@@ -704,3 +704,23 @@ CREATE POLICY "Freelancers manage own appointments"
   WITH CHECK (
     freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
   );
+
+-- ============================================================
+-- SECTION 19 — BOOKINGS: OPT-IN + PER-SERVICE (2026-06-21)
+-- "Request a booking" is opt-in per freelancer (off by default). When on,
+-- the freelancer chooses a booking mode and which services are bookable.
+-- Public availability is driven only by these settings + time-off blocks —
+-- never by private job bookings. Extends the existing availability_settings
+-- (public-readable) + services tables.
+-- ============================================================
+
+ALTER TABLE availability_settings
+  ADD COLUMN IF NOT EXISTS bookings_enabled boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS booking_mode     text    DEFAULT 'day',   -- 'day' | 'slot'
+  ADD COLUMN IF NOT EXISTS work_days        integer[] DEFAULT '{1,2,3,4,5}', -- 0=Sun..6=Sat
+  ADD COLUMN IF NOT EXISTS work_start       text    DEFAULT '09:00',
+  ADD COLUMN IF NOT EXISTS work_end         text    DEFAULT '17:00',
+  ADD COLUMN IF NOT EXISTS lead_time_days   integer DEFAULT 1;
+
+ALTER TABLE services
+  ADD COLUMN IF NOT EXISTS bookable boolean DEFAULT false;

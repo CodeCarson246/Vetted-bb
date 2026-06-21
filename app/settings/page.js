@@ -6,6 +6,17 @@ import { useAuth } from '@/lib/auth-context'
 import ThemeToggle from '@/components/ThemeToggle'
 import { pushSupported, getPushStatus, enablePush, disablePush } from '@/lib/push'
 
+const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+const DURATIONS = [30, 45, 60, 90, 120, 180]
+
+function Switch({ on, onClick }) {
+  return (
+    <button onClick={onClick} role="switch" aria-checked={on} className="flex-shrink-0 transition-colors" style={{ width: 44, height: 26, borderRadius: 999, padding: 3, backgroundColor: on ? '#00267F' : '#D1D5DB', border: 'none', cursor: 'pointer' }}>
+      <span style={{ display: 'block', width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff', transform: on ? 'translateX(18px)' : 'translateX(0)', transition: 'transform 0.15s' }} />
+    </button>
+  )
+}
+
 function Card({ title, desc, children }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
@@ -24,17 +35,65 @@ export default function SettingsPage() {
   const [ready, setReady] = useState(false)
   const [pushState, setPushState] = useState('unknown')
   const [pushBusy, setPushBusy] = useState(false)
+  const [services, setServices] = useState([])
+  const [bk, setBk] = useState(null) // booking config (availability_settings)
+  const [bkSaving, setBkSaving] = useState(false)
+  const [bkSaved, setBkSaved] = useState(false)
 
   useEffect(() => {
     if (authLoading) return
     if (!user) { router.replace('/login'); return }
     let cancelled = false
-    supabase.from('freelancers').select('id, name, trade').eq('user_id', user.id).maybeSingle()
-      .then(({ data }) => { if (!cancelled) { setProfile(data || null); setReady(true) } })
+    ;(async () => {
+      const { data: fp } = await supabase.from('freelancers').select('id, name, trade').eq('user_id', user.id).maybeSingle()
+      if (cancelled) return
+      setProfile(fp || null)
+      if (fp) {
+        const [{ data: svc }, { data: settings }] = await Promise.all([
+          supabase.from('services').select('id, name, price, duration_minutes, bookable').eq('freelancer_id', fp.id).order('created_at', { ascending: true }),
+          supabase.from('availability_settings').select('*').eq('freelancer_id', fp.id).maybeSingle(),
+        ])
+        if (cancelled) return
+        setServices(svc || [])
+        setBk(settings || { freelancer_id: fp.id, bookings_enabled: false, booking_mode: 'day', work_days: [1, 2, 3, 4, 5], work_start: '09:00', work_end: '17:00', lead_time_days: 1 })
+      }
+      if (!cancelled) setReady(true)
+    })()
     if (pushSupported()) getPushStatus().then(s => { if (!cancelled) setPushState(s) })
     else setPushState('unsupported')
     return () => { cancelled = true }
   }, [user, authLoading, router])
+
+  function patchBk(p) { setBk(b => ({ ...b, ...p })); setBkSaved(false) }
+  function toggleService(id) { setServices(s => s.map(x => x.id === id ? { ...x, bookable: !x.bookable } : x)); setBkSaved(false) }
+  function setServiceDur(id, v) { setServices(s => s.map(x => x.id === id ? { ...x, duration_minutes: Number(v) } : x)); setBkSaved(false) }
+  function toggleDay(d) {
+    setBk(b => {
+      const days = b.work_days || []
+      return { ...b, work_days: days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort((a, z) => a - z) }
+    })
+    setBkSaved(false)
+  }
+
+  async function saveBookings() {
+    setBkSaving(true)
+    await supabase.from('availability_settings').upsert({
+      freelancer_id: profile.id,
+      bookings_enabled: bk.bookings_enabled,
+      booking_mode: bk.booking_mode,
+      work_days: bk.work_days,
+      work_start: bk.work_start,
+      work_end: bk.work_end,
+      lead_time_days: Number(bk.lead_time_days) || 0,
+      show_on_profile: true,
+    }, { onConflict: 'freelancer_id' })
+    await Promise.all(services.map(s =>
+      supabase.from('services').update({ bookable: !!s.bookable, duration_minutes: s.duration_minutes || null }).eq('id', s.id)
+    ))
+    setBkSaving(false)
+    setBkSaved(true)
+    setTimeout(() => setBkSaved(false), 2500)
+  }
 
   async function togglePush() {
     setPushBusy(true)
@@ -84,6 +143,83 @@ export default function SettingsPage() {
               <div className="flex flex-wrap gap-2">
                 <a href="/dashboard" className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Edit profile</a>
                 <a href={`/freelancers/${profile.id}`} className="text-sm font-semibold px-4 py-2 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>View public profile</a>
+              </div>
+            </Card>
+          )}
+
+          {profile && bk && (
+            <Card title="Bookings" desc="Let clients request bookings for the services you choose. Off by default — quote-only trades can leave this disabled.">
+              <div className="flex items-center justify-between gap-3 py-1">
+                <span className="text-sm font-medium text-gray-800">Accept booking requests</span>
+                <Switch on={!!bk.bookings_enabled} onClick={() => patchBk({ bookings_enabled: !bk.bookings_enabled })} />
+              </div>
+
+              {bk.bookings_enabled && (
+                <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-5">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">How clients book</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {[['day', 'Request a day', 'Client requests a date; you confirm and agree the time in chat.'], ['slot', 'Exact time slots', 'Client picks an open slot from your working hours.']].map(([val, label, sub]) => (
+                        <button key={val} onClick={() => patchBk({ booking_mode: val })} className="text-left rounded-xl border-2 p-3 transition-colors" style={{ borderColor: bk.booking_mode === val ? '#00267F' : 'var(--border-card)', backgroundColor: bk.booking_mode === val ? 'var(--selected-fill)' : 'transparent' }}>
+                          <span className="block text-sm font-semibold" style={{ color: bk.booking_mode === val ? 'var(--accent)' : 'var(--foreground)' }}>{label}</span>
+                          <span className="block text-xs text-gray-500 mt-0.5">{sub}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Bookable services</p>
+                    {services.length === 0 ? (
+                      <p className="text-sm text-gray-400">Add services to your profile first, then mark which are bookable here.</p>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {services.map(s => (
+                          <div key={s.id} className="flex items-center gap-3 rounded-xl border border-gray-100 p-3">
+                            <button onClick={() => toggleService(s.id)} aria-pressed={!!s.bookable} className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0" style={s.bookable ? { backgroundColor: '#00267F', borderColor: '#00267F' } : { borderColor: '#D1D5DB' }}>
+                              {s.bookable && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                            </button>
+                            <span className="flex-1 min-w-0 text-sm font-medium text-gray-800 truncate">{s.name}</span>
+                            {s.bookable && (
+                              <select value={s.duration_minutes || 60} onChange={e => setServiceDur(s.id, e.target.value)} className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg bg-white text-gray-700 outline-none focus:border-gray-400">
+                                {DURATIONS.map(m => <option key={m} value={m}>{m < 60 ? `${m} min` : `${m / 60}h${m % 60 ? ` ${m % 60}m` : ''}`}</option>)}
+                              </select>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {bk.booking_mode === 'slot' && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Working hours</p>
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {DAY_LABELS.map((d, i) => {
+                          const on = (bk.work_days || []).includes(i)
+                          return <button key={i} onClick={() => toggleDay(i)} className="w-9 h-9 rounded-lg text-xs font-semibold transition-colors" style={on ? { backgroundColor: '#00267F', color: '#fff' } : { backgroundColor: 'var(--row-stripe)', color: '#6B7280', border: '1px solid var(--border-card)' }}>{d}</button>
+                        })}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <input type="time" value={bk.work_start} onChange={e => patchBk({ work_start: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-xl bg-white text-gray-900 outline-none focus:border-gray-400" />
+                        <span className="text-gray-400">to</span>
+                        <input type="time" value={bk.work_end} onChange={e => patchBk({ work_end: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-xl bg-white text-gray-900 outline-none focus:border-gray-400" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Earliest a client can book</p>
+                    <select value={bk.lead_time_days} onChange={e => patchBk({ lead_time_days: Number(e.target.value) })} className="text-sm px-3 py-2 border border-gray-200 rounded-xl bg-white text-gray-700 outline-none focus:border-gray-400">
+                      {[0, 1, 2, 3, 7].map(d => <option key={d} value={d}>{d === 0 ? 'Same day' : d === 1 ? 'From tomorrow' : `${d} days ahead`}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 mt-5">
+                <button onClick={saveBookings} disabled={bkSaving} className="text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#00267F' }}>{bkSaving ? 'Saving…' : 'Save booking settings'}</button>
+                {bkSaved && <span className="text-sm font-medium" style={{ color: '#16a34a' }}>✓ Saved</span>}
               </div>
             </Card>
           )}
