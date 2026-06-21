@@ -618,16 +618,16 @@ export default function Home() {
               <div className="relative w-64 h-64 flex items-center justify-center">
                 {/* Outer glow ring */}
                 <div className="absolute inset-0 rounded-full" style={{ backgroundColor: 'rgba(249,192,0,0.08)', border: '1px solid rgba(249,192,0,0.15)' }} />
-                {/* Three uniform cards positioned as an equilateral triangle
-                    whose centroid is the ring's exact centre (equal spacing). */}
+                {/* Three uniform cards as a centred triangle (centroid = ring
+                    centre) with clear gaps so they never touch. */}
                 {[
-                  { icon: '🔧', label: 'Plumber', rating: '4.9', dx: -45, dy: -26 },
-                  { icon: '💇', label: 'Stylist', rating: '4.9', dx: 45, dy: -26 },
-                  { icon: '💻', label: 'Developer', rating: '5.0', dx: 0, dy: 52 },
+                  { icon: '🔧', label: 'Plumber', rating: '4.9', dx: -48, dy: -36, verified: true },
+                  { icon: '💇', label: 'Stylist', rating: '4.9', dx: 48, dy: -36 },
+                  { icon: '💻', label: 'Developer', rating: '5.0', dx: 0, dy: 72 },
                 ].map(c => (
                   <div
                     key={c.label}
-                    className="absolute w-[72px] h-[80px] flex flex-col items-center justify-center gap-1 rounded-2xl"
+                    className="absolute w-[76px] h-[82px] flex flex-col items-center justify-center gap-1 rounded-2xl"
                     style={{
                       left: '50%', top: '50%',
                       transform: `translate(calc(-50% + ${c.dx}px), calc(-50% + ${c.dy}px))`,
@@ -635,18 +635,12 @@ export default function Home() {
                     }}
                   >
                     <span className="text-2xl leading-none">{c.icon}</span>
-                    <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>{c.label}</span>
+                    <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                      {c.label}{c.verified && <VerifiedBadge size={12} />}
+                    </span>
                     <span className="text-[11px] font-semibold" style={{ color: '#F9C000' }}>★ {c.rating}</span>
                   </div>
                 ))}
-                {/* Verified badge — sits on the upper-right of the ring */}
-                <div className="absolute flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-md" style={{ top: '8%', right: '4%', backgroundColor: '#F9C000', color: '#00267F' }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#00267F" strokeWidth="0" />
-                    <path d="M9 12l2 2 4-4" stroke="#F9C000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  Verified
-                </div>
               </div>
             </div>
 
