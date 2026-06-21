@@ -618,30 +618,27 @@ export default function Home() {
               <div className="relative w-64 h-64 flex items-center justify-center">
                 {/* Outer glow ring */}
                 <div className="absolute inset-0 rounded-full" style={{ backgroundColor: 'rgba(249,192,0,0.08)', border: '1px solid rgba(249,192,0,0.15)' }} />
-                {/* Triangular cluster of three uniform cards, sized to sit inside the ring */}
-                <div className="relative flex flex-col items-center gap-2.5">
-                  <div className="flex gap-2.5">
-                    {[['🔧', 'Plumber', '4.9'], ['💇', 'Stylist', '4.9']].map(([icon, label, rating]) => (
-                      <div
-                        key={label}
-                        className="w-[72px] h-[80px] flex flex-col items-center justify-center gap-1 rounded-2xl"
-                        style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
-                      >
-                        <span className="text-2xl leading-none">{icon}</span>
-                        <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>{label}</span>
-                        <span className="text-[11px] font-semibold" style={{ color: '#F9C000' }}>★ {rating}</span>
-                      </div>
-                    ))}
-                  </div>
+                {/* Three uniform cards positioned as an equilateral triangle
+                    whose centroid is the ring's exact centre (equal spacing). */}
+                {[
+                  { icon: '🔧', label: 'Plumber', rating: '4.9', dx: -45, dy: -26 },
+                  { icon: '💇', label: 'Stylist', rating: '4.9', dx: 45, dy: -26 },
+                  { icon: '💻', label: 'Developer', rating: '5.0', dx: 0, dy: 52 },
+                ].map(c => (
                   <div
-                    className="w-[72px] h-[80px] flex flex-col items-center justify-center gap-1 rounded-2xl"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                    key={c.label}
+                    className="absolute w-[72px] h-[80px] flex flex-col items-center justify-center gap-1 rounded-2xl"
+                    style={{
+                      left: '50%', top: '50%',
+                      transform: `translate(calc(-50% + ${c.dx}px), calc(-50% + ${c.dy}px))`,
+                      backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+                    }}
                   >
-                    <span className="text-2xl leading-none">💻</span>
-                    <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>Developer</span>
-                    <span className="text-[11px] font-semibold" style={{ color: '#F9C000' }}>★ 5.0</span>
+                    <span className="text-2xl leading-none">{c.icon}</span>
+                    <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>{c.label}</span>
+                    <span className="text-[11px] font-semibold" style={{ color: '#F9C000' }}>★ {c.rating}</span>
                   </div>
-                </div>
+                ))}
                 {/* Verified badge — sits on the upper-right of the ring */}
                 <div className="absolute flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-md" style={{ top: '8%', right: '4%', backgroundColor: '#F9C000', color: '#00267F' }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
