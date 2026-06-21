@@ -375,21 +375,21 @@ export default function Roadmap() {
                   style={{
                     padding: '20px 18px',
                     borderRadius: '12px',
-                    border: `2px solid ${selected ? '#00267F' : '#E5E7EB'}`,
-                    backgroundColor: selected ? '#EEF2FF' : 'white',
+                    border: `2px solid ${selected ? 'var(--accent)' : 'var(--border-card)'}`,
+                    backgroundColor: selected ? 'var(--selected-fill)' : 'var(--surface-card)',
                     cursor: submitted ? 'default' : 'pointer',
                     textAlign: 'left',
                     transition: 'border-color 0.15s, background-color 0.15s',
                     opacity: dimmed ? 0.5 : 1,
                   }}
-                  onMouseEnter={e => { if (!submitted) e.currentTarget.style.borderColor = '#00267F' }}
-                  onMouseLeave={e => { if (!submitted && !selected) e.currentTarget.style.borderColor = '#E5E7EB' }}
+                  onMouseEnter={e => { if (!submitted) e.currentTarget.style.borderColor = 'var(--accent)' }}
+                  onMouseLeave={e => { if (!submitted && !selected) e.currentTarget.style.borderColor = 'var(--border-card)' }}
                 >
                   <p style={{
                     fontFamily: "'Sora', sans-serif",
                     fontWeight: 700,
                     fontSize: '0.95rem',
-                    color: selected ? '#00267F' : '#111827',
+                    color: selected ? 'var(--accent)' : 'var(--foreground)',
                     marginBottom: '4px',
                   }}>
                     {opt.label}
@@ -397,24 +397,24 @@ export default function Roadmap() {
                   <p style={{
                     fontFamily: "'Inter', sans-serif",
                     fontSize: '0.8rem',
-                    color: '#6B7280',
+                    color: 'var(--muted)',
                     marginBottom: '14px',
                     lineHeight: 1.4,
                   }}>
                     {opt.sub}
                   </p>
-                  <div style={{ height: 4, borderRadius: '999px', backgroundColor: '#F3F4F6', overflow: 'hidden' }}>
+                  <div style={{ height: 4, borderRadius: '999px', backgroundColor: 'var(--row-stripe)', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%',
                       borderRadius: '999px',
                       width: barsVisible ? `${opt.pct}%` : '0%',
-                      backgroundColor: selected ? '#00267F' : '#D1D5DB',
+                      backgroundColor: selected ? 'var(--accent)' : 'var(--border-card)',
                       transition: 'width 0.7s ease',
                     }} />
                   </div>
                   <p style={{
                     fontSize: '0.72rem',
-                    color: '#9CA3AF',
+                    color: 'var(--muted)',
                     marginTop: '5px',
                     fontWeight: 600,
                     opacity: barsVisible ? 1 : 0,
@@ -432,11 +432,11 @@ export default function Roadmap() {
               display: 'inline-block',
               fontFamily: "'Inter', sans-serif",
               fontSize: '0.875rem',
-              color: '#166534',
+              color: '#16a34a',
               fontWeight: 600,
               padding: '12px 20px',
               borderRadius: '10px',
-              backgroundColor: '#DCFCE7',
+              backgroundColor: 'rgba(22,163,74,0.14)',
             }}>
               ✓ Thanks — your vote has been counted.
             </p>
@@ -447,8 +447,8 @@ export default function Roadmap() {
               style={{
                 padding: '12px 30px',
                 borderRadius: '999px',
-                backgroundColor: vote ? '#00267F' : '#D1D5DB',
-                color: 'white',
+                backgroundColor: vote ? 'var(--navy)' : 'var(--border-card)',
+                color: vote ? '#fff' : 'var(--muted)',
                 fontFamily: "'Sora', sans-serif",
                 fontWeight: 700,
                 fontSize: '0.875rem',

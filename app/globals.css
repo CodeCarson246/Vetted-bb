@@ -19,6 +19,8 @@
   --nav-bg: rgba(255, 255, 255, 0.88);
   --selected-fill: #EEF2FF;
   --row-stripe: #f9fafb;
+  /* Brand accent that flips for contrast on each theme's selected fill */
+  --accent: #00267F;
 }
 
 [data-theme="dark"] {
@@ -35,6 +37,7 @@
   --nav-bg: rgba(11, 18, 32, 0.85);
   --selected-fill: #1E2A4A;
   --row-stripe: #0F172A;
+  --accent: #93b8ff;
 }
 
 /* Page background used by main wrappers (replaces inline #F3F4F8) */
