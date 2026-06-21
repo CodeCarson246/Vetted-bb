@@ -739,3 +739,16 @@ ALTER TABLE appointments
   ADD COLUMN IF NOT EXISTS service_id     uuid REFERENCES services(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_appointments_client ON appointments (client_user_id);
+
+-- ============================================================
+-- SECTION 21 — CLIENTS READ THEIR OWN BOOKINGS (2026-06-21)
+-- Adds a SELECT policy so a client can read the booking rows they requested
+-- (client_user_id = them) for the /bookings page. Freelancers' private entries
+-- (manual jobs / time off, client_user_id null) stay invisible to clients.
+-- Policies are OR'd, so this only widens read access to the client's own rows.
+-- ============================================================
+
+DROP POLICY IF EXISTS "Clients read own booking requests" ON appointments;
+CREATE POLICY "Clients read own booking requests"
+  ON appointments FOR SELECT
+  USING (client_user_id = auth.uid());

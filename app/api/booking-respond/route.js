@@ -38,7 +38,7 @@ export async function POST(request) {
         type: action === 'confirm' ? 'booking_confirmed' : 'booking_declined',
         title: action === 'confirm' ? `${fname} confirmed your booking` : `${fname} declined your booking`,
         body: `${appt.title} · ${when}${appt.start_time ? ` · ${appt.start_time}` : ''}`,
-        link: `/freelancers/${appt.freelancer_id}`,
+        link: '/bookings',
       })
       sendPushToUser(appt.client_user_id, {
         title: action === 'confirm' ? 'Booking confirmed' : 'Booking declined',
