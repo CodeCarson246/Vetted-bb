@@ -9,6 +9,7 @@ import { parsePrice } from '@/lib/price'
 import { formatResponseTime } from '@/lib/formatResponseTime'
 import { useSaved } from '@/lib/useSaved'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
+import BookingWidget from '@/components/BookingWidget'
 import Tooltip from '@/components/Tooltip'
 import WeekView from '@/components/calendar/WeekView'
 import MonthView from '@/components/calendar/MonthView'
@@ -894,6 +895,9 @@ export default function FreelancerProfile() {
             </a>
           </div>
         ) : null}
+
+        {/* Request a booking — renders only when the freelancer enabled bookings */}
+        <BookingWidget freelancerId={freelancer.id} freelancerName={freelancer.name} />
 
         {/* Availability */}
         {(() => {

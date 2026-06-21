@@ -724,3 +724,18 @@ ALTER TABLE availability_settings
 
 ALTER TABLE services
   ADD COLUMN IF NOT EXISTS bookable boolean DEFAULT false;
+
+-- ============================================================
+-- SECTION 20 — CLIENT BOOKING REQUESTS (2026-06-21)
+-- Clients request a booking from a freelancer's public profile; it lands as a
+-- pending appointment the freelancer confirms/declines. Clients never write to
+-- appointments directly (RLS is freelancer-only) — the /api/request-booking and
+-- /api/booking-respond routes do it with the service role. These columns let an
+-- appointment carry the requesting client + the service it's for.
+-- ============================================================
+
+ALTER TABLE appointments
+  ADD COLUMN IF NOT EXISTS client_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS service_id     uuid REFERENCES services(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_appointments_client ON appointments (client_user_id);

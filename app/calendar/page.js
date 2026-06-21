@@ -114,7 +114,25 @@ export default function CalendarPage() {
     setForm({ ...EMPTY_FORM, date: toKey(dateObj || cursor), status: 'blocked', start_time: '' })
   }
   function openEdit(a) {
-    setForm({ id: a.id, title: a.title, client_name: a.client_name || '', client_email: a.client_email || '', date: a.date, start_time: a.start_time || '', duration_min: a.duration_min || 60, status: a.status, notes: a.notes || '', quote_id: a.quote_id || '' })
+    setForm({ id: a.id, title: a.title, client_name: a.client_name || '', client_email: a.client_email || '', date: a.date, start_time: a.start_time || '', duration_min: a.duration_min || 60, status: a.status, notes: a.notes || '', quote_id: a.quote_id || '', client_user_id: a.client_user_id || null })
+  }
+
+  async function respondBooking(action) {
+    if (!form.id) return
+    setSaving(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/booking-respond', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ appointment_id: form.id, action }),
+    })
+    setSaving(false)
+    if (!res.ok) { setToast({ msg: 'Could not update. Try again.', err: true }); return }
+    const newStatus = action === 'confirm' ? 'confirmed' : 'declined'
+    setAppts(prev => prev.map(a => a.id === form.id ? { ...a, status: newStatus } : a))
+    setForm(null)
+    setToast({ msg: action === 'confirm' ? 'Booking confirmed — client notified.' : 'Booking declined — client notified.' })
+    setTimeout(() => setToast(null), 3000)
   }
   function pickQuote(qid) {
     const q = quotes.find(x => x.id === qid)
@@ -393,6 +411,15 @@ export default function CalendarPage() {
               </div>
               <Field label="Notes (optional)"><textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400 resize-none" /></Field>
             </div>
+
+            {form.id && form.client_user_id && form.status === 'pending' && (
+              <div className="flex items-center gap-2 mt-4 p-3 rounded-xl" style={{ backgroundColor: 'rgba(249,192,0,0.12)' }}>
+                <span className="text-xs font-medium flex-1" style={{ color: '#B45309' }}>Client booking request — confirm or decline.</span>
+                <button onClick={() => respondBooking('decline')} disabled={saving} className="text-xs font-semibold px-3.5 py-2 rounded-full border border-gray-300 text-gray-600 hover:border-gray-500 disabled:opacity-50">Decline</button>
+                <button onClick={() => respondBooking('confirm')} disabled={saving} className="text-xs font-semibold px-3.5 py-2 rounded-full text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#16a34a' }}>Confirm</button>
+              </div>
+            )}
+
             <div className="flex items-center gap-3 mt-5">
               {form.id && <button onClick={deleteAppt} className="text-sm font-medium text-red-500 hover:text-red-700">Delete</button>}
               <div className="flex-1" />

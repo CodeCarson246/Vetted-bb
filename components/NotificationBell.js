@@ -8,7 +8,7 @@ const ICON = {
   message: '💬', reply: '💬', quote: '📄', invoice: '🧾', receipt: '✅',
   reminder: '⏰', review: '⭐', quote_accepted: '✅', quote_declined: '✖️',
   job_completed: '✅', job_paid: '💰', saved: '❤️', profile_views: '👁️', welcome: '👋',
-  saved_search: '🔍',
+  saved_search: '🔍', booking_request: '📅', booking_confirmed: '✅', booking_declined: '✖️',
 }
 
 function timeAgo(iso) {

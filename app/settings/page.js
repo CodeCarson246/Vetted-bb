@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import ThemeToggle from '@/components/ThemeToggle'
-import { pushSupported, getPushStatus, enablePush, disablePush } from '@/lib/push'
+import { getPushStatus, enablePush, disablePush } from '@/lib/push'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 const DURATIONS = [30, 45, 60, 90, 120, 180]
@@ -59,8 +59,7 @@ export default function SettingsPage() {
       }
       if (!cancelled) setReady(true)
     })()
-    if (pushSupported()) getPushStatus().then(s => { if (!cancelled) setPushState(s) })
-    else setPushState('unsupported')
+    getPushStatus().then(s => { if (!cancelled) setPushState(s) })
     return () => { cancelled = true }
   }, [user, authLoading, router])
 
