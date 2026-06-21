@@ -667,3 +667,40 @@ CREATE POLICY "Users manage own saved searches"
   ON saved_searches FOR ALL
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
+
+-- ============================================================
+-- SECTION 18 — CALENDAR APPOINTMENTS (2026-06-21)
+-- Private scheduling for the freelancer workspace calendar. Each row is a
+-- job/appointment the freelancer puts on their calendar (optionally linked
+-- to a quote). Unlike availability_blocks (public-readable), this is PRIVATE
+-- — only the owning freelancer can read it, since it carries client details.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS appointments (
+  id            uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  freelancer_id uuid        NOT NULL REFERENCES freelancers(id) ON DELETE CASCADE,
+  quote_id      uuid        REFERENCES quotes(id) ON DELETE SET NULL,
+  title         text        NOT NULL,
+  client_name   text,
+  client_email  text,
+  date          date        NOT NULL,
+  start_time    text,       -- 'HH:MM' 24h; null = all-day / blocked
+  duration_min  integer     DEFAULT 60,
+  status        text        NOT NULL DEFAULT 'confirmed', -- confirmed | pending | blocked
+  notes         text,
+  created_at    timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_appointments_freelancer_date ON appointments (freelancer_id, date);
+
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Freelancers manage own appointments" ON appointments;
+CREATE POLICY "Freelancers manage own appointments"
+  ON appointments FOR ALL
+  USING (
+    freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
+  )
+  WITH CHECK (
+    freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
+  );

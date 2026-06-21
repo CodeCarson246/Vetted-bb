@@ -8,7 +8,7 @@ import WorkspaceTopbar from '@/components/WorkspaceTopbar'
 
 // Freelancer "workspace" routes get the left sidebar shell; everything else
 // (public / marketplace / client) keeps the existing top nav + footer.
-const WORKSPACE = ['/dashboard', '/inbox', '/quotes', '/calendar']
+const WORKSPACE = ['/dashboard', '/inbox', '/quotes', '/calendar', '/settings']
 
 export default function AppChrome({ children }) {
   const pathname = usePathname() || ''
