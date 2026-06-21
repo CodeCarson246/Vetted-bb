@@ -10,7 +10,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const STATUS = {
   confirmed: { label: 'Confirmed', dot: '#16a34a', bg: 'rgba(22,163,74,0.12)', text: '#16a34a', border: 'rgba(22,163,74,0.45)' },
   pending: { label: 'Pending', dot: '#F9C000', bg: 'rgba(249,192,0,0.16)', text: '#B45309', border: 'rgba(249,192,0,0.55)' },
-  blocked: { label: 'Blocked', dot: '#9CA3AF', bg: 'rgba(107,114,128,0.14)', text: '#6B7280', border: 'rgba(107,114,128,0.4)' },
+  blocked: { label: 'Time off', dot: '#9CA3AF', bg: 'rgba(107,114,128,0.14)', text: '#6B7280', border: 'rgba(107,114,128,0.4)' },
 }
 const STATUS_KEYS = ['confirmed', 'pending', 'blocked']
 
@@ -110,6 +110,9 @@ export default function CalendarPage() {
   function openNew(dateObj) {
     setForm({ ...EMPTY_FORM, date: toKey(dateObj || cursor) })
   }
+  function openBlock(dateObj) {
+    setForm({ ...EMPTY_FORM, date: toKey(dateObj || cursor), status: 'blocked', start_time: '' })
+  }
   function openEdit(a) {
     setForm({ id: a.id, title: a.title, client_name: a.client_name || '', client_email: a.client_email || '', date: a.date, start_time: a.start_time || '', duration_min: a.duration_min || 60, status: a.status, notes: a.notes || '', quote_id: a.quote_id || '' })
   }
@@ -124,12 +127,13 @@ export default function CalendarPage() {
     }))
   }
   async function saveAppt() {
-    if (!form.title.trim()) { setToast({ msg: 'Add a title for the appointment.', err: true }); return }
+    const isBlock = form.status === 'blocked'
+    if (!isBlock && !form.title.trim()) { setToast({ msg: 'Add a title for the booking.', err: true }); return }
     setSaving(true)
     const payload = {
       freelancer_id: profile.id,
-      quote_id: form.quote_id || null,
-      title: form.title.trim(),
+      quote_id: isBlock ? null : (form.quote_id || null),
+      title: form.title.trim() || (isBlock ? 'Time off' : ''),
       client_name: form.client_name.trim() || null,
       client_email: form.client_email.trim() || null,
       date: form.date,
@@ -149,7 +153,7 @@ export default function CalendarPage() {
     }
     setSaving(false)
     setForm(null)
-    setToast({ msg: 'Appointment saved.' })
+    setToast({ msg: isBlock ? 'Time off saved.' : 'Booking saved.' })
     setTimeout(() => setToast(null), 3000)
   }
   async function deleteAppt() {
@@ -158,7 +162,7 @@ export default function CalendarPage() {
     setAppts(prev => prev.filter(a => a.id !== id))
     setForm(null)
     const { error } = await supabase.from('appointments').delete().eq('id', id)
-    setToast({ msg: error ? 'Could not delete.' : 'Appointment deleted.', err: !!error })
+    setToast({ msg: error ? 'Could not delete.' : 'Deleted.', err: !!error })
     setTimeout(() => setToast(null), 3000)
   }
 
@@ -189,12 +193,18 @@ export default function CalendarPage() {
         <div className="flex items-start justify-between gap-3 flex-wrap mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Calendar &amp; availability</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage your jobs and appointments.</p>
+            <p className="text-sm text-gray-500 mt-1">Track your jobs and bookings. Block time off when you&apos;re unavailable.</p>
           </div>
-          <button onClick={() => openNew(new Date())} className="inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-            New appointment
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => openBlock(new Date())} className="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#9CA3AF', color: '#6B7280' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /></svg>
+              Block time off
+            </button>
+            <button onClick={() => openNew(new Date())} className="inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+              New booking
+            </button>
+          </div>
         </div>
 
         {/* Stat cards */}
@@ -290,7 +300,7 @@ export default function CalendarPage() {
                   {(byDate[toKey(cursor)] || []).length === 0 ? (
                     <div className="text-center py-12">
                       <p className="text-sm text-gray-400 mb-3">Nothing scheduled for this day.</p>
-                      <button onClick={() => openNew(cursor)} className="text-sm font-semibold px-4 py-2 rounded-full text-white" style={{ backgroundColor: '#00267F' }}>+ Add appointment</button>
+                      <button onClick={() => openNew(cursor)} className="text-sm font-semibold px-4 py-2 rounded-full text-white" style={{ backgroundColor: '#00267F' }}>+ Add booking</button>
                     </div>
                   ) : (byDate[toKey(cursor)] || []).map(a => <ApptRow key={a.id} a={a} onClick={() => openEdit(a)} />)}
                 </div>
@@ -312,7 +322,7 @@ export default function CalendarPage() {
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
               <h2 className="font-semibold text-gray-900 mb-3">Today&apos;s schedule</h2>
               {todays.length === 0 ? (
-                <p className="text-sm text-gray-400">No appointments today.</p>
+                <p className="text-sm text-gray-400">Nothing booked today.</p>
               ) : (
                 <div className="flex flex-col gap-2">{todays.map(a => <ApptRow key={a.id} a={a} compact onClick={() => openEdit(a)} />)}</div>
               )}
@@ -321,7 +331,7 @@ export default function CalendarPage() {
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
               <h2 className="font-semibold text-gray-900 mb-3">Upcoming</h2>
               {upcoming.length === 0 ? (
-                <p className="text-sm text-gray-400">Nothing coming up. Add your first appointment.</p>
+                <p className="text-sm text-gray-400">Nothing coming up. Add your first booking.</p>
               ) : (
                 <div className="flex flex-col gap-3">
                   {upcoming.map(a => {
@@ -347,24 +357,26 @@ export default function CalendarPage() {
       {/* Add / edit modal */}
       {form && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 py-6 overflow-y-auto" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setForm(null)}>
+          {(() => { const isBlock = form.status === 'blocked'; return (
           <div className="bg-white rounded-2xl w-full max-w-md p-6 my-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-gray-900 text-lg mb-4">{form.id ? 'Edit appointment' : 'New appointment'}</h3>
+            <h3 className="font-bold text-gray-900 text-lg mb-4">{form.id ? (isBlock ? 'Edit time off' : 'Edit booking') : (isBlock ? 'Block time off' : 'New booking')}</h3>
             <div className="flex flex-col gap-3">
-              {quotes.length > 0 && !form.id && (
+              {quotes.length > 0 && !form.id && !isBlock && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">Link to a job (optional)</label>
                   <select value={form.quote_id} onChange={e => pickQuote(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400">
                     <option value="">— None —</option>
                     {quotes.map(q => <option key={q.id} value={q.id}>{q.invoice_number || q.quote_number} · {q.client_name || 'Client'}</option>)}
                   </select>
+                  <p className="text-xs text-gray-400 mt-1">Linking a job is just for your records — it doesn&apos;t change your public availability.</p>
                 </div>
               )}
-              <Field label="Title">
-                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Panel upgrade" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" />
+              <Field label={isBlock ? 'Label (optional)' : 'Title'}>
+                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder={isBlock ? 'e.g. Vacation (optional)' : 'e.g. Panel upgrade'} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" />
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Client name"><input value={form.client_name} onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" /></Field>
-                <Field label="Status">
+                {!isBlock && <Field label="Client name"><input value={form.client_name} onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" /></Field>}
+                <Field label="Type">
                   <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400">
                     {STATUS_KEYS.map(k => <option key={k} value={k}>{STATUS[k].label}</option>)}
                   </select>
@@ -388,6 +400,7 @@ export default function CalendarPage() {
               <button onClick={saveAppt} disabled={saving} className="text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#00267F' }}>{saving ? 'Saving…' : 'Save'}</button>
             </div>
           </div>
+          ) })()}
         </div>
       )}
 
