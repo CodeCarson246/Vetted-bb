@@ -1,6 +1,5 @@
 import "./globals.css";
-import SiteNav from '@/components/SiteNav'
-import SiteFooter from '@/components/SiteFooter'
+import AppChrome from '@/components/AppChrome'
 import InstallPrompt from '@/components/InstallPrompt'
 import { AuthProvider } from '@/lib/auth-context'
 
@@ -64,9 +63,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-full flex flex-col">
         <AuthProvider>
-          <SiteNav />
-          {children}
-          <SiteFooter />
+          <AppChrome>{children}</AppChrome>
           <InstallPrompt />
         </AuthProvider>
       </body>
