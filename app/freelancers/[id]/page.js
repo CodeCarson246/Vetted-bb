@@ -552,9 +552,9 @@ export default function FreelancerProfile() {
 
             {/* Avatar */}
             <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-              <div className="w-32 h-32 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center text-4xl font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', boxShadow: '0 0 0 3px rgba(249,192,0,0.55)' }}>
+              <div className="w-32 h-32 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center text-4xl font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '3px solid #F9C000' }}>
                 {freelancer.avatar_url
-                  ? <img src={freelancer.avatar_url} alt={freelancer.name} className="w-full h-full object-cover" />
+                  ? <img src={freelancer.avatar_url} alt={freelancer.name} className="block w-full h-full object-cover" style={{ display: 'block' }} />
                   : freelancer.name.split(' ').map(n => n[0]).join('')}
               </div>
               {!freelancer.avatar_url && user?.id === freelancer.user_id && (
