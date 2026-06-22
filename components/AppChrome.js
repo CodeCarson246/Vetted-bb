@@ -8,12 +8,14 @@ import WorkspaceTopbar from '@/components/WorkspaceTopbar'
 
 // Freelancer "workspace" routes get the left sidebar shell; everything else
 // (public / marketplace / client) keeps the existing top nav + footer.
-const WORKSPACE = ['/dashboard', '/inbox', '/quotes', '/calendar', '/settings']
+// Exact-match only: /clients is a workspace page but /clients/[id] is a public
+// client profile, so we must not match by prefix here.
+const WORKSPACE = ['/dashboard', '/inbox', '/quotes', '/calendar', '/clients', '/reviews', '/settings']
 
 export default function AppChrome({ children }) {
   const pathname = usePathname() || ''
   const [open, setOpen] = useState(false)
-  const isWorkspace = WORKSPACE.some(p => pathname === p || pathname.startsWith(p + '/'))
+  const isWorkspace = WORKSPACE.includes(pathname)
 
   if (isWorkspace) {
     return (
