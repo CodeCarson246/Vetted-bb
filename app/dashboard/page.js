@@ -1526,7 +1526,7 @@ function DashboardInner() {
             <div id="edit-profile-section" className="rounded-2xl mb-6 overflow-hidden" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
               <div className="px-6 sm:px-10 py-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
                 {/* Avatar */}
-                <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 overflow-hidden" style={{ boxShadow: '0 0 0 4px rgba(249,192,0,0.45)' }}>
+                <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold flex-shrink-0 overflow-hidden" style={{ border: '3px solid #F9C000' }}>
                   {profile.avatar_url
                     ? <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
                     : profile.name.split(' ').map(n => n[0]).join('')}
