@@ -557,10 +557,10 @@ export default function FreelancerProfile() {
                   src={freelancer.avatar_url}
                   alt={freelancer.name}
                   className="w-32 h-32 object-cover flex-shrink-0"
-                  style={{ display: 'block', borderRadius: '1rem', border: '3px solid #F9C000' }}
+                  style={{ display: 'block', borderRadius: '50%', border: '3px solid #F9C000' }}
                 />
               ) : (
-                <div className="w-32 h-32 rounded-2xl flex-shrink-0 flex items-center justify-center text-4xl font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '3px solid #F9C000' }}>
+                <div className="w-32 h-32 rounded-full flex-shrink-0 flex items-center justify-center text-4xl font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '3px solid #F9C000' }}>
                   {freelancer.name.split(' ').map(n => n[0]).join('')}
                 </div>
               )}
