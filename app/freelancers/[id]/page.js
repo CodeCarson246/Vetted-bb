@@ -552,11 +552,18 @@ export default function FreelancerProfile() {
 
             {/* Avatar */}
             <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-              <div className="w-32 h-32 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center text-4xl font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '3px solid #F9C000' }}>
-                {freelancer.avatar_url
-                  ? <img src={freelancer.avatar_url} alt={freelancer.name} className="block w-full h-full object-cover" style={{ display: 'block' }} />
-                  : freelancer.name.split(' ').map(n => n[0]).join('')}
-              </div>
+              {freelancer.avatar_url ? (
+                <img
+                  src={freelancer.avatar_url}
+                  alt={freelancer.name}
+                  className="w-32 h-32 object-cover flex-shrink-0"
+                  style={{ display: 'block', borderRadius: '1rem', border: '3px solid #F9C000' }}
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-2xl flex-shrink-0 flex items-center justify-center text-4xl font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '3px solid #F9C000' }}>
+                  {freelancer.name.split(' ').map(n => n[0]).join('')}
+                </div>
+              )}
               {!freelancer.avatar_url && user?.id === freelancer.user_id && (
                 <a href="/dashboard?edit=true" className="text-xs font-medium underline underline-offset-2 opacity-80 hover:opacity-100 transition-opacity" style={{ color: '#F9C000' }}>
                   Add a photo
