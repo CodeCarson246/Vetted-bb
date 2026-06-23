@@ -1,23 +1,44 @@
 'use client'
-import { useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth-context'
 import SiteNav from '@/components/SiteNav'
 import SiteFooter from '@/components/SiteFooter'
 import WorkspaceSidebar from '@/components/WorkspaceSidebar'
 import WorkspaceTopbar from '@/components/WorkspaceTopbar'
 
-// Freelancer "workspace" routes get the left sidebar shell; everything else
-// (public / marketplace / client) keeps the existing top nav + footer.
-// Exact-match only: /clients is a workspace page but /clients/[id] is a public
-// client profile, so we must not match by prefix here.
-const WORKSPACE = ['/dashboard', '/inbox', '/quotes', '/calendar', '/clients', '/reviews', '/settings']
-
+// Chrome is role-based: a logged-in FREELANCER gets the workspace sidebar on
+// every page; clients and logged-out visitors get the marketplace top nav +
+// footer. The freelancer flag is cached so returning freelancers render the
+// sidebar immediately instead of flashing the top nav first.
 export default function AppChrome({ children }) {
-  const pathname = usePathname() || ''
+  const { user, loading } = useAuth()
+  const [isFreelancer, setIsFreelancer] = useState(() => {
+    if (typeof window === 'undefined') return null
+    const c = localStorage.getItem('vetted_is_freelancer')
+    return c === '1' ? true : c === '0' ? false : null
+  })
   const [open, setOpen] = useState(false)
-  const isWorkspace = WORKSPACE.includes(pathname)
 
-  if (isWorkspace) {
+  useEffect(() => {
+    if (loading) return
+    if (!user) {
+      setIsFreelancer(false)
+      try { localStorage.setItem('vetted_is_freelancer', '0') } catch { /* ignore */ }
+      return
+    }
+    let cancelled = false
+    supabase.from('freelancers').select('id').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        const v = !!data
+        setIsFreelancer(v)
+        try { localStorage.setItem('vetted_is_freelancer', v ? '1' : '0') } catch { /* ignore */ }
+      })
+    return () => { cancelled = true }
+  }, [user, loading])
+
+  if (isFreelancer) {
     return (
       <>
         <WorkspaceSidebar open={open} onClose={() => setOpen(false)} />
