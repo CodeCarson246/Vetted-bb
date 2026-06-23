@@ -1,8 +1,11 @@
 'use client'
+import Link from 'next/link'
 
 function FooterLink({ href, children }) {
+  // Internal routes use client-side <Link>; external (mailto:, http) stay <a>.
+  const Cmp = href.startsWith('/') ? Link : 'a'
   return (
-    <a
+    <Cmp
       href={href}
       style={{
         color: 'rgba(255,255,255,0.6)',
@@ -16,7 +19,7 @@ function FooterLink({ href, children }) {
       onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
     >
       {children}
-    </a>
+    </Cmp>
   )
 }
 
@@ -67,7 +70,7 @@ export default function SiteFooter() {
 
           {/* Brand column */}
           <div>
-            <a href="/" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '14px' }}>
+            <Link href="/" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '14px' }}>
               <span style={{
                 backgroundColor: '#FFFFFF',
                 borderRadius: '999px',
@@ -84,7 +87,7 @@ export default function SiteFooter() {
                 <span style={{ color: '#F9C000' }}>.</span>
                 <span style={{ color: '#00267F' }}>bb</span>
               </span>
-            </a>
+            </Link>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem', maxWidth: '220px', lineHeight: 1.6, margin: 0 }}>
               Connecting Barbados — a free marketplace for trusted local professionals and the clients who need them.
             </p>
@@ -120,14 +123,14 @@ export default function SiteFooter() {
             © 2026 Vetted.bb · Connecting Barbados 🇧🇧
           </p>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <a href="/terms" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none', transition: 'color 0.15s' }}
+            <Link href="/terms" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none', transition: 'color 0.15s' }}
               onMouseEnter={e => e.currentTarget.style.color = 'white'}
               onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
-            >Terms of Service</a>
-            <a href="/privacy" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none', transition: 'color 0.15s' }}
+            >Terms of Service</Link>
+            <Link href="/privacy" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none', transition: 'color 0.15s' }}
               onMouseEnter={e => e.currentTarget.style.color = 'white'}
               onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
-            >Privacy Policy</a>
+            >Privacy Policy</Link>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
@@ -177,14 +178,14 @@ export default function NotificationBell() {
             )}
           </div>
 
-          <a
+          <Link
             href="/notifications"
             onClick={() => setOpen(false)}
             className="border-t border-gray-100 hover:bg-gray-50"
             style={{ display: 'block', textAlign: 'center', padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#00267F', textDecoration: 'none' }}
           >
             See all notifications →
-          </a>
+          </Link>
         </div>
       )}
     </div>

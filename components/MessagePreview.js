@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
@@ -165,7 +166,7 @@ export default function MessagePreview({ freelancerProfile, unreadCount }) {
         >
           <div className="border-b border-gray-100" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
             <span className="text-gray-900" style={{ fontWeight: 600, fontSize: 14 }}>Messages</span>
-            <a href={destination} onClick={() => setOpen(false)} style={{ fontSize: 12, fontWeight: 600, color: '#00267F', textDecoration: 'none' }}>Open inbox →</a>
+            <Link href={destination} onClick={() => setOpen(false)} style={{ fontSize: 12, fontWeight: 600, color: '#00267F', textDecoration: 'none' }}>Open inbox →</Link>
           </div>
 
           <div style={{ maxHeight: 380, overflowY: 'auto' }}>
@@ -198,14 +199,14 @@ export default function MessagePreview({ freelancerProfile, unreadCount }) {
             )}
           </div>
 
-          <a
+          <Link
             href={destination}
             onClick={() => setOpen(false)}
             className="border-t border-gray-100 hover:bg-gray-50"
             style={{ display: 'block', textAlign: 'center', padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#00267F', textDecoration: 'none' }}
           >
             See all messages →
-          </a>
+          </Link>
         </div>
       )}
     </div>

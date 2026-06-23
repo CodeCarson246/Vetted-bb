@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
@@ -125,7 +126,7 @@ export default function SiteNav() {
       }}>
 
         {/* Logo */}
-        <a href="/" style={{
+        <Link href="/" style={{
           fontFamily: "'Sora', sans-serif",
           fontWeight: 800,
           fontSize: '1.4rem',
@@ -137,7 +138,7 @@ export default function SiteNav() {
           <span style={{ color: '#00267F' }}>Vetted</span>
           <span style={{ color: '#F9C000' }}>.</span>
           <span style={{ color: '#00267F' }}>bb</span>
-        </a>
+        </Link>
 
         {/* Centre search bar — hidden on /search, hidden under md (768px) */}
         {!isSearchPage && (
@@ -213,7 +214,7 @@ export default function SiteNav() {
           <ThemeToggle />
 
           {/* Browse Professionals link */}
-          <a
+          <Link
             href="/search"
             className="nav-auth-link"
             style={{
@@ -230,13 +231,13 @@ export default function SiteNav() {
             onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
             Browse Professionals
-          </a>
+          </Link>
 
           {user ? (
             <>
               {/* Quotes — freelancers only */}
               {freelancerProfile && (
-                <a
+                <Link
                   href="/quotes"
                   title="My quotes"
                   style={{
@@ -253,12 +254,12 @@ export default function SiteNav() {
                   <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                </a>
+                </Link>
               )}
 
               {/* My jobs — clients only */}
               {!freelancerProfile && (
-                <a
+                <Link
                   href="/jobs"
                   title="My jobs"
                   style={{
@@ -275,11 +276,11 @@ export default function SiteNav() {
                   <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M20 7h-3V5a2 2 0 00-2-2H9a2 2 0 00-2 2v2H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM9 5h6v2H9V5z" />
                   </svg>
-                </a>
+                </Link>
               )}
 
               {/* Saved professionals — heart icon */}
-              <a
+              <Link
                 href="/saved"
                 title="Saved professionals"
                 style={{
@@ -296,7 +297,7 @@ export default function SiteNav() {
                 <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
-              </a>
+              </Link>
 
               {/* Notifications bell */}
               <NotificationBell />
@@ -353,7 +354,7 @@ export default function SiteNav() {
                     overflow: 'hidden',
                     padding: '4px 0',
                   }}>
-                    <a
+                    <Link
                       href="/dashboard"
                       onClick={() => setDropdownOpen(false)}
                       style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
@@ -361,9 +362,9 @@ export default function SiteNav() {
                       onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                     >
                       Dashboard
-                    </a>
+                    </Link>
                     {!freelancerProfile && (
-                      <a
+                      <Link
                         href="/jobs"
                         onClick={() => setDropdownOpen(false)}
                         style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
@@ -371,10 +372,10 @@ export default function SiteNav() {
                         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                       >
                         My jobs
-                      </a>
+                      </Link>
                     )}
                     {!freelancerProfile && (
-                      <a
+                      <Link
                         href="/bookings"
                         onClick={() => setDropdownOpen(false)}
                         style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
@@ -382,10 +383,10 @@ export default function SiteNav() {
                         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                       >
                         My bookings
-                      </a>
+                      </Link>
                     )}
                     {profileId && (
-                      <a
+                      <Link
                         href={`/freelancers/${profileId}`}
                         onClick={() => setDropdownOpen(false)}
                         style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
@@ -393,7 +394,7 @@ export default function SiteNav() {
                         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                       >
                         View my profile
-                      </a>
+                      </Link>
                     )}
                     <div style={{ borderTop: '1px solid var(--border-card)', margin: '4px 0' }} />
                     <button
@@ -424,7 +425,7 @@ export default function SiteNav() {
             </>
           ) : (
             <>
-              <a
+              <Link
                 href="/login"
                 className="nav-auth-link"
                 style={{
@@ -444,8 +445,8 @@ export default function SiteNav() {
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 Log in
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/signup?role=client"
                 style={{
                   color: '#00267F',
@@ -465,8 +466,8 @@ export default function SiteNav() {
                 className="hide-below-lg nav-auth-link"
               >
                 Join as a Client
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/signup?role=freelancer"
                 style={{
                   backgroundColor: '#F9C000',
@@ -484,7 +485,7 @@ export default function SiteNav() {
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F9C000'; e.currentTarget.style.transform = 'translateY(0)' }}
               >
                 Join as a Freelancer
-              </a>
+              </Link>
             </>
           )}
         </nav>
@@ -492,7 +493,7 @@ export default function SiteNav() {
         {/* Mobile: quick icons + theme toggle next to hamburger */}
         <span className="mobile-hamburger" style={{ display: 'none', alignItems: 'center', gap: 2 }}>
           {user && freelancerProfile && (
-            <a
+            <Link
               href="/quotes"
               title="My quotes"
               style={{ display: 'inline-flex', alignItems: 'center', padding: 6, color: '#6B7280', textDecoration: 'none' }}
@@ -500,10 +501,10 @@ export default function SiteNav() {
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-            </a>
+            </Link>
           )}
           {user && !freelancerProfile && (
-            <a
+            <Link
               href="/jobs"
               title="My jobs"
               style={{ display: 'inline-flex', alignItems: 'center', padding: 6, color: '#6B7280', textDecoration: 'none' }}
@@ -511,7 +512,7 @@ export default function SiteNav() {
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20 7h-3V5a2 2 0 00-2-2H9a2 2 0 00-2 2v2H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM9 5h6v2H9V5z" />
               </svg>
-            </a>
+            </Link>
           )}
           {user && <NotificationBell />}
           {user && (
@@ -567,7 +568,7 @@ export default function SiteNav() {
         >
           {user ? (
             <>
-              <a
+              <Link
                 href="/dashboard"
                 onClick={() => setMenuOpen(false)}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}
@@ -580,11 +581,11 @@ export default function SiteNav() {
                 <span style={{ color: '#374151', fontSize: '0.875rem', fontWeight: 500 }}>
                   {freelancerProfile?.name || clientProfile?.display_name || user?.user_metadata?.full_name || user?.email}
                 </span>
-              </a>
+              </Link>
               {profileId && (
-                <a href={`/freelancers/${profileId}`} onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>View my profile</a>
+                <Link href={`/freelancers/${profileId}`} onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>View my profile</Link>
               )}
-              <a
+              <Link
                 href={freelancerProfile ? '/inbox' : '/messages'}
                 onClick={() => setMenuOpen(false)}
                 style={{ color: '#374151', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}
@@ -595,18 +596,18 @@ export default function SiteNav() {
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
-              </a>
+              </Link>
               {freelancerProfile && (
-                <a href="/quotes" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My quotes</a>
+                <Link href="/quotes" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My quotes</Link>
               )}
               {!freelancerProfile && (
-                <a href="/bookings" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My bookings</a>
+                <Link href="/bookings" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My bookings</Link>
               )}
               {!freelancerProfile && (
-                <a href="/jobs" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My jobs</a>
+                <Link href="/jobs" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My jobs</Link>
               )}
-              <a href="/saved" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Saved professionals</a>
-              <a href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</a>
+              <Link href="/saved" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Saved professionals</Link>
+              <Link href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</Link>
               <button
                 onClick={() => supabase.auth.signOut().then(() => { window.location.href = '/login' })}
                 style={{ textAlign: 'left', color: '#ef4444', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}
@@ -616,16 +617,16 @@ export default function SiteNav() {
             </>
           ) : (
             <>
-              <a href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</a>
-              <a href="/login" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Log in</a>
-              <a href="/signup?role=client" onClick={() => setMenuOpen(false)} style={{ color: '#00267F', fontWeight: 600, textDecoration: 'none' }}>Join as a Client</a>
-              <a
+              <Link href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</Link>
+              <Link href="/login" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Log in</Link>
+              <Link href="/signup?role=client" onClick={() => setMenuOpen(false)} style={{ color: '#00267F', fontWeight: 600, textDecoration: 'none' }}>Join as a Client</Link>
+              <Link
                 href="/signup?role=freelancer"
                 onClick={() => setMenuOpen(false)}
                 style={{ backgroundColor: '#F9C000', color: '#00267F', padding: '10px 16px', borderRadius: '10px', fontFamily: "'Sora', sans-serif", fontSize: '0.875rem', fontWeight: 600, textDecoration: 'none', textAlign: 'center' }}
               >
                 Join as a Freelancer
-              </a>
+              </Link>
             </>
           )}
         </div>
