@@ -125,9 +125,6 @@ function SignupContent() {
             ))}
           </div>
         </div>
-
-        {/* Yellow accent stripe */}
-        <div className="h-1.5 w-full flex-shrink-0" style={{ backgroundColor: '#F9C000' }} />
       </div>
 
       {/* Right panel */}
