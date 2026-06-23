@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
@@ -79,18 +80,18 @@ export default function WorkspaceSidebar({ open, onClose }) {
         style={{ backgroundColor: '#001652' }}
       >
         {/* Logo */}
-        <a href="/dashboard" onClick={onClose} className="flex items-center px-6 flex-shrink-0" style={{ height: 68, textDecoration: 'none' }}>
+        <Link href="/dashboard" onClick={onClose} className="flex items-center px-6 flex-shrink-0" style={{ height: 68, textDecoration: 'none' }}>
           <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '1.35rem', letterSpacing: '-0.5px', lineHeight: 1 }}>
             <span style={{ color: '#fff' }}>Vetted</span><span style={{ color: '#F9C000' }}>.</span><span style={{ color: '#fff' }}>bb</span>
           </span>
-        </a>
+        </Link>
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1">
           {NAV.map(item => {
             const active = isActive(item.href)
             return (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
@@ -104,24 +105,24 @@ export default function WorkspaceSidebar({ open, onClose }) {
                     {unread > 9 ? '9+' : unread}
                   </span>
                 )}
-              </a>
+              </Link>
             )
           })}
 
           <div className="my-3 mx-2" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }} />
 
           {profile && (
-            <a href={`/freelancers/${profile.id}`} onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
+            <Link href={`/freelancers/${profile.id}`} onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
               <NavIcon name="user" /> <span className="flex-1">View public profile</span>
-            </a>
+            </Link>
           )}
-          <a href="/search" onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
+          <Link href="/search" onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
             <NavIcon name="search" /> <span className="flex-1">Browse marketplace</span>
-          </a>
+          </Link>
         </nav>
 
         {/* Profile footer */}
-        <a href="/dashboard" onClick={onClose} className="flex items-center gap-3 px-4 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', textDecoration: 'none' }}>
+        <Link href="/dashboard" onClick={onClose} className="flex items-center gap-3 px-4 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', textDecoration: 'none' }}>
           <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F9C000', color: '#00267F', fontWeight: 700, fontSize: '0.78rem' }}>
             {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : initials}
           </div>
@@ -129,7 +130,7 @@ export default function WorkspaceSidebar({ open, onClose }) {
             <p className="text-sm font-semibold truncate" style={{ color: '#fff' }}>{profile?.name || 'Your profile'}</p>
             <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>{profile?.trade || 'Freelancer'}</p>
           </div>
-        </a>
+        </Link>
       </aside>
     </>
   )
