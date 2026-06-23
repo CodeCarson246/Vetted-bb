@@ -24,7 +24,7 @@ export default function MonthView({ year, month, blocks, isPublic, onDayClick })
             textAlign: 'center',
             fontSize: '0.72rem',
             fontWeight: 600,
-            color: '#9CA3AF',
+            color: isPublic ? 'var(--muted)' : '#9CA3AF',
           }}>
             {d}
           </div>
@@ -79,7 +79,7 @@ export default function MonthView({ year, month, blocks, isPublic, onDayClick })
                   justifyContent: 'center',
                   fontSize: '0.72rem',
                   fontWeight: today ? 700 : 500,
-                  color: today ? '#00267F' : (inMonth ? '#374151' : '#9CA3AF'),
+                  color: today ? '#00267F' : (inMonth ? (isPublic ? 'var(--foreground)' : '#374151') : (isPublic ? 'var(--muted)' : '#9CA3AF')),
                   marginBottom: '4px',
                 }}>
                   {day.getDate()}

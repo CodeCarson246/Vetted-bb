@@ -149,8 +149,8 @@ function EarningsChart({ series }) {
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 'auto' }} role="img" aria-label="Earnings over time">
       <defs>
         <linearGradient id="earnFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#00267F" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#00267F" stopOpacity="0" />
+          <stop offset="0%" stopColor="#F9C000" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#F9C000" stopOpacity="0" />
         </linearGradient>
       </defs>
       {ticks.map((t, i) => (
@@ -160,8 +160,8 @@ function EarningsChart({ series }) {
         </g>
       ))}
       <path d={area} fill="url(#earnFill)" />
-      <path d={line} fill="none" stroke="#00267F" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {pts.map((p, i) => series[i].value > 0 ? <circle key={i} cx={p[0]} cy={p[1]} r="3" fill="#fff" stroke="#00267F" strokeWidth="2" /> : null)}
+      <path d={line} fill="none" stroke="#F9C000" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      {pts.map((p, i) => series[i].value > 0 ? <circle key={i} cx={p[0]} cy={p[1]} r="3" fill="#fff" stroke="#F9C000" strokeWidth="2" /> : null)}
       {series.map((s, i) => s.label ? <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#9ca3af">{s.label}</text> : null)}
     </svg>
   )

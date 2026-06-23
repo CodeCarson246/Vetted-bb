@@ -46,7 +46,7 @@ export default function WeekView({ weekDays, blocks, isPublic, onCellClick }) {
                   textAlign: 'center',
                   fontSize: '0.72rem',
                   fontWeight: 600,
-                  color: today ? '#00267F' : '#6B7280',
+                  color: today ? (isPublic ? '#F9C000' : '#00267F') : (isPublic ? 'var(--muted)' : '#6B7280'),
                   borderLeft: today
                     ? '3px solid #F9C000'
                     : '1px solid rgba(0,38,127,0.06)',
@@ -80,7 +80,7 @@ export default function WeekView({ weekDays, blocks, isPublic, onCellClick }) {
                 justifyContent: 'flex-end',
                 minHeight: '38px',
               }}>
-                <span style={{ fontSize: '0.68rem', color: '#9CA3AF', lineHeight: 1 }}>
+                <span style={{ fontSize: '0.68rem', color: isPublic ? 'var(--muted)' : '#9CA3AF', lineHeight: 1 }}>
                   {formatHour(hour)}
                 </span>
               </div>
