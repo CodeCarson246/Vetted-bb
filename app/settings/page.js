@@ -39,15 +39,21 @@ export default function SettingsPage() {
   const [bk, setBk] = useState(null) // booking config (availability_settings)
   const [bkSaving, setBkSaving] = useState(false)
   const [bkSaved, setBkSaved] = useState(false)
+  const [hidden, setHidden] = useState(false)
+  const [hiddenBusy, setHiddenBusy] = useState(false)
+  const [showDeactConfirm, setShowDeactConfirm] = useState(false)
+  const [deactBusy, setDeactBusy] = useState(false)
+  const [deactError, setDeactError] = useState('')
 
   useEffect(() => {
     if (authLoading) return
     if (!user) { router.replace('/login'); return }
     let cancelled = false
     ;(async () => {
-      const { data: fp } = await supabase.from('freelancers').select('id, name, trade').eq('user_id', user.id).maybeSingle()
+      const { data: fp } = await supabase.from('freelancers').select('id, name, trade, hidden').eq('user_id', user.id).maybeSingle()
       if (cancelled) return
       setProfile(fp || null)
+      setHidden(!!fp?.hidden)
       if (fp) {
         const [{ data: svc }, { data: settings }] = await Promise.all([
           supabase.from('services').select('id, name, price, duration_minutes, bookable').eq('freelancer_id', fp.id).order('created_at', { ascending: true }),
@@ -92,6 +98,34 @@ export default function SettingsPage() {
     setBkSaving(false)
     setBkSaved(true)
     setTimeout(() => setBkSaved(false), 2500)
+  }
+
+  async function toggleHidden() {
+    const next = !hidden
+    setHiddenBusy(true)
+    const { error } = await supabase.from('freelancers').update({ hidden: next }).eq('id', profile.id)
+    if (!error) setHidden(next)
+    setHiddenBusy(false)
+  }
+
+  async function deactivateAccount() {
+    setDeactBusy(true)
+    setDeactError('')
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    const res = await fetch('/api/account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'deactivate' }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setDeactError(body.error || 'Something went wrong. Please try again.')
+      setDeactBusy(false)
+      return
+    }
+    await supabase.auth.signOut()
+    window.location.href = '/'
   }
 
   async function togglePush() {
@@ -235,11 +269,68 @@ export default function SettingsPage() {
             {pushState === 'denied' && <p className="text-xs text-gray-400 mt-2">Notifications are blocked in your browser settings — re-enable them there to turn this on.</p>}
           </Card>
 
+          {profile && (
+            <Card title="Profile visibility" desc="Hide your public profile without deactivating. You disappear from search, categories and featured listings — existing conversations, quotes and bookings keep working. Turn it back on any time.">
+              <div className="flex items-center justify-between gap-3 py-1">
+                <span className="text-sm font-medium text-gray-800">
+                  {hidden ? 'Profile is hidden from the marketplace' : 'Profile is visible on the marketplace'}
+                </span>
+                <Switch on={hidden} onClick={() => { if (!hiddenBusy) toggleHidden() }} />
+              </div>
+              {hidden && (
+                <p className="text-xs mt-2" style={{ color: '#b45309' }}>
+                  Clients can no longer find you or view your profile page. Flip the switch to go live again.
+                </p>
+              )}
+            </Card>
+          )}
+
           <Card title="Appearance" desc="Switch between light and dark mode.">
             <ThemeToggle />
           </Card>
+
+          <div className="rounded-2xl p-5 sm:p-6" style={{ border: '1px solid #fecaca', backgroundColor: 'rgba(239,68,68,0.04)' }}>
+            <h2 className="font-semibold" style={{ color: '#b91c1c' }}>Deactivate account</h2>
+            <p className="text-sm text-gray-500 mt-0.5 mb-4">
+              Takes your account down immediately. You have <strong>60 days</strong> to change your mind — just log
+              back in and hit Reactivate. After that, your account and all its data are permanently deleted.
+            </p>
+            <button
+              onClick={() => setShowDeactConfirm(true)}
+              className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#dc2626' }}
+            >
+              Deactivate my account
+            </button>
+          </div>
         </div>
       </div>
+
+      {showDeactConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => { if (!deactBusy) setShowDeactConfirm(false) }}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Deactivate your account?</h3>
+            <div className="text-sm text-gray-600 leading-relaxed mb-4">
+              <p className="mb-2">Here&apos;s what happens next:</p>
+              <ul className="list-disc list-inside space-y-1">
+                {profile && <li>Your public profile and services come down immediately.</li>}
+                <li>You&apos;ll be signed out on all devices you use.</li>
+                <li>For <strong>60 days</strong> you can log back in and reactivate — everything is restored.</li>
+                <li>After 60 days, your account and all data are <strong>permanently deleted</strong>.</li>
+              </ul>
+            </div>
+            {deactError && <p className="text-sm mb-3" style={{ color: '#dc2626' }}>{deactError}</p>}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowDeactConfirm(false)} disabled={deactBusy} className="text-sm font-semibold px-4 py-2 rounded-full border border-gray-200 text-gray-700 hover:border-gray-400 transition-colors disabled:opacity-50">
+                Keep my account
+              </button>
+              <button onClick={deactivateAccount} disabled={deactBusy} className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50" style={{ backgroundColor: '#dc2626' }}>
+                {deactBusy ? 'Deactivating…' : 'Deactivate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

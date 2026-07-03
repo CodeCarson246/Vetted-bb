@@ -31,8 +31,11 @@ export async function POST(request) {
     const { data: svc } = await admin.from('services').select('id, name, duration_minutes, bookable').eq('id', service_id).maybeSingle()
     if (!svc?.bookable) return Response.json({ error: 'That service is not available for booking.' }, { status: 400 })
 
-    const { data: freelancer } = await admin.from('freelancers').select('user_id, name').eq('id', freelancer_id).maybeSingle()
+    const { data: freelancer } = await admin.from('freelancers').select('user_id, name, hidden, deactivated_at').eq('id', freelancer_id).maybeSingle()
     if (freelancer?.user_id === user.id) return Response.json({ error: 'You cannot book your own services.' }, { status: 400 })
+    if (!freelancer || freelancer.hidden || freelancer.deactivated_at) {
+      return Response.json({ error: 'This professional is not accepting bookings.' }, { status: 400 })
+    }
 
     const { data: cp } = await admin.from('client_profiles').select('display_name').eq('user_id', user.id).maybeSingle()
     const clientName = cp?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client'

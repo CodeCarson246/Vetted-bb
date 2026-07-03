@@ -200,7 +200,7 @@ function DashboardInner() {
         const [{ data: msgs }, { data: rLeft }, { data: topF }] = await Promise.all([
           supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location)').eq('sender_email', user.email).order('created_at', { ascending: false }),
           supabase.from('reviews').select('*').eq('author_user_id', user.id).order('date', { ascending: false }),
-          supabase.from('freelancers').select('id, name, trade, avatar_url, rating, min_price').order('rating', { ascending: false }).limit(3),
+          supabase.from('freelancers').select('id, name, trade, avatar_url, rating, min_price').eq('hidden', false).is('deactivated_at', null).order('rating', { ascending: false }).limit(3),
         ])
         setClientMessages(msgs || [])
         setClientReviewsLeft(rLeft || [])

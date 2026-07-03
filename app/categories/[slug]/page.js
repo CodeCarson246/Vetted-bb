@@ -52,6 +52,8 @@ export default async function CategoryPage({ params }) {
     .from('freelancers')
     .select('id, name, trade, avatar_url, location, rating, review_count, available, bio, verified, phone_verified, services(price)')
     .eq('category', cat.name)
+    .eq('hidden', false)
+    .is('deactivated_at', null)
     .order('rating', { ascending: false })
     .order('review_count', { ascending: false })
 

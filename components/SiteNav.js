@@ -396,6 +396,15 @@ export default function SiteNav() {
                         View my profile
                       </Link>
                     )}
+                    <Link
+                      href="/settings"
+                      onClick={() => setDropdownOpen(false)}
+                      style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F0F4FF'; e.currentTarget.style.color = '#00267F' }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
+                    >
+                      Settings
+                    </Link>
                     <div style={{ borderTop: '1px solid var(--border-card)', margin: '4px 0' }} />
                     <button
                       onClick={() => {
@@ -607,6 +616,7 @@ export default function SiteNav() {
                 <Link href="/jobs" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>My jobs</Link>
               )}
               <Link href="/saved" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Saved professionals</Link>
+              <Link href="/settings" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Settings</Link>
               <Link href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</Link>
               <button
                 onClick={() => supabase.auth.signOut().then(() => { window.location.href = '/login' })}

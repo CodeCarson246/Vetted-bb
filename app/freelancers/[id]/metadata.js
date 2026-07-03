@@ -5,14 +5,15 @@ export async function generateMetadata({ params }) {
   const { id } = await params
   const { data: f } = await supabase
     .from('freelancers')
-    .select('name, trade, location, bio, rating, review_count, verified')
+    .select('name, trade, location, bio, rating, review_count, verified, hidden, deactivated_at')
     .eq('id', id)
     .single()
 
-  if (!f) {
+  if (!f || f.hidden || f.deactivated_at) {
     return {
       title: 'Freelancer Profile',
       description: 'View this freelancer profile on Vetted.bb',
+      robots: { index: false },
     }
   }
 

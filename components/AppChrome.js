@@ -6,6 +6,7 @@ import SiteNav from '@/components/SiteNav'
 import SiteFooter from '@/components/SiteFooter'
 import WorkspaceSidebar from '@/components/WorkspaceSidebar'
 import WorkspaceTopbar from '@/components/WorkspaceTopbar'
+import DeactivationNotice from '@/components/DeactivationNotice'
 
 // Chrome is role-based: a logged-in FREELANCER gets the workspace sidebar on
 // every page; clients and logged-out visitors get the marketplace top nav +
@@ -44,6 +45,7 @@ export default function AppChrome({ children }) {
         <WorkspaceSidebar open={open} onClose={() => setOpen(false)} />
         <div className="md:ml-[244px] flex flex-col min-h-screen">
           <WorkspaceTopbar onMenuClick={() => setOpen(o => !o)} />
+          <DeactivationNotice />
           {children}
         </div>
       </>
@@ -53,6 +55,7 @@ export default function AppChrome({ children }) {
   return (
     <>
       <SiteNav />
+      <DeactivationNotice />
       {children}
       <SiteFooter />
     </>

@@ -59,9 +59,9 @@ export default function Home() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('freelancers').select('*', { count: 'exact', head: true }).not('avatar_url', 'is', null),
-      supabase.from('freelancers').select('category').not('category', 'is', null),
-      supabase.from('freelancers').select('location').not('location', 'is', null),
+      supabase.from('freelancers').select('*', { count: 'exact', head: true }).not('avatar_url', 'is', null).eq('hidden', false).is('deactivated_at', null),
+      supabase.from('freelancers').select('category').not('category', 'is', null).eq('hidden', false).is('deactivated_at', null),
+      supabase.from('freelancers').select('location').not('location', 'is', null).eq('hidden', false).is('deactivated_at', null),
     ]).then(([{ count: professionals }, { data: cats }, { data: locs }]) => {
       const categories = new Set((cats || []).map(r => r.category).filter(Boolean)).size
       const parishes = new Set((locs || []).map(r => r.location).filter(Boolean)).size
@@ -71,7 +71,7 @@ export default function Home() {
 
   // Fetch per-category counts by matching the category column exactly.
   useEffect(() => {
-    supabase.from('freelancers').select('category').not('category', 'is', null).then(({ data }) => {
+    supabase.from('freelancers').select('category').not('category', 'is', null).eq('hidden', false).is('deactivated_at', null).then(({ data }) => {
       if (!data) return
       const counts = {}
       for (const cat of categories) counts[cat.name] = 0
@@ -97,7 +97,7 @@ export default function Home() {
     const reviewsQuery = supabase.from('reviews').select('comment, rating, author, date').eq('type', 'client').gte('rating', 5).not('comment', 'is', null).limit(3).order('date', { ascending: false })
     if (SHOW_STATS_NUMBERS) {
       Promise.all([
-        supabase.from('freelancers').select('*', { count: 'exact', head: true }).eq('available', true),
+        supabase.from('freelancers').select('*', { count: 'exact', head: true }).eq('available', true).eq('hidden', false).is('deactivated_at', null),
         supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('type', 'client'),
         reviewsQuery,
       ]).then(([{ count: fc }, { count: rc }, { data: revs }]) => {

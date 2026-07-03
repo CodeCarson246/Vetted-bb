@@ -752,3 +752,39 @@ DROP POLICY IF EXISTS "Clients read own booking requests" ON appointments;
 CREATE POLICY "Clients read own booking requests"
   ON appointments FOR SELECT
   USING (client_user_id = auth.uid());
+
+-- ============================================================
+-- SECTION 22 — HIDE PROFILE, DEACTIVATE ACCOUNT, ADMIN FLAG (2026-07-03)
+-- Three visibility states, weakest to strongest:
+--   hidden          freelancer-controlled toggle (Settings) — profile drops out
+--                   of search/categories/featured/sitemap, direct link shows
+--                   "unavailable". Existing conversations keep working.
+--   flagged         admin-only marker for problem profiles (with optional
+--                   reason). Purely internal — does NOT change visibility.
+--   deactivated_at  account deactivation. Profile down everywhere immediately;
+--                   after 60 days a daily cron permanently deletes the account
+--                   (auth user + all data). Logging back in within the window
+--                   offers one-click reactivation.
+-- account_deactivations covers BOTH roles (clients have no freelancers row).
+-- Writes happen via /api/account with the service role; the RLS SELECT policy
+-- exists so the logged-in user can see their own pending deletion (banner).
+-- ============================================================
+
+ALTER TABLE freelancers
+  ADD COLUMN IF NOT EXISTS hidden         boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS flagged        boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS flag_reason    text,
+  ADD COLUMN IF NOT EXISTS deactivated_at timestamptz;
+
+CREATE TABLE IF NOT EXISTS account_deactivations (
+  user_id        uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  deactivated_at timestamptz NOT NULL DEFAULT now(),
+  purge_after    timestamptz NOT NULL DEFAULT (now() + interval '60 days')
+);
+
+ALTER TABLE account_deactivations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users read own deactivation" ON account_deactivations;
+CREATE POLICY "Users read own deactivation"
+  ON account_deactivations FOR SELECT
+  USING (user_id = auth.uid());

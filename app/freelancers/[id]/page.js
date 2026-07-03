@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
@@ -491,6 +492,26 @@ export default function FreelancerProfile() {
     )
   }
 
+  // Hidden or deactivated profiles are unavailable to everyone except their
+  // owner (who sees the real page, plus a notice that it's offline). Wait for
+  // auth to settle so the owner doesn't flash the unavailable state.
+  const profileOffline = !!(freelancer.hidden || freelancer.deactivated_at)
+  const isOwner = user?.id === freelancer.user_id
+  if (profileOffline && !authLoading && !isOwner) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
+        <div className="text-center max-w-sm">
+          <p className="text-4xl mb-3" aria-hidden="true">🔒</p>
+          <h1 className="text-lg font-bold text-gray-900 mb-1">This profile is currently unavailable</h1>
+          <p className="text-sm text-gray-500 mb-5">The professional has taken their listing offline. You can find other trusted pros in the meantime.</p>
+          <Link href="/search" className="inline-block text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
+            Browse professionals
+          </Link>
+        </div>
+      </main>
+    )
+  }
+
   const clientReviewsList = reviews.filter(r => r.type === 'client')
   const freelancerReviewsList = reviews.filter(r => r.type === 'freelancer')
   const whatsappShareUrl = (() => {
@@ -530,6 +551,20 @@ export default function FreelancerProfile() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+      )}
+
+      {/* Owner-only reminder that this listing is offline to everyone else */}
+      {profileOffline && isOwner && (
+        <div style={{ backgroundColor: '#FEF9EC', borderBottom: '1px solid #F9C000', padding: '10px 16px', textAlign: 'center' }}>
+          <span className="text-sm" style={{ color: '#92400e' }}>
+            {freelancer.deactivated_at
+              ? 'Your account is deactivated — only you can see this profile.'
+              : 'Your profile is hidden — only you can see it. '}
+            {!freelancer.deactivated_at && (
+              <Link href="/settings" className="font-semibold underline underline-offset-2" style={{ color: '#92400e' }}>Unhide in Settings</Link>
+            )}
+          </span>
+        </div>
       )}
 
       {/* Breadcrumb */}

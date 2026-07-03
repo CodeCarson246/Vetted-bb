@@ -23,6 +23,8 @@ export default function AdminPanel() {
   const [freelancers, setFreelancers] = useState([])
   const [reviews, setReviews] = useState([])
   const [messages, setMessages] = useState([])
+  const [services, setServices] = useState([])
+  const [serviceCount, setServiceCount] = useState(0)
 
   // UI
   const [activeSection, setActiveSection] = useState('stats')
@@ -52,9 +54,11 @@ export default function AdminPanel() {
       setClientCount(data.stats.clients)
       setReviewCount(data.stats.reviews)
       setMessageCount(data.stats.messages)
+      setServiceCount(data.stats.services || 0)
       setFreelancers(data.freelancers)
       setReviews(data.reviews)
       setMessages(data.messages)
+      setServices(data.services || [])
       setLoading(false)
     }
     fetchData()
@@ -73,21 +77,43 @@ export default function AdminPanel() {
     return true
   }
 
-  async function toggleFlag(id, field, value) {
+  async function toggleFlag(id, field, value, reason) {
     const res = await fetch('/api/admin', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ id, field, value }),
+      body: JSON.stringify({ id, field, value, reason }),
     })
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       alert(body.error || 'Update failed. Please try again.')
       return
     }
-    setFreelancers(prev => prev.map(f => f.id === id ? { ...f, [field]: value } : f))
+    setFreelancers(prev => prev.map(f => f.id === id
+      ? { ...f, [field]: value, ...(field === 'flagged' ? { flag_reason: value ? (reason || null) : null } : {}) }
+      : f))
+  }
+
+  function flagProfile(f) {
+    if (f.flagged) {
+      if (confirm('Remove the flag from this profile?')) toggleFlag(f.id, 'flagged', false)
+      return
+    }
+    const reason = prompt('Flag this profile — reason (optional, internal only):')
+    if (reason === null) return // cancelled
+    toggleFlag(f.id, 'flagged', true, reason.trim())
+  }
+
+  async function deleteService(id) {
+    if (!confirm('Delete this service? This cannot be undone.')) return
+    setDeletingId(id)
+    if (await adminDelete('service', id)) {
+      setServices(prev => prev.filter(s => s.id !== id))
+      setServiceCount(prev => prev - 1)
+    }
+    setDeletingId(null)
   }
 
   async function deleteFreelancer(id) {
@@ -143,6 +169,7 @@ export default function AdminPanel() {
   const sections = [
     { key: 'stats', label: 'Stats' },
     { key: 'freelancers', label: `Freelancers (${freelancerCount})` },
+    { key: 'services', label: `Services (${serviceCount})` },
     { key: 'reviews', label: `Reviews (${reviewCount})` },
     { key: 'messages', label: `Messages (${messageCount})` },
   ]
@@ -204,11 +231,12 @@ export default function AdminPanel() {
 
         {/* ── Stats ── */}
         {activeSection === 'stats' && (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
             {[
               { label: 'Total users', value: 'View in Supabase', note: true },
               { label: 'Freelancers', value: freelancerCount },
               { label: 'Clients', value: clientCount },
+              { label: 'Services', value: serviceCount },
               { label: 'Reviews', value: reviewCount },
               { label: 'Messages', value: messageCount },
             ].map(stat => (
@@ -254,7 +282,14 @@ export default function AdminPanel() {
                   )}
                   {freelancers.map((f, i) => (
                     <tr key={f.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 font-medium text-gray-900 capitalize">{f.name}</td>
+                      <td className="px-6 py-4 font-medium text-gray-900 capitalize">
+                        {f.name}
+                        <span className="flex flex-wrap gap-1 mt-1 normal-case">
+                          {f.deactivated_at && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600">Deactivated</span>}
+                          {f.hidden && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Hidden</span>}
+                          {f.flagged && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700" title={f.flag_reason || 'Flagged'}>🚩 {f.flag_reason ? f.flag_reason.slice(0, 30) : 'Flagged'}</span>}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-gray-600 capitalize">{f.trade || '—'}</td>
                       <td className="px-6 py-4 text-gray-600">{f.category || '—'}</td>
                       <td className="px-6 py-4 text-gray-600">{f.rating ?? '—'}</td>
@@ -281,6 +316,26 @@ export default function AdminPanel() {
                           >
                             ★ Featured
                           </button>
+                          <button
+                            onClick={() => toggleFlag(f.id, 'hidden', !f.hidden)}
+                            title={f.hidden ? 'Restore to public search and categories' : 'Pull this profile from public search, categories and featured (suspend)'}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors"
+                            style={f.hidden
+                              ? { backgroundColor: '#374151', color: 'white', borderColor: '#374151' }
+                              : { borderColor: '#d1d5db', color: '#9ca3af' }}
+                          >
+                            {f.hidden ? '🙈 Hidden' : 'Hide'}
+                          </button>
+                          <button
+                            onClick={() => flagProfile(f)}
+                            title={f.flagged ? `Flagged${f.flag_reason ? `: ${f.flag_reason}` : ''} — click to unflag` : 'Flag this profile for follow-up (internal marker, does not change visibility)'}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors"
+                            style={f.flagged
+                              ? { backgroundColor: '#b45309', color: 'white', borderColor: '#b45309' }
+                              : { borderColor: '#d1d5db', color: '#9ca3af' }}
+                          >
+                            🚩 Flag
+                          </button>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -290,6 +345,51 @@ export default function AdminPanel() {
                           className="text-xs font-medium text-white px-3 py-1.5 rounded-full bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {deletingId === f.id ? 'Deleting…' : 'Delete'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── Services ── */}
+        {activeSection === 'services' && (
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h2 className="font-semibold" style={{ color: '#00267F' }}>Services ({serviceCount})</h2>
+              <p className="text-xs text-gray-400 mt-1">Delete individual listings that break the rules without touching the rest of the freelancer&apos;s profile.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Service</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Freelancer</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Price</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Added</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {services.length === 0 && (
+                    <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">No services found.</td></tr>
+                  )}
+                  {services.map((s, i) => (
+                    <tr key={s.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 font-medium text-gray-900">{s.name || '—'}</td>
+                      <td className="px-6 py-4 text-gray-600 capitalize">{s.freelancers?.name || '—'}</td>
+                      <td className="px-6 py-4 text-gray-600">{s.price || '—'}</td>
+                      <td className="px-6 py-4 text-gray-500">{formatDate(s.created_at)}</td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => deleteService(s.id)}
+                          disabled={deletingId === s.id}
+                          className="text-xs font-medium text-white px-3 py-1.5 rounded-full bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {deletingId === s.id ? 'Deleting…' : 'Delete'}
                         </button>
                       </td>
                     </tr>

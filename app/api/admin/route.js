@@ -38,17 +38,21 @@ export async function GET(request) {
     { count: clientCount },
     { count: reviewCount },
     { count: messageCount },
+    { count: serviceCount },
     { data: freelancers },
     { data: reviews },
     { data: messages },
+    { data: services },
   ] = await Promise.all([
     supabase.from('freelancers').select('*', { count: 'exact', head: true }),
     supabase.from('clients').select('*', { count: 'exact', head: true }),
     supabase.from('reviews').select('*', { count: 'exact', head: true }),
     supabase.from('messages').select('*', { count: 'exact', head: true }),
-    supabase.from('freelancers').select('id, name, trade, category, location, rating, created_at, verified, featured').order('created_at', { ascending: false }),
+    supabase.from('services').select('*', { count: 'exact', head: true }),
+    supabase.from('freelancers').select('id, name, trade, category, location, rating, created_at, verified, featured, hidden, flagged, flag_reason, deactivated_at').order('created_at', { ascending: false }),
     supabase.from('reviews').select('id, author, comment, rating, type, date, created_at').order('created_at', { ascending: false }),
     supabase.from('messages').select('id, sender_name, sender_email, subject, created_at, read').order('created_at', { ascending: false }),
+    supabase.from('services').select('id, name, price, created_at, freelancer_id, freelancers(name)').order('created_at', { ascending: false }),
   ])
 
   return Response.json({
@@ -57,26 +61,33 @@ export async function GET(request) {
       clients: clientCount || 0,
       reviews: reviewCount || 0,
       messages: messageCount || 0,
+      services: serviceCount || 0,
     },
     freelancers: freelancers || [],
     reviews: reviews || [],
     messages: messages || [],
+    services: services || [],
   })
 }
 
-// Toggle admin-controlled flags on a freelancer (verified badge,
-// featured listing). Only whitelisted boolean fields are accepted.
+// Toggle admin-controlled flags on a freelancer (verified badge, featured
+// listing, hidden = pulled from public discovery, flagged = internal problem
+// marker with optional reason). Only whitelisted boolean fields are accepted.
 export async function PATCH(request) {
   const ctx = await requireAdmin(request)
   if (ctx.error) return Response.json({ error: ctx.error }, { status: ctx.status })
   const { supabase } = ctx
 
-  const { id, field, value } = await request.json()
-  if (!id || !['verified', 'featured'].includes(field) || typeof value !== 'boolean') {
+  const { id, field, value, reason } = await request.json()
+  if (!id || !['verified', 'featured', 'hidden', 'flagged'].includes(field) || typeof value !== 'boolean') {
     return Response.json({ error: 'Invalid request.' }, { status: 400 })
   }
 
-  const { error } = await supabase.from('freelancers').update({ [field]: value }).eq('id', id)
+  const patch = field === 'flagged'
+    ? { flagged: value, flag_reason: value ? (typeof reason === 'string' ? reason.slice(0, 300) : null) : null }
+    : { [field]: value }
+
+  const { error } = await supabase.from('freelancers').update(patch).eq('id', id)
   if (error) return Response.json({ error: error.message }, { status: 500 })
   return Response.json({ success: true })
 }
@@ -89,8 +100,16 @@ export async function DELETE(request) {
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type')
   const id = searchParams.get('id')
-  if (!id || !['freelancer', 'review', 'message'].includes(type)) {
+  if (!id || !['freelancer', 'review', 'message', 'service'].includes(type)) {
     return Response.json({ error: 'Invalid delete request.' }, { status: 400 })
+  }
+
+  if (type === 'service') {
+    // service_images cascade via FK; explicit delete kept as fallback
+    await supabase.from('service_images').delete().eq('service_id', id)
+    const { error } = await supabase.from('services').delete().eq('id', id)
+    if (error) return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ success: true })
   }
 
   if (type === 'freelancer') {

@@ -284,6 +284,7 @@ function SearchPage() {
     async function fetchFreelancers() {
       setLoading(true)
       const { data } = await supabase.from('freelancers').select('*, services(*)')
+        .eq('hidden', false).is('deactivated_at', null)
       setAllFreelancers(data || [])
       setLoading(false)
     }

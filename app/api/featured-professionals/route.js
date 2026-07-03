@@ -15,6 +15,8 @@ export async function GET() {
     .from('freelancers')
     .select('id, name, trade, avatar_url, location, rating, review_count, available, skills, bio, min_price, featured, verified, phone_verified')
     .eq('available', true)
+    .eq('hidden', false)
+    .is('deactivated_at', null)
     .order('featured', { ascending: false })
     .order('rating', { ascending: false })
     .order('review_count', { ascending: false })

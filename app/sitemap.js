@@ -24,6 +24,8 @@ export default async function sitemap() {
   const { data: freelancers } = await supabase
     .from('freelancers')
     .select('id, updated_at')
+    .eq('hidden', false)
+    .is('deactivated_at', null)
     .order('created_at', { ascending: false })
 
   const freelancerPages = (freelancers || []).map(f => ({
