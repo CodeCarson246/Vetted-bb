@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import GoogleAuthButton from '@/components/GoogleAuthButton'
 
 const trustPoints = [
   'Verified freelancers you can trust',
@@ -130,6 +131,14 @@ export default function Login() {
           <div className="w-full max-w-md">
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h1>
             <p className="text-gray-500 text-sm mb-8">Log in to your Vetted.bb account.</p>
+
+            <GoogleAuthButton label="Continue with Google" />
+
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400 font-medium">or log in with email</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <div>

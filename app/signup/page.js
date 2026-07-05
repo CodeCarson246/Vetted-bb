@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { passwordChecks, validatePassword, POLICY_KEYS, POLICY_LABELS } from '@/lib/passwordPolicy'
+import GoogleAuthButton from '@/components/GoogleAuthButton'
 
 const trustPoints = [
   'Verified freelancers you can trust',
@@ -157,7 +158,40 @@ function SignupContent() {
             ) : (
               <>
                 <h1 className="text-2xl font-bold text-gray-900 mb-1">Create your account</h1>
-                <p className="text-gray-500 text-sm mb-8">Join Vetted.bb and connect with top talent in Barbados.</p>
+                <p className="text-gray-500 text-sm mb-6">Join Vetted.bb and connect with top talent in Barbados.</p>
+
+                {/* Role first — it applies to Google sign-ups too */}
+                <div className="mb-5">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">I am signing up as a...</label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setRole('client')}
+                      className={`flex-1 py-3 px-3 rounded-lg border text-left transition-colors ${role === 'client' ? '' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
+                      style={role === 'client' ? { backgroundColor: '#00267F', borderColor: '#00267F' } : {}}
+                    >
+                      <span className={`block text-sm font-semibold ${role === 'client' ? 'text-white' : 'text-gray-700'}`}>Client</span>
+                      <span className="block text-xs mt-0.5" style={{ color: role === 'client' ? '#93b8ff' : '#9ca3af' }}>Find &amp; hire trusted pros</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('freelancer')}
+                      className={`flex-1 py-3 px-3 rounded-lg border text-left transition-colors ${role === 'freelancer' ? '' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
+                      style={role === 'freelancer' ? { backgroundColor: '#00267F', borderColor: '#00267F' } : {}}
+                    >
+                      <span className={`block text-sm font-semibold ${role === 'freelancer' ? 'text-white' : 'text-gray-700'}`}>Freelancer</span>
+                      <span className="block text-xs mt-0.5" style={{ color: role === 'freelancer' ? '#93b8ff' : '#9ca3af' }}>Offer services &amp; get hired</span>
+                    </button>
+                  </div>
+                </div>
+
+                <GoogleAuthButton role={role} label={`Sign up with Google as a ${role}`} />
+
+                <div className="flex items-center gap-3 my-5">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-xs text-gray-400 font-medium">or sign up with email</span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                   <div>
@@ -215,28 +249,6 @@ function SignupContent() {
                         )
                       })}
                     </ul>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">I am signing up as a...</label>
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setRole('client')}
-                        className={`flex-1 py-3 rounded-lg border text-sm font-medium transition-colors ${role === 'client' ? 'text-white' : 'border-gray-200 text-gray-600 hover:border-gray-300 bg-white'}`}
-                        style={role === 'client' ? { backgroundColor: '#00267F', borderColor: '#00267F' } : {}}
-                      >
-                        Client
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRole('freelancer')}
-                        className={`flex-1 py-3 rounded-lg border text-sm font-medium transition-colors ${role === 'freelancer' ? 'text-white' : 'border-gray-200 text-gray-600 hover:border-gray-300 bg-white'}`}
-                        style={role === 'freelancer' ? { backgroundColor: '#00267F', borderColor: '#00267F' } : {}}
-                      >
-                        Freelancer
-                      </button>
-                    </div>
                   </div>
 
                   {error && (

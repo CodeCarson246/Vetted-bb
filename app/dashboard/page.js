@@ -10,6 +10,7 @@ import { getQuoteId, dedupeThreadReplies, quoteReplyKind, isReceiptBody } from '
 import { formatDocDate } from '@/lib/formatDate'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
 import Tooltip from '@/components/Tooltip'
+import CoachTip from '@/components/CoachTip'
 import PushToggle from '@/components/PushToggle'
 import PhoneVerify from '@/components/PhoneVerify'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
@@ -161,6 +162,27 @@ function DashboardInner() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [createStep, setCreateStep] = useState(1)
   const [createErrors, setCreateErrors] = useState({})
+  // Guided tour through the create-profile form: null = off, 0..4 = active tip
+  const [tourStep, setTourStep] = useState(null)
+  const TOUR_TOTAL = 5
+
+  function startTourIfNew() {
+    try {
+      if (!localStorage.getItem('vetted_profile_tour_done')) setTourStep(0)
+    } catch { setTourStep(0) }
+  }
+
+  function endTour() {
+    setTourStep(null)
+    try { localStorage.setItem('vetted_profile_tour_done', '1') } catch { /* ignore */ }
+  }
+
+  function nextTour() {
+    setTourStep(s => (s >= TOUR_TOTAL - 1 ? null : s + 1))
+    if (tourStep >= TOUR_TOTAL - 1) {
+      try { localStorage.setItem('vetted_profile_tour_done', '1') } catch { /* ignore */ }
+    }
+  }
   const [createName, setCreateName] = useState('')
   const [createCompanyName, setCreateCompanyName] = useState('')
   const [createTrade, setCreateTrade] = useState('')
@@ -2444,7 +2466,7 @@ function DashboardInner() {
 
                   <div className="text-center">
                     <button
-                      onClick={() => { setCreateStep(1); setCreateErrors({}); setShowCreateForm(true) }}
+                      onClick={() => { setCreateStep(1); setCreateErrors({}); setShowCreateForm(true); startTourIfNew() }}
                       className="px-10 py-3.5 rounded-full font-bold text-base hover:opacity-90 transition-opacity shadow-sm"
                       style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                     >
@@ -2548,6 +2570,9 @@ function DashboardInner() {
                           />
                         </div>
                         {createErrors.trade && <p className="text-xs text-red-500 mt-1">{createErrors.trade}</p>}
+                        <CoachTip show={tourStep === 0} step={1} total={TOUR_TOTAL} title="Your trade is your headline" onNext={nextTour} onSkip={endTour}>
+                          It&apos;s the first thing clients see on your card and the main way you show up in searches. Keep it simple and recognisable — &quot;Plumber&quot; finds you more clients than &quot;Fluid Systems Specialist&quot;.
+                        </CoachTip>
                       </div>
 
                       {/* Category */}
@@ -2585,6 +2610,9 @@ function DashboardInner() {
                         </select>
                         {createErrors.location && <p className="text-xs text-red-500 mt-1">{createErrors.location}</p>}
                         <p style={{ fontSize: '0.78rem', color: '#6B7280', marginTop: 4 }}>Select the parish you are based in. Clients will use this to find professionals near them.</p>
+                        <CoachTip show={tourStep === 1} step={2} total={TOUR_TOTAL} title="Get found by clients near you" onNext={nextTour} onSkip={endTour}>
+                          Clients filter their search by parish, and most prefer someone close by. Picking your parish puts you at the top of local results — jobs you can actually get to.
+                        </CoachTip>
                       </div>
 
                       {/* Bio */}
@@ -2602,6 +2630,9 @@ function DashboardInner() {
                           onFocus={e => e.target.style.borderColor = '#00267F'}
                           onBlur={e => e.target.style.borderColor = ''}
                         />
+                        <CoachTip show={tourStep === 2} step={3} total={TOUR_TOTAL} title="Turn profile views into enquiries" onNext={nextTour} onSkip={endTour}>
+                          A couple of friendly sentences here builds instant trust. Mention your years of experience, what you specialise in, and the areas you cover — profiles with a bio get noticeably more messages than empty ones.
+                        </CoachTip>
                       </div>
 
                       {/* Skills */}
@@ -2622,6 +2653,9 @@ function DashboardInner() {
                           onFocus={e => e.target.style.borderColor = '#00267F'}
                           onBlur={e => e.target.style.borderColor = ''}
                         />
+                        <CoachTip show={tourStep === 3} step={4} total={TOUR_TOTAL} title="Skills power the search engine" onNext={nextTour} onSkip={endTour} nextLabel="Next: services →">
+                          Every skill you list is a keyword clients can search for. &quot;Leak detection&quot; or &quot;wedding photography&quot; brings in searches your trade alone would miss — 3 to 8 specific skills works best. One last tip waits on the next step!
+                        </CoachTip>
                       </div>
 
                       {/* Availability */}
@@ -2693,6 +2727,10 @@ function DashboardInner() {
                           )}
                         </div>
                         <p className="text-xs text-gray-400 mb-4">You can add these later from your dashboard.</p>
+
+                        <CoachTip show={tourStep === 4 && createStep === 2} step={5} total={TOUR_TOTAL} title="Win the job before the first message" onNext={nextTour} onSkip={endTour} nextLabel="Finish tour ✓">
+                          Listing your services with prices answers the two questions every client has — &quot;can they do it?&quot; and &quot;what will it cost?&quot; Use &quot;Starting from&quot; pricing if jobs vary. Profiles with 3+ priced services get the most enquiries.
+                        </CoachTip>
 
                         {createServices.length > 0 && (
                           <div className="flex flex-col gap-2 mb-4">
