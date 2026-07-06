@@ -24,7 +24,9 @@ export default function manifest() {
         purpose: 'any',
       },
       {
-        src: '/icon-512.png',
+        // Art scaled into the safe-zone circle so round Android masks
+        // don't clip the wordmark
+        src: '/icon-maskable-512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
