@@ -79,8 +79,8 @@ export default function WorkspaceSidebar({ open, onClose }) {
         className={`fixed top-0 left-0 z-[70] h-screen w-[244px] flex flex-col transition-transform duration-200 md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}
         style={{ backgroundColor: '#001652' }}
       >
-        {/* Logo */}
-        <Link href="/dashboard" onClick={onClose} className="flex items-center px-6 flex-shrink-0" style={{ height: 68, textDecoration: 'none' }}>
+        {/* Logo — the only route back to the marketplace homepage from the workspace */}
+        <Link href="/" onClick={onClose} className="flex items-center px-6 flex-shrink-0" style={{ height: 68, textDecoration: 'none' }}>
           <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '1.35rem', letterSpacing: '-0.5px', lineHeight: 1 }}>
             <span style={{ color: '#fff' }}>Vetted</span><span style={{ color: '#F9C000' }}>.</span><span style={{ color: '#fff' }}>bb</span>
           </span>

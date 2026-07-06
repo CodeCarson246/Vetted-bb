@@ -1795,7 +1795,7 @@ function DashboardInner() {
                 <p className="text-sm font-semibold text-gray-900 mb-0.5">Share your profile</p>
                 <p className="text-xs text-gray-400 truncate">vetted-bb.vercel.app/freelancers/{profile.id}</p>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
+              <div className="flex flex-wrap gap-2 flex-shrink-0">
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(`https://vetted-bb.vercel.app/freelancers/${profile.id}`)
@@ -1807,13 +1807,31 @@ function DashboardInner() {
                   {copied ? '✓ Copied!' : 'Copy link'}
                 </button>
                 <a
-                  href={`https://wa.me/?text=Check out my profile on Vetted.bb: https://vetted-bb.vercel.app/freelancers/${profile.id}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`Check out my profile on Vetted.bb: https://vetted-bb.vercel.app/freelancers/${profile.id}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs px-4 py-2 rounded-full font-medium text-white"
+                  className="text-xs px-4 py-2 rounded-full font-medium text-white hover:opacity-90 transition-opacity"
                   style={{ backgroundColor: '#25D366' }}
                 >
                   WhatsApp
+                </a>
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://vetted-bb.vercel.app/freelancers/${profile.id}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-4 py-2 rounded-full font-medium text-white hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#1877F2' }}
+                >
+                  Facebook
+                </a>
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out my profile on Vetted.bb!')}&url=${encodeURIComponent(`https://vetted-bb.vercel.app/freelancers/${profile.id}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-4 py-2 rounded-full font-medium text-white hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#0F1419' }}
+                >
+                  X
                 </a>
               </div>
             </div>
