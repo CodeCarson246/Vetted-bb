@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -117,9 +118,9 @@ export default function AuthCallback() {
           <p className="text-3xl mb-3" aria-hidden="true">😕</p>
           <h1 className="text-lg font-bold text-gray-900 mb-1">Sign-in didn&apos;t complete</h1>
           <p className="text-sm text-gray-500 mb-5">Something interrupted the Google sign-in. Please try again.</p>
-          <a href="/login" className="inline-block text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
+          <Link href="/login" className="inline-block text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
             Back to log in
-          </a>
+          </Link>
         </div>
       )}
     </main>

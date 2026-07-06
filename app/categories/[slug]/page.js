@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import { CATEGORIES, categoryBySlug } from '@/lib/categories'
@@ -97,13 +98,13 @@ export default async function CategoryPage({ params }) {
           <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
             <p className="font-medium text-gray-900 mb-1">No professionals listed yet</p>
             <p className="text-sm text-gray-500 mb-6">Work in this field? Claim the spot — early profiles get the most visibility.</p>
-            <a
+            <Link
               href="/signup?role=freelancer"
               className="inline-block text-sm font-semibold px-6 py-3 rounded-full hover:opacity-90 transition-opacity"
               style={{ backgroundColor: '#F9C000', color: '#00267F', textDecoration: 'none' }}
             >
               Create your free profile →
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -112,7 +113,7 @@ export default async function CategoryPage({ params }) {
               const minPrice = prices.length > 0 ? Math.min(...prices) : null
               const initials = (f.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)
               return (
-                <a
+                <Link
                   key={f.id}
                   href={`/freelancers/${f.id}`}
                   className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow"
@@ -149,7 +150,7 @@ export default async function CategoryPage({ params }) {
                   >
                     View profile
                   </span>
-                </a>
+                </Link>
               )
             })}
           </div>
@@ -157,27 +158,27 @@ export default async function CategoryPage({ params }) {
 
         {/* Refine + cross-links */}
         <div className="text-center mt-8">
-          <a
+          <Link
             href={`/search?q=${encodeURIComponent(cat.searchQuery)}&category=${encodeURIComponent(cat.name)}`}
             className="text-sm font-semibold hover:opacity-80"
             style={{ color: '#00267F' }}
           >
             Filter by parish, budget and availability in search →
-          </a>
+          </Link>
         </div>
 
         <div className="mt-12 pt-8 border-t border-gray-200">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Browse other categories</h2>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.filter(c => c.slug !== cat.slug).map(c => (
-              <a
+              <Link
                 key={c.slug}
                 href={`/categories/${c.slug}`}
                 className="text-xs font-medium px-3.5 py-2 rounded-full bg-white border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors"
                 style={{ textDecoration: 'none' }}
               >
                 {c.icon} {c.name}
-              </a>
+              </Link>
             ))}
           </div>
         </div>

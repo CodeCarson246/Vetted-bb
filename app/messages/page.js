@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -329,9 +330,9 @@ export default function ClientMessages() {
           <button onClick={() => setExpandedId(null)} className="md:hidden text-gray-500 p-1 -ml-1" aria-label="Back to list">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <a href={`/freelancers/${f?.id}`} className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold overflow-hidden flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
+          <Link href={`/freelancers/${f?.id}`} className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold overflow-hidden flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
             {f?.avatar_url ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" /> : (f?.name || '?').split(' ').map(n => n[0]).join('')}
-          </a>
+          </Link>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1">{f?.name}{isVerified(f) && <VerifiedBadge size={13} />}</p>
             <p className="text-xs text-gray-400 truncate">{msg.subject}</p>
@@ -476,9 +477,9 @@ export default function ClientMessages() {
     return (
       <>
         <div className="flex flex-col items-center text-center mb-6">
-          <a href={`/freelancers/${f?.id}`} className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-semibold overflow-hidden mb-3" style={{ backgroundColor: '#00267F' }}>
+          <Link href={`/freelancers/${f?.id}`} className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-semibold overflow-hidden mb-3" style={{ backgroundColor: '#00267F' }}>
             {f?.avatar_url ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" /> : (f?.name || '?').split(' ').map(n => n[0]).join('')}
-          </a>
+          </Link>
           <p className="font-bold text-gray-900 flex items-center gap-1">{f?.name}{isVerified(f) && <VerifiedBadge size={14} />}</p>
           <p className="text-xs text-gray-500 mt-0.5">{f?.trade}</p>
         </div>
@@ -497,10 +498,10 @@ export default function ClientMessages() {
                 <span>{f.location}</span>
               </div>
             )}
-            <a href={`/freelancers/${f?.id}`} className="flex items-center gap-2 hover:underline" style={{ color: '#00267F' }}>
+            <Link href={`/freelancers/${f?.id}`} className="flex items-center gap-2 hover:underline" style={{ color: '#00267F' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               View full profile
-            </a>
+            </Link>
           </div>
         </div>
       </>
@@ -558,9 +559,9 @@ export default function ClientMessages() {
             <EnvelopeIcon className="w-10 h-10 text-gray-300 mx-auto mb-4" />
             <p className="font-medium text-gray-900 mb-1">No messages yet</p>
             <p className="text-sm text-gray-500 mb-6">Contact a freelancer to start a conversation.</p>
-            <a href="/search" className="inline-block px-6 py-3 rounded-full text-white font-semibold hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
+            <Link href="/search" className="inline-block px-6 py-3 rounded-full text-white font-semibold hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
               Browse freelancers
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="flex flex-col">

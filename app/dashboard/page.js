@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import imageCompression from 'browser-image-compression'
 import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -1122,13 +1123,13 @@ function DashboardInner() {
                   </h1>
                   <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>{user?.email}</p>
                 </div>
-                <a
+                <Link
                   href="/search"
                   className="flex-shrink-0 px-6 py-3 rounded-full font-semibold hover:opacity-90 transition-opacity text-center"
                   style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                 >
                   Find a freelancer
-                </a>
+                </Link>
               </div>
             </div>
 
@@ -1157,13 +1158,13 @@ function DashboardInner() {
                     <h2 className="font-semibold text-gray-900">My client profile</h2>
                     <p className="text-xs text-gray-400 mt-0.5">Freelancers you contact can see this — it helps them know who they&apos;re working with.</p>
                   </div>
-                  <a
+                  <Link
                     href={`/clients/${user.id}`}
                     className="text-xs font-semibold flex-shrink-0 hover:opacity-80"
                     style={{ color: '#00267F' }}
                   >
                     View my profile →
-                  </a>
+                  </Link>
                 </div>
                 <div className="p-6 sm:p-8 flex flex-col sm:flex-row gap-6">
                   {/* Avatar */}
@@ -1243,7 +1244,7 @@ function DashboardInner() {
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
               <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900">Top rated freelancers</h2>
-                <a href="/search" className="text-sm font-medium hover:opacity-80" style={{ color: '#00267F' }}>See all →</a>
+                <Link href="/search" className="text-sm font-medium hover:opacity-80" style={{ color: '#00267F' }}>See all →</Link>
               </div>
               <div className="divide-y divide-gray-50">
                 {topFreelancers.map(f => (
@@ -1267,13 +1268,13 @@ function DashboardInner() {
                           From ${Number.isInteger(f.min_price) ? f.min_price : parseFloat(f.min_price).toFixed(0)}
                         </span>
                       )}
-                      <a
+                      <Link
                         href={`/freelancers/${f.id}`}
                         className="text-white px-4 py-2 rounded-full text-xs font-medium hover:opacity-90 transition-opacity"
                         style={{ backgroundColor: '#00267F' }}
                       >
                         View profile
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 ))}
@@ -1313,7 +1314,7 @@ function DashboardInner() {
               <div className="divide-y divide-gray-50">
                 {clientMessages.length === 0 ? (
                   <div className="p-8 text-center">
-                    <p className="text-sm text-gray-400">No messages yet. <a href="/search" style={{ color: '#00267F' }} className="font-medium hover:opacity-80">Browse freelancers →</a></p>
+                    <p className="text-sm text-gray-400">No messages yet. <Link href="/search" style={{ color: '#00267F' }} className="font-medium hover:opacity-80">Browse freelancers →</Link></p>
                   </div>
                 ) : clientMessages.map(msg => (
                   <div key={msg.id}>
@@ -1497,8 +1498,12 @@ function DashboardInner() {
                 { label: 'Reviews', value: profile.review_count || 0, href: '#reviews-section' },
                 { label: 'Unread inquiries', value: unreadCount, href: '/inbox', highlight: unreadCount > 0 },
                 { label: 'Quotes sent', value: quoteCount, href: '/quotes' },
-              ].map(stat => (
-                <a
+              ].map(stat => {
+                // Hash anchors scroll in place; routes get client-side <Link>
+                // so the PWA never full-reloads (which resets the theme).
+                const Cmp = stat.href.startsWith('#') ? 'a' : Link
+                return (
+                <Cmp
                   key={stat.label}
                   href={stat.href}
                   className="bg-white rounded-2xl border border-gray-100 p-4 text-center transition-all hover:shadow-md"
@@ -1506,8 +1511,9 @@ function DashboardInner() {
                 >
                   <p className="text-2xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{stat.value}</p>
                   <p className="text-xs text-gray-500 mt-1">{stat.label}</p>
-                </a>
-              ))}
+                </Cmp>
+                )
+              })}
             </div>
 
             {/* Push notifications opt-in */}
@@ -1571,7 +1577,7 @@ function DashboardInner() {
                 </div>
                 {/* Buttons */}
                 <div className="flex sm:flex-col gap-2 flex-shrink-0">
-                  <a
+                  <Link
                     href={`/freelancers/${profile.id}`}
                     className="px-4 py-2 rounded-full text-sm font-medium text-white transition-colors text-center"
                     style={{ border: '1.5px solid rgba(255,255,255,0.4)' }}
@@ -1579,7 +1585,7 @@ function DashboardInner() {
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     View public profile
-                  </a>
+                  </Link>
                   <button
                     onClick={async () => {
                       const newVal = !profile.available

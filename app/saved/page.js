@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -102,13 +103,13 @@ export default function SavedProfessionals() {
             </svg>
             <p className="font-medium text-gray-900 mb-1">Nothing saved yet</p>
             <p className="text-sm text-gray-500 mb-6">Tap the heart on any professional&apos;s card to keep them here.</p>
-            <a
+            <Link
               href="/search"
               className="inline-block text-sm font-semibold px-6 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity"
               style={{ backgroundColor: '#00267F' }}
             >
               Browse professionals →
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -118,16 +119,16 @@ export default function SavedProfessionals() {
               return (
                 <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow" style={{ borderLeft: '4px solid #00267F' }}>
                   {/* Avatar */}
-                  <a href={`/freelancers/${f.id}`} className="flex-shrink-0">
+                  <Link href={`/freelancers/${f.id}`} className="flex-shrink-0">
                     <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold" style={{ background: f.avatar_url ? undefined : '#00267F' }}>
                       {f.avatar_url
                         ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
                         : initials}
                     </div>
-                  </a>
+                  </Link>
 
                   {/* Info */}
-                  <a href={`/freelancers/${f.id}`} className="flex-1 min-w-0" style={{ textDecoration: 'none' }}>
+                  <Link href={`/freelancers/${f.id}`} className="flex-1 min-w-0" style={{ textDecoration: 'none' }}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{f.name}</span>
                       {isVerified(f) && <VerifiedBadge size={15} />}
@@ -142,17 +143,17 @@ export default function SavedProfessionals() {
                       <StarRating rating={f.rating || 0} />
                       <span className="text-xs text-gray-400">({f.review_count || 0})</span>
                     </div>
-                  </a>
+                  </Link>
 
                   {/* Actions */}
                   <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 flex-shrink-0">
-                    <a
+                    <Link
                       href={`/freelancers/${f.id}`}
                       className="text-xs font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity"
                       style={{ backgroundColor: '#00267F' }}
                     >
                       View profile
-                    </a>
+                    </Link>
                     <button
                       onClick={() => removeSaved(row.id)}
                       disabled={removingId === row.id}

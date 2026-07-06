@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -152,9 +153,9 @@ export default function ClientProfile() {
                 </div>
                 {r.comment && <p className="text-sm text-gray-600 leading-relaxed">{r.comment}</p>}
                 {r.freelancers && (
-                  <a href={`/freelancers/${r.freelancers.id}`} className="text-xs font-medium mt-2 inline-block hover:opacity-80" style={{ color: '#00267F' }}>
+                  <Link href={`/freelancers/${r.freelancers.id}`} className="text-xs font-medium mt-2 inline-block hover:opacity-80" style={{ color: '#00267F' }}>
                     — {r.freelancers.name}, <span className="capitalize">{r.freelancers.trade}</span>
-                  </a>
+                  </Link>
                 )}
               </div>
             ))}

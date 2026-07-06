@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -999,10 +1000,10 @@ export default function Inbox() {
               </div>
             )}
             {msg.sender_user_id && (
-              <a href={`/clients/${msg.sender_user_id}`} className="flex items-center gap-2 hover:underline" style={{ color: '#00267F' }}>
+              <Link href={`/clients/${msg.sender_user_id}`} className="flex items-center gap-2 hover:underline" style={{ color: '#00267F' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 View client profile
-              </a>
+              </Link>
             )}
           </div>
         </div>
@@ -1062,7 +1063,7 @@ export default function Inbox() {
         {!profile ? (
           <div className="bg-white rounded-2xl p-8 border border-gray-100 text-center m-4">
             <p className="text-gray-500 text-sm">You need a freelancer profile to receive messages.</p>
-            <a href="/dashboard" className="mt-4 inline-block text-sm font-medium hover:opacity-80" style={{ color: '#00267F' }}>Create a profile →</a>
+            <Link href="/dashboard" className="mt-4 inline-block text-sm font-medium hover:opacity-80" style={{ color: '#00267F' }}>Create a profile →</Link>
           </div>
         ) : messages.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center flex flex-col items-center">

@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -91,7 +92,7 @@ export default function ReviewsPage() {
             <h1 className="text-2xl font-bold text-gray-900">Reviews</h1>
             <p className="text-sm text-gray-500 mt-1">Monitor customer feedback and manage your reputation.</p>
           </div>
-          {profile && <a href={`/freelancers/${profile.id}`} className="text-sm font-semibold px-4 py-2.5 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>View public profile</a>}
+          {profile && <Link href={`/freelancers/${profile.id}`} className="text-sm font-semibold px-4 py-2.5 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>View public profile</Link>}
         </div>
 
         {/* Stat cards */}

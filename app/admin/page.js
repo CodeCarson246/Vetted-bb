@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -156,7 +157,7 @@ export default function AdminPanel() {
       <main className="min-h-screen bg-gray-50">
         <nav className="bg-white border-b border-gray-100">
           <div className="flex items-center justify-between px-8 py-5">
-            <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
+            <Link href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</Link>
           </div>
         </nav>
         <div className="flex items-center justify-center py-32">
@@ -180,7 +181,7 @@ export default function AdminPanel() {
       <nav className="bg-white border-b border-gray-100">
         <div className="flex items-center justify-between px-8 py-5">
           <div className="flex items-center gap-4">
-            <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
+            <Link href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</Link>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-white" style={{ backgroundColor: '#00267F' }}>Admin</span>
           </div>
           <div className="hidden sm:flex gap-4 items-center">

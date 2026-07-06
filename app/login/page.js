@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -67,7 +68,7 @@ export default function Login() {
       <div className="hidden md:flex md:w-2/5 flex-col" style={{ backgroundColor: '#00267F' }}>
         <div className="flex-1 flex flex-col px-12" style={{ paddingTop: '28%' }}>
           {/* Logo pill */}
-          <a
+          <Link
             href="/"
             className="hover:opacity-90 transition-opacity"
             style={{
@@ -87,7 +88,7 @@ export default function Login() {
             <span style={{ color: '#00267F' }}>Vetted</span>
             <span style={{ color: '#F9C000' }}>.</span>
             <span style={{ color: '#00267F' }}>bb</span>
-          </a>
+          </Link>
           <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem', fontWeight: 400, marginTop: '10px', marginBottom: '4rem' }}>Connecting Barbados</p>
 
           {/* Trust bullets */}
@@ -114,7 +115,7 @@ export default function Login() {
         <div className="flex-1 flex flex-col items-center justify-center px-8 py-12">
 
           {/* Mobile logo */}
-          <a href="/" className="md:hidden text-2xl font-bold mb-6 hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
+          <Link href="/" className="md:hidden text-2xl font-bold mb-6 hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</Link>
           <div className="md:hidden flex flex-col gap-2 mb-8 w-full max-w-md">
             {trustPoints.map(point => (
               <div key={point} className="flex items-center gap-3">
@@ -222,7 +223,7 @@ export default function Login() {
 
               <p className="text-center text-sm text-gray-500">
                 Don't have an account?{' '}
-                <a href="/signup" className="font-semibold hover:opacity-75 transition-opacity" style={{ color: '#00267F' }}>Sign up</a>
+                <Link href="/signup" className="font-semibold hover:opacity-75 transition-opacity" style={{ color: '#00267F' }}>Sign up</Link>
               </p>
             </form>
           </div>
@@ -231,9 +232,9 @@ export default function Login() {
         <footer className="px-8 py-6 text-center text-gray-400 text-xs border-t border-gray-100">
           <p>© 2026 Vetted.bb · Connecting Barbados</p>
           <p className="mt-1">
-            <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
+            <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</Link>
             <span className="mx-2">·</span>
-            <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
+            <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</Link>
           </p>
         </footer>
       </div>

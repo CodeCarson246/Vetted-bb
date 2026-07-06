@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
@@ -95,7 +96,7 @@ export default function BookingWidget({ freelancerId, freelancerName }) {
           <p className="text-sm text-gray-500 mt-1">{freelancerName || 'The professional'} will confirm or decline — you’ll be notified.</p>
         </div>
       ) : !user ? (
-        <a href="/login" className="block text-center text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Log in to request a booking</a>
+        <Link href="/login" className="block text-center text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Log in to request a booking</Link>
       ) : (
         <div className="flex flex-col gap-3">
           <div>

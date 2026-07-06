@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -89,7 +90,7 @@ function SignupContent() {
       <div className="hidden md:flex md:w-2/5 flex-col" style={{ backgroundColor: '#00267F' }}>
         <div className="flex-1 flex flex-col px-12" style={{ paddingTop: '28%' }}>
           {/* Logo pill */}
-          <a
+          <Link
             href="/"
             className="hover:opacity-90 transition-opacity"
             style={{
@@ -109,7 +110,7 @@ function SignupContent() {
             <span style={{ color: '#00267F' }}>Vetted</span>
             <span style={{ color: '#F9C000' }}>.</span>
             <span style={{ color: '#00267F' }}>bb</span>
-          </a>
+          </Link>
           <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem', fontWeight: 400, marginTop: '10px', marginBottom: '4rem' }}>Connecting Barbados</p>
 
           {/* Trust bullets */}
@@ -133,7 +134,7 @@ function SignupContent() {
         <div className="flex-1 flex flex-col items-center justify-center px-8 py-12">
 
           {/* Mobile logo */}
-          <a href="/" className="md:hidden text-2xl font-bold mb-6 hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</a>
+          <Link href="/" className="md:hidden text-2xl font-bold mb-6 hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</Link>
           <div className="md:hidden flex flex-col gap-2 mb-8 w-full max-w-md">
             {trustPoints.map(point => (
               <div key={point} className="flex items-center gap-3">
@@ -153,7 +154,7 @@ function SignupContent() {
                 <p className="text-4xl mb-4">📬</p>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Check your email</h2>
                 <p className="text-gray-500 text-sm">We sent a confirmation link to <span className="font-medium text-gray-700">{email}</span>. Click it to activate your account.</p>
-                <a href="/login" className="inline-block mt-8 text-sm font-semibold hover:opacity-75 transition-opacity" style={{ color: '#00267F' }}>Back to log in →</a>
+                <Link href="/login" className="inline-block mt-8 text-sm font-semibold hover:opacity-75 transition-opacity" style={{ color: '#00267F' }}>Back to log in →</Link>
               </div>
             ) : (
               <>
@@ -266,7 +267,7 @@ function SignupContent() {
 
                   <p className="text-center text-sm text-gray-500">
                     Already have an account?{' '}
-                    <a href="/login" className="font-semibold hover:opacity-75 transition-opacity" style={{ color: '#00267F' }}>Log in</a>
+                    <Link href="/login" className="font-semibold hover:opacity-75 transition-opacity" style={{ color: '#00267F' }}>Log in</Link>
                   </p>
                 </form>
               </>
@@ -277,9 +278,9 @@ function SignupContent() {
         <footer className="px-8 py-6 text-center text-gray-400 text-xs border-t border-gray-100">
           <p>© 2026 Vetted.bb · Connecting Barbados</p>
           <p className="mt-1">
-            <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
+            <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</Link>
             <span className="mx-2">·</span>
-            <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
+            <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</Link>
           </p>
         </footer>
       </div>

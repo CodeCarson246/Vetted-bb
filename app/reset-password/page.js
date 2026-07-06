@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -34,7 +35,7 @@ export default function ResetPassword() {
   return (
     <main className="min-h-screen bg-gray-50">
       <nav className="flex items-center justify-between px-8 py-5 bg-white border-b border-gray-100">
-        <a href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</a>
+        <Link href="/" className="text-2xl font-bold" style={{ color: '#00267F' }}>Vetted.bb</Link>
       </nav>
 
       <div className="max-w-md mx-auto px-8 py-16">
@@ -109,9 +110,9 @@ export default function ResetPassword() {
       <footer className="border-t border-gray-100 py-8 text-center text-gray-400 text-sm mt-12">
         <p>© 2026 Vetted.bb · Connecting Barbados</p>
         <p className="mt-1.5 text-xs">
-          <a href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</a>
+          <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms of Service</Link>
           <span className="mx-2">·</span>
-          <a href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
+          <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy Policy</Link>
         </p>
       </footer>
     </main>

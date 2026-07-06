@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -75,7 +76,7 @@ export default function BookingsPage() {
           <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
             <p className="font-medium text-gray-900 mb-1">No bookings yet</p>
             <p className="text-sm text-gray-500 mb-6">When you request a booking from a professional&apos;s profile, it shows up here.</p>
-            <a href="/search" className="inline-block text-sm font-semibold px-6 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Find a professional →</a>
+            <Link href="/search" className="inline-block text-sm font-semibold px-6 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Find a professional →</Link>
           </div>
         ) : (
           <div className="flex flex-col gap-6">
@@ -115,12 +116,12 @@ function Section({ title, items, busyId, onCancel, muted }) {
           return (
             <div key={b.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderLeft: `4px solid ${s.dot}`, opacity: muted ? 0.85 : 1 }}>
               <div className="flex items-start gap-4">
-                <a href={`/freelancers/${f?.id}`} className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
+                <Link href={`/freelancers/${f?.id}`} className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
                   {f?.avatar_url ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" /> : initials}
-                </a>
+                </Link>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <a href={`/freelancers/${f?.id}`} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>{name || 'Professional'}</a>
+                    <Link href={`/freelancers/${f?.id}`} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>{name || 'Professional'}</Link>
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: s.bg, color: s.text }}>{s.label}</span>
                   </div>
                   <p className="text-sm text-gray-700 mt-0.5">{b.title}{f?.trade ? ` · ${f.trade}` : ''}</p>

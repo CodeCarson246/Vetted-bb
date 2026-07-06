@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -49,7 +50,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
   const initials = f.name ? f.name.split(' ').map(n => n[0]).join('').slice(0, 2) : '?'
 
   return (
-    <a
+    <Link
       href={`/freelancers/${f.id}`}
       className="block"
       style={{
@@ -245,7 +246,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
           </div>
         )}
       </div>
-    </a>
+    </Link>
   )
 }
 

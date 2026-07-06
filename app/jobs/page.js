@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -115,9 +116,9 @@ export default function JobsPage() {
           <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
             <p className="font-medium text-gray-900 mb-1">No active jobs yet</p>
             <p className="text-sm text-gray-500 mb-6">When you accept a quote from a professional, it shows up here.</p>
-            <a href="/search" className="inline-block text-sm font-semibold px-6 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
+            <Link href="/search" className="inline-block text-sm font-semibold px-6 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
               Find a professional →
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -128,16 +129,16 @@ export default function JobsPage() {
               return (
                 <div key={job.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderLeft: `4px solid ${mutual ? '#16a34a' : '#00267F'}` }}>
                   <div className="flex items-start gap-4">
-                    <a href={`/freelancers/${f?.id}`} className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
+                    <Link href={`/freelancers/${f?.id}`} className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
                       {f?.avatar_url
                         ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
                         : initials}
-                    </a>
+                    </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <a href={`/freelancers/${f?.id}`} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>
+                        <Link href={`/freelancers/${f?.id}`} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>
                           {f?.company_name?.trim().length > 3 ? f.company_name : f?.name}
-                        </a>
+                        </Link>
                         <span className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(job.total).toFixed(2)}</span>
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
@@ -189,9 +190,9 @@ export default function JobsPage() {
                           </button>
                         )}
                         {mutual && job.status === 'paid' && (
-                          <a href={`/freelancers/${f?.id}#leave-review`} className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#16a34a' }}>
+                          <Link href={`/freelancers/${f?.id}#leave-review`} className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#16a34a' }}>
                             Leave a review →
-                          </a>
+                          </Link>
                         )}
                       </div>
                     </div>

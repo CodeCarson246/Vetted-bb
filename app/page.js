@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
@@ -161,7 +162,7 @@ export default function Home() {
           <div className="flex flex-wrap justify-center gap-2 mt-6 animate-rise rise-delay-2">
             <span className="text-xs self-center mr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Popular:</span>
             {['Plumber', 'Electrician', 'Photographer', 'Caterer', 'Mechanic', 'Hairdresser'].map(term => (
-              <a
+              <Link
                 key={term}
                 href={`/search?q=${encodeURIComponent(term.toLowerCase())}`}
                 className="text-xs font-medium px-3.5 py-1.5 rounded-full transition-all"
@@ -175,7 +176,7 @@ export default function Home() {
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)' }}
               >
                 {term}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -288,7 +289,7 @@ export default function Home() {
               }
             `}</style>
             {featuredFreelancers.map(f => (
-              <a
+              <Link
                 key={f.id}
                 href={`/freelancers/${f.id}`}
                 style={{
@@ -425,7 +426,7 @@ export default function Home() {
                     View Profile
                   </span>
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -437,7 +438,7 @@ export default function Home() {
           </div>
 
           <div className="text-center mt-10">
-            <a
+            <Link
               href="/search"
               style={{
                 backgroundColor: '#00267F',
@@ -455,7 +456,7 @@ export default function Home() {
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
             >
               Browse all professionals →
-            </a>
+            </Link>
           </div>
         </section>
       )}
@@ -601,13 +602,13 @@ export default function Home() {
                 ))}
               </ul>
 
-              <a
+              <Link
                 href="/signup?role=freelancer"
                 className="inline-block px-7 py-3.5 rounded-full font-bold text-sm transition-opacity hover:opacity-90"
                 style={{ backgroundColor: '#F9C000', color: '#00267F' }}
               >
                 Create Your Free Profile
-              </a>
+              </Link>
               <p className="text-xs mt-4" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 Already listed? Share your profile link and start getting inquiries.
               </p>

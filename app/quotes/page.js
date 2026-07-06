@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -954,13 +955,13 @@ export default function QuotesPage() {
                 : 'No quotes match this filter.'}
             </p>
             {quotes.length === 0 && (
-              <a
+              <Link
                 href="/inbox"
                 className="inline-block mt-5 text-sm font-semibold px-6 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: '#00267F' }}
               >
                 Go to inbox →
-              </a>
+              </Link>
             )}
           </div>
         ) : (

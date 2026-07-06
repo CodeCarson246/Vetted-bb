@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -174,8 +175,8 @@ export default function SettingsPage() {
           {profile && (
             <Card title="Public profile" desc="Your listing as clients see it.">
               <div className="flex flex-wrap gap-2">
-                <a href="/dashboard" className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Edit profile</a>
-                <a href={`/freelancers/${profile.id}`} className="text-sm font-semibold px-4 py-2 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>View public profile</a>
+                <Link href="/dashboard" className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Edit profile</Link>
+                <Link href={`/freelancers/${profile.id}`} className="text-sm font-semibold px-4 py-2 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>View public profile</Link>
               </div>
             </Card>
           )}

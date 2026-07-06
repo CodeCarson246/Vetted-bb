@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function SearchEmptyState({ query, category, onClearFilters }) {
   const isCategory = !!category
 
@@ -56,20 +58,20 @@ export default function SearchEmptyState({ query, category, onClearFilters }) {
             Clear Filters
           </button>
         )}
-        <a
+        <Link
           href="/signup?role=freelancer"
           className="px-7 py-3 rounded-full font-semibold text-sm transition-opacity hover:opacity-90"
           style={{ backgroundColor: '#F9C000', color: '#00267F' }}
         >
           List Your Services Free
-        </a>
-        <a
+        </Link>
+        <Link
           href="/search"
           className="px-7 py-3 rounded-full font-semibold text-sm border-2 transition-opacity hover:opacity-70"
           style={{ borderColor: '#00267F', color: '#00267F' }}
         >
           Browse All Professionals
-        </a>
+        </Link>
       </div>
 
       <p className="text-xs text-gray-400 mt-7">

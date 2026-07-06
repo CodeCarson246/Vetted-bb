@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { CATEGORIES } from '@/lib/categories'
 
 export const metadata = {
@@ -23,7 +24,7 @@ export default function CategoriesIndex() {
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {CATEGORIES.map(cat => (
-            <a
+            <Link
               key={cat.slug}
               href={`/categories/${cat.slug}`}
               className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-md transition-all"
@@ -32,7 +33,7 @@ export default function CategoriesIndex() {
               <span className="text-3xl block mb-3">{cat.icon}</span>
               <p className="font-semibold mb-1" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{cat.name}</p>
               <p className="text-xs text-gray-500 leading-relaxed">{cat.description}</p>
-            </a>
+            </Link>
           ))}
         </div>
       </div>

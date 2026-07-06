@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import TrustBar from '@/components/TrustBar'
 
 export default function About() {
@@ -48,13 +49,13 @@ export default function About() {
           <p className="text-gray-600 leading-relaxed mb-6">
             Free to join. Built to grow with you and the Barbados professional community.
           </p>
-          <a
+          <Link
             href="/signup?role=freelancer"
             className="inline-block text-white px-6 py-3 rounded-full font-semibold hover:opacity-90 transition-opacity"
             style={{ backgroundColor: '#00267F' }}
           >
             Create your free profile →
-          </a>
+          </Link>
         </div>
 
         {/* For clients */}
@@ -63,13 +64,13 @@ export default function About() {
           <p className="text-gray-600 leading-relaxed mb-4">
             Search by trade, read reviews from real clients, and contact a freelancer directly. All in one place. Whether you need someone today or are planning ahead, Vetted.bb makes it easy to find the right person with confidence.
           </p>
-          <a
+          <Link
             href="/search"
             className="inline-block font-semibold px-6 py-3 rounded-full hover:opacity-80 transition-opacity border-2"
             style={{ color: '#00267F', borderColor: '#00267F' }}
           >
             Browse freelancers →
-          </a>
+          </Link>
         </div>
 
       </div>

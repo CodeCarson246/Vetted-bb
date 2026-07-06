@@ -569,7 +569,7 @@ export default function FreelancerProfile() {
 
       {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-100 px-8 py-2.5">
-        <a
+        <Link
           href={user?.id === freelancer.user_id ? '/dashboard' : '/search'}
           className="text-sm text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1.5"
         >
@@ -577,7 +577,7 @@ export default function FreelancerProfile() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
           {user?.id === freelancer.user_id ? 'Back to dashboard' : 'Back to search'}
-        </a>
+        </Link>
       </div>
 
       {/* ── Hero banner ── */}
@@ -600,9 +600,9 @@ export default function FreelancerProfile() {
                 </div>
               )}
               {!freelancer.avatar_url && user?.id === freelancer.user_id && (
-                <a href="/dashboard?edit=true" className="text-xs font-medium underline underline-offset-2 opacity-80 hover:opacity-100 transition-opacity" style={{ color: '#F9C000' }}>
+                <Link href="/dashboard?edit=true" className="text-xs font-medium underline underline-offset-2 opacity-80 hover:opacity-100 transition-opacity" style={{ color: '#F9C000' }}>
                   Add a photo
-                </a>
+                </Link>
               )}
             </div>
 
@@ -932,9 +932,9 @@ export default function FreelancerProfile() {
             <p className="text-sm mb-4" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
               Add your services so clients know what you offer.
             </p>
-            <a href="/dashboard?edit=true" className="text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>
+            <Link href="/dashboard?edit=true" className="text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>
               Add a Service →
-            </a>
+            </Link>
           </div>
         ) : null}
 
@@ -1132,9 +1132,9 @@ export default function FreelancerProfile() {
             <p className="text-sm mb-4" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
               Add previous work to show clients what you can do.
             </p>
-            <a href="/dashboard?edit=true" className="text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>
+            <Link href="/dashboard?edit=true" className="text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>
               Add to Portfolio →
-            </a>
+            </Link>
           </div>
         ) : null}
 
@@ -1361,7 +1361,7 @@ export default function FreelancerProfile() {
         {!user && (
           <div className="bg-white rounded-xl border border-gray-100 px-7 py-6">
             <p className="text-sm text-gray-500">
-              <a href="/login" className="font-medium underline" style={{ color: '#00267F' }}>Log in</a>
+              <Link href="/login" className="font-medium underline" style={{ color: '#00267F' }}>Log in</Link>
               {' '}to leave a review for this freelancer.
             </p>
           </div>
