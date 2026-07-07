@@ -87,7 +87,7 @@ export async function POST(request) {
 
     await sendEmail({
       to: freelancer.email,
-      subject: `New message from ${senderName} — ${subject}`,
+      subject: `New message from ${senderName}: ${subject}`,
       html: `
         <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #f9fafb;">
           <div style="background: white; border-radius: 16px; overflow: hidden; border: 1px solid #e5e7eb;">

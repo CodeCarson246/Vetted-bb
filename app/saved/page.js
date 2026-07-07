@@ -91,7 +91,7 @@ export default function SavedProfessionals() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Saved professionals</h1>
-            <p className="text-sm text-gray-500 mt-1">Your shortlist — compare and reach out when you&apos;re ready.</p>
+            <p className="text-sm text-gray-500 mt-1">Your shortlist. Compare and reach out when you&apos;re ready.</p>
           </div>
           <span className="text-sm text-gray-500 flex-shrink-0">{saved.length} saved</span>
         </div>

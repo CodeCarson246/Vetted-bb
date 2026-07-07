@@ -5,13 +5,13 @@ import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata = {
   title: {
-    default: "Vetted.bb — Find Trusted Freelancers in Barbados",
+    default: "Vetted.bb | Find Trusted Freelancers in Barbados",
     template: "%s | Vetted.bb",
   },
   description: "Find trusted, reviewed freelancers across Barbados. Plumbers, electricians, designers, caterers and more, all rated by real clients.",
   keywords: ["freelancers Barbados", "tradespeople Barbados", "plumber Barbados", "electrician Barbados", "hire freelancer Barbados"],
   openGraph: {
-    title: "Vetted.bb — Find Trusted Freelancers in Barbados",
+    title: "Vetted.bb | Find Trusted Freelancers in Barbados",
     description: "Find trusted, reviewed freelancers across Barbados. Real reviews. Real accountability.",
     url: "https://vetted-bb.vercel.app",
     siteName: "Vetted.bb",
@@ -20,7 +20,7 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vetted.bb — Find Trusted Freelancers in Barbados",
+    title: "Vetted.bb | Find Trusted Freelancers in Barbados",
     description: "Find trusted, reviewed freelancers across Barbados.",
   },
   robots: {

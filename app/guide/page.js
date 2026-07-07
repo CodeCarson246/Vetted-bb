@@ -17,15 +17,15 @@ const SECTIONS = [
         title: 'How enquiries reach you',
         steps: [
           'When a client finds your profile and hits "Message" or "Request a Quote", a new conversation appears in your Inbox (sidebar → Inbox).',
-          'The red badge on Inbox shows how many conversations have unread messages. You\'ll also get a notification — and a push alert on your phone if you\'ve turned those on in Settings.',
+          'The red badge on Inbox shows how many conversations have unread messages. You\'ll also get a notification, plus a push alert on your phone if you\'ve turned those on in Settings.',
           'Open a conversation to see the full thread: the client\'s details sit in the right-hand panel, so you always know who you\'re talking to.',
         ],
-        tip: 'Reply quickly — your profile shows a public "Typically replies within…" badge based on your real response times. Fast replies win jobs.',
+        tip: 'Reply quickly. Your profile shows a public "Typically replies within…" badge based on your real response times, and fast replies win jobs.',
       },
       {
         title: 'Sending photos in chat',
         steps: [
-          'Use the 📷 button next to the reply box to attach a photo — handy for "here\'s the problem" shots from clients or progress photos from you.',
+          'Use the 📷 button next to the reply box to attach a photo, handy for "here\'s the problem" shots from clients or progress photos from you.',
           'Photos are compressed automatically, so they send fast even on mobile data.',
         ],
       },
@@ -51,22 +51,22 @@ const SECTIONS = [
           'Send it in-app (the client sees it right in the chat and gets notified), or email it / download a PDF if they prefer.',
           'The client can Accept or Decline from their side. You\'re notified the moment they respond.',
         ],
-        tip: 'Quotes with clear line items get accepted more often than a single lump sum — clients like seeing what they\'re paying for.',
+        tip: 'Quotes with clear line items get accepted more often than a single lump sum. Clients like seeing what they\'re paying for.',
       },
       {
         title: 'From accepted quote to paid job',
         steps: [
-          'Do the work. When you\'re done, open the quote and hit "Mark completed". The client confirms completion from their side too — both of you have to agree the job is done.',
+          'Do the work. When you\'re done, open the quote and hit "Mark completed". The client confirms completion from their side too, so both of you agree the job is done.',
           'Send an invoice from the quote (it gets an invoice number, terms and a due date automatically).',
           'When the money arrives, hit "Mark paid". You can then send the client a receipt with one tap.',
         ],
-        tip: 'Reviews unlock only after the job is mutually completed AND marked paid — so closing out jobs properly is how you build your rating.',
+        tip: 'Reviews unlock only after the job is mutually completed AND marked paid, so closing out jobs properly is how you build your rating.',
       },
       {
         title: 'Reading the earnings tab',
         steps: [
           'Sidebar → Quotes & earnings, then open the Earnings tab.',
-          'Everything there is real money — only quotes you\'ve marked paid are counted. No estimates, no projections.',
+          'Everything there is real money. Only quotes you\'ve marked paid are counted. No estimates, no projections.',
           'Switch the chart between the last 30 days and the last 12 months to spot trends, and use "Export CSV" to download your records for bookkeeping or taxes.',
         ],
       },
@@ -76,15 +76,15 @@ const SECTIONS = [
     id: 'bookings',
     icon: '📅',
     title: 'Bookings & calendar',
-    intro: 'Your calendar is private by default. Bookings are opt-in — turn them on only if your work suits scheduled appointments.',
+    intro: 'Your calendar is private by default. Bookings are opt-in, so turn them on only if your work suits scheduled appointments.',
     topics: [
       {
         title: 'Turning on booking requests',
         steps: [
-          'Go to Settings → Bookings and flip on "Accept booking requests". It\'s off by default — quote-only trades can ignore it entirely.',
+          'Go to Settings → Bookings and flip on "Accept booking requests". It\'s off by default, so quote-only trades can ignore it entirely.',
           'Choose how clients book: "Request a day" (they pick a date, you agree the time in chat) or "Exact time slots" (they pick an open slot from your working hours).',
           'Tick which of your services are bookable and set a duration for each. Only ticked services show a booking button on your public profile.',
-          'Set your lead time — how soon someone can book (same day, from tomorrow, etc.).',
+          'Set your lead time, which controls how soon someone can book (same day, from tomorrow, etc.).',
         ],
         tip: 'Slot mode suits session-based work (coaching, beauty, lessons). Day mode suits trades where the time depends on the job.',
       },
@@ -98,8 +98,8 @@ const SECTIONS = [
       {
         title: 'Your private schedule vs public availability',
         steps: [
-          'Everything you add to your Calendar — jobs, personal bookings — is private. Clients never see it, and it never blocks your public availability.',
-          'The one exception is "Time off": blocking out days (vacation, personal time — no reason needed) is what removes those dates from public booking.',
+          'Everything you add to your Calendar (jobs, personal bookings) is private. Clients never see it, and it never blocks your public availability.',
+          'The one exception is "Time off": blocking out days (vacation, personal time, no reason needed) is what removes those dates from public booking.',
           'This is deliberate: many pros run several jobs at once, so a booked job shouldn\'t automatically close your books.',
         ],
       },
@@ -109,7 +109,7 @@ const SECTIONS = [
     id: 'clients',
     icon: '👥',
     title: 'Clients',
-    intro: 'A lightweight client book, built automatically from your activity — no data entry.',
+    intro: 'A lightweight client book, built automatically from your activity, with no data entry.',
     topics: [
       {
         title: 'Where the client list comes from',
@@ -118,7 +118,7 @@ const SECTIONS = [
           'Each row shows their history with you: conversations, quotes, jobs and bookings, plus totals.',
           'Use the search box and tabs to find repeat clients or check what you last did for someone before they call back.',
         ],
-        tip: 'Before replying to a returning client, glance at their card — quoting consistently with what you charged them last time builds trust.',
+        tip: 'Before replying to a returning client, glance at their card. Quoting consistently with what you charged them last time builds trust.',
       },
     ],
   },
@@ -126,12 +126,12 @@ const SECTIONS = [
     id: 'reviews',
     icon: '⭐',
     title: 'Reviews & reputation',
-    intro: 'Reviews are two-way on Vetted.bb — clients rate you, and you rate clients.',
+    intro: 'Reviews are two-way on Vetted.bb: clients rate you, and you rate clients.',
     topics: [
       {
         title: 'Getting reviews',
         steps: [
-          'A client can review you once a job is mutually completed and paid — so finish the quote flow properly (see Quotes above).',
+          'A client can review you once a job is mutually completed and paid, so finish the quote flow properly (see Quotes above).',
           'You can also rate the client, which helps other pros know who\'s good to work with.',
         ],
       },
@@ -139,7 +139,7 @@ const SECTIONS = [
         title: 'Responding to reviews',
         steps: [
           'Sidebar → Reviews shows your average, your response rate, and every review.',
-          'Reply publicly to any review — a short, professional response (especially to a critical one) is often more convincing to future clients than the review itself.',
+          'Reply publicly to any review. A short, professional response (especially to a critical one) is often more convincing to future clients than the review itself.',
         ],
         tip: 'Aim to respond to every review. Your response rate is shown as part of your reputation.',
       },
@@ -154,8 +154,8 @@ const SECTIONS = [
       {
         title: 'Push notifications',
         steps: [
-          'Settings → Notifications → turn on push. You\'ll get lock-screen alerts for new messages, quote responses and booking requests — even with the app closed.',
-          'If the button says "Blocked in browser", you previously denied permission — re-enable notifications for the site in your phone\'s browser settings.',
+          'Settings → Notifications → turn on push. You\'ll get lock-screen alerts for new messages, quote responses and booking requests, even with the app closed.',
+          'If the button says "Blocked in browser", you previously denied permission. Re-enable notifications for the site in your phone\'s browser settings.',
         ],
         tip: 'If you\'ve added Vetted.bb to your home screen, enable push from inside that app for the most reliable alerts.',
       },
@@ -163,22 +163,22 @@ const SECTIONS = [
         title: 'Hiding your profile temporarily',
         steps: [
           'Settings → Profile visibility → flip the switch. You disappear from search and categories, and your profile page shows as unavailable.',
-          'Existing conversations, quotes and bookings keep working — this only stops new discovery. Flip it back any time, instantly.',
+          'Existing conversations, quotes and bookings keep working. This only stops new discovery, and you can flip it back any time, instantly.',
         ],
-        tip: 'Fully booked for a month? Hide your profile instead of ignoring enquiries — unanswered messages hurt your response-time badge.',
+        tip: 'Fully booked for a month? Hide your profile instead of ignoring enquiries. Unanswered messages hurt your response-time badge.',
       },
       {
         title: 'The verified badge',
         steps: [
-          'The ✓ Vetted badge is granted after our team verifies your identity and work. Head to your dashboard and follow the "Get verified" steps — it typically involves confirming your phone number.',
+          'The ✓ Vetted badge is granted after our team verifies your identity and work. Head to your dashboard and follow the "Get verified" steps. It typically involves confirming your phone number.',
           'Verified profiles stand out in search results and win more client trust.',
         ],
       },
       {
         title: 'Deactivating your account',
         steps: [
-          'Settings → Deactivate account (at the bottom). Your account comes down immediately, and you have 60 days to change your mind — just log back in and hit Reactivate.',
-          'After 60 days, everything is permanently deleted. If you just need a break, use "Hide profile" instead — it\'s instant and nothing is lost.',
+          'Settings → Deactivate account (at the bottom). Your account comes down immediately, and you have 60 days to change your mind. Just log back in and hit Reactivate.',
+          'After 60 days, everything is permanently deleted. If you just need a break, use "Hide profile" instead. It\'s instant and nothing is lost.',
         ],
       },
     ],
@@ -217,7 +217,7 @@ export default function GuidePage() {
           <p className="text-3xl mb-2" aria-hidden="true">📖</p>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">How Vetted.bb works</h1>
           <p className="text-sm mb-6" style={{ color: '#93b8ff' }}>
-            Short, practical walkthroughs of every part of your workspace — from first enquiry to getting paid.
+            Short, practical walkthroughs of every part of your workspace, from first enquiry to getting paid.
           </p>
           <div className="max-w-md mx-auto relative">
             <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round">
@@ -227,7 +227,7 @@ export default function GuidePage() {
               type="search"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search the guide — e.g. bookings, invoice, push…"
+              placeholder="Search the guide, e.g. bookings, invoice, push…"
               className="w-full pl-10 pr-4 py-3 rounded-full text-sm outline-none"
               style={{ backgroundColor: '#fff', color: '#111827', border: '2px solid transparent' }}
               onFocus={e => (e.target.style.borderColor = '#F9C000')}
@@ -263,7 +263,7 @@ export default function GuidePage() {
           <div className="text-center py-16">
             <p className="text-3xl mb-3" aria-hidden="true">🔍</p>
             <p className="font-semibold text-gray-900 mb-1">Nothing found for &quot;{query}&quot;</p>
-            <p className="text-sm text-gray-500">Try a different word — or message us at hello@vetted.bb and we&apos;ll point you the right way.</p>
+            <p className="text-sm text-gray-500">Try a different word, or message us at hello@vetted.bb and we&apos;ll point you the right way.</p>
           </div>
         )}
 
@@ -319,7 +319,7 @@ export default function GuidePage() {
         {/* Footer CTA */}
         <div className="rounded-2xl px-6 py-8 text-center mt-10" style={{ backgroundColor: '#00267F' }}>
           <p className="font-bold text-white mb-1">Still stuck on something?</p>
-          <p className="text-sm mb-4" style={{ color: '#93b8ff' }}>We read every message — tell us what&apos;s confusing and we&apos;ll fix it or add it to this guide.</p>
+          <p className="text-sm mb-4" style={{ color: '#93b8ff' }}>We read every message. Tell us what&apos;s confusing and we&apos;ll fix it or add it to this guide.</p>
           <div className="flex flex-wrap gap-2 justify-center">
             <a href="mailto:hello@vetted.bb" className="text-sm font-semibold px-5 py-2.5 rounded-full hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F', textDecoration: 'none' }}>
               Email us

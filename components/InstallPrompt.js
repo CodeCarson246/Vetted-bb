@@ -72,7 +72,7 @@ export default function InstallPrompt() {
         <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>Add Vetted.bb to your home screen</p>
         <p style={{ fontSize: 12, margin: '2px 0 0', color: 'rgba(255,255,255,0.8)', lineHeight: 1.4 }}>
           {isIOS
-            ? 'Tap the Share icon, then “Add to Home Screen” — needed for notifications too.'
+            ? 'Tap the Share icon, then “Add to Home Screen”. This is needed for notifications too.'
             : 'Install the app for quick access and notifications.'}
         </p>
       </div>

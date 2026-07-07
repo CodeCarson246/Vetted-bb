@@ -2,7 +2,7 @@
 // phones ("Add to Home Screen"), per Phase 2 of the roadmap.
 export default function manifest() {
   return {
-    name: 'Vetted.bb — Trusted Professionals in Barbados',
+    name: 'Vetted.bb: Trusted Professionals in Barbados',
     short_name: 'Vetted.bb',
     description:
       'Find trusted, reviewed freelancers across Barbados. Real reviews. Real accountability.',

@@ -72,7 +72,7 @@ export async function GET(request) {
       if (delErr) throw delErr
       results.push({ user_id: uid, deleted: true })
     } catch (err) {
-      console.error('[purge-deactivated] failed for', uid, '—', err.message)
+      console.error('[purge-deactivated] failed for', uid, '-', err.message)
       results.push({ user_id: uid, deleted: false, error: err.message })
     }
   }

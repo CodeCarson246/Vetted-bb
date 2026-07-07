@@ -98,9 +98,9 @@ export default function ReviewsPage() {
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           {[
-            { label: 'Average rating', value: total ? avg.toFixed(1) : '—', sub: total ? <Stars n={avg} /> : 'No reviews yet' },
+            { label: 'Average rating', value: total ? avg.toFixed(1) : '-', sub: total ? <Stars n={avg} /> : 'No reviews yet' },
             { label: 'Total reviews', value: total, sub: `${fiveStar} five-star` },
-            { label: '5-star reviews', value: fiveStar, sub: total ? `${Math.round((fiveStar / total) * 100)}% of total` : '—' },
+            { label: '5-star reviews', value: fiveStar, sub: total ? `${Math.round((fiveStar / total) * 100)}% of total` : '-' },
             { label: 'Response rate', value: `${responseRate}%`, sub: `${responded} of ${total} replied` },
           ].map(c => (
             <div key={c.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
@@ -198,7 +198,7 @@ export default function ReviewsPage() {
 
               <div className="bg-white rounded-2xl border border-gray-100 p-5">
                 <h2 className="font-semibold text-gray-900 mb-2">Reputation</h2>
-                <p className="text-sm text-gray-500 mb-3">{avg >= 4.5 ? 'Your reputation looks strong — keep it up.' : avg >= 4 ? 'Solid reputation. Replying to reviews builds trust.' : 'Respond to reviews and deliver great work to lift your rating.'}</p>
+                <p className="text-sm text-gray-500 mb-3">{avg >= 4.5 ? 'Your reputation looks strong. Keep it up.' : avg >= 4 ? 'Solid reputation. Replying to reviews builds trust.' : 'Respond to reviews and deliver great work to lift your rating.'}</p>
                 <div className="flex flex-col gap-2 text-sm">
                   <span className="flex items-center gap-2 text-gray-600"><span style={{ color: avg >= 4.5 ? '#16a34a' : '#9CA3AF' }}>●</span> {avg >= 4.5 ? 'High average rating' : 'Average rating'}</span>
                   <span className="flex items-center gap-2 text-gray-600"><span style={{ color: responseRate >= 70 ? '#16a34a' : '#9CA3AF' }}>●</span> {responseRate >= 70 ? 'Good response rate' : 'Reply to more reviews'}</span>

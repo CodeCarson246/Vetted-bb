@@ -269,7 +269,7 @@ export default function Inbox() {
       const price = svc ? (parsePrice(svc.price) ?? parsePrice(m[2])) : parsePrice(m[2])
       items.push({
         description: svc
-          ? svc.name + (svc.description ? ' — ' + svc.description : '')
+          ? svc.name + (svc.description ? ' - ' + svc.description : '')
           : name,
         qty: 1,
         price: price ?? '',
@@ -301,7 +301,7 @@ export default function Inbox() {
   function addServiceToQuote(service) {
     const price = parsePrice(service.price) ?? ''
     const newItem = {
-      description: service.name + (service.description ? ' — ' + service.description : ''),
+      description: service.name + (service.description ? ' - ' + service.description : ''),
       qty: 1,
       price: price || '',
     }
@@ -327,10 +327,10 @@ export default function Inbox() {
     const validCompanyName = profile?.company_name?.trim().length > 3 ? profile.company_name : null
     const itemRows = quoteItems.map((item, i) => `
       <tr>
-        <td style="padding:10px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.description||'—'}</td>
+        <td style="padding:10px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.description||'-'}</td>
         <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:center;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.qty}</td>
-        <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+parseFloat(item.price).toFixed(2):'—'}</td>
-        <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#111827;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+((parseFloat(item.price)||0)*(parseInt(item.qty)||1)).toFixed(2):'—'}</td>
+        <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+parseFloat(item.price).toFixed(2):'-'}</td>
+        <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#111827;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+((parseFloat(item.price)||0)*(parseInt(item.qty)||1)).toFixed(2):'-'}</td>
       </tr>`).join('')
 
     const avatarHtml = profile?.avatar_url
@@ -570,7 +570,7 @@ export default function Inbox() {
       sender_name: profile.name,
       sender_user_id: user?.id,
       quote_id: quote.id,
-      body: `Sent invoice ${invoiceNumber} — payment due ${fmt(dueStr)} (${terms.label.toLowerCase()})`,
+      body: `Sent invoice ${invoiceNumber}, payment due ${fmt(dueStr)} (${terms.label.toLowerCase()})`,
     }).select().single()
     if (invReply) setReplies(prev => ({ ...prev, [replyMsgId]: [...(prev[replyMsgId] || []), invReply] }))
 
@@ -581,7 +581,7 @@ export default function Inbox() {
       body: JSON.stringify({
         message_id: replyMsgId,
         kind: 'invoice',
-        message: `Invoice ${invoiceNumber} for $${Number(quote.total).toFixed(2)} — payment due ${fmt(dueStr)}`,
+        message: `Invoice ${invoiceNumber} for $${Number(quote.total).toFixed(2)}, payment due ${fmt(dueStr)}`,
       }),
     }).catch(() => {})
 
@@ -592,7 +592,7 @@ export default function Inbox() {
 
   async function sendQuoteToClient() {
     const lines = quoteItems.map(i =>
-      `${i.description || 'Item'} (x${i.qty}) — $${((parseFloat(i.price)||0) * (parseInt(i.qty)||1)).toFixed(2)}`
+      `${i.description || 'Item'} (x${i.qty}): $${((parseFloat(i.price)||0) * (parseInt(i.qty)||1)).toFixed(2)}`
     ).join('\n')
     const body = [
       `Hi ${quoteClientName},`,
@@ -615,7 +615,7 @@ export default function Inbox() {
       profile.trade || '',
       profile.email || '',
     ].filter(l => l !== null).join('\n')
-    window.location.href = `mailto:${quoteClientEmail}?subject=${encodeURIComponent(`Quote ${quoteNumber} — ${profile.company_name || profile.name}`)}&body=${encodeURIComponent(body)}`
+    window.location.href = `mailto:${quoteClientEmail}?subject=${encodeURIComponent(`Quote ${quoteNumber} from ${profile.company_name || profile.name}`)}&body=${encodeURIComponent(body)}`
   }
 
   async function attachReplyPhoto(file) {
@@ -1075,10 +1075,10 @@ export default function Inbox() {
             {profile && (() => {
               const profileUrl = `https://vetted-bb.vercel.app/freelancers/${profile.id}`
               const loc = profile.location ? `based in ${formatParish(profile.location)}` : 'in Barbados'
-              const text = `Check out ${profile.name} on Vetted.bb — they're a ${profile.trade} ${loc}. ${profileUrl}`
+              const text = `Check out ${profile.name} on Vetted.bb. They're a ${profile.trade} ${loc}. ${profileUrl}`
               const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
               const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl)}`
-              const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out ${profile.name} on Vetted.bb — ${profile.trade} ${loc}.`)}&url=${encodeURIComponent(profileUrl)}`
+              const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out ${profile.name} on Vetted.bb, a ${profile.trade} ${loc}.`)}&url=${encodeURIComponent(profileUrl)}`
               return (
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <a
@@ -1438,11 +1438,11 @@ export default function Inbox() {
                 <tbody>
                   {quoteItems.map((item, i) => (
                     <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
-                      <td className="px-3 py-2 text-gray-700">{item.description || '—'}</td>
+                      <td className="px-3 py-2 text-gray-700">{item.description || '-'}</td>
                       <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                      <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '—'}</td>
+                      <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '-'}</td>
                       <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                        {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '—'}
+                        {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '-'}
                       </td>
                     </tr>
                   ))}
@@ -1576,11 +1576,11 @@ export default function Inbox() {
               <tbody>
                 {(viewingQuote.items || []).map((item, i) => (
                   <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
-                    <td className="px-3 py-2 text-gray-700">{item.description || '—'}</td>
+                    <td className="px-3 py-2 text-gray-700">{item.description || '-'}</td>
                     <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '—'}</td>
+                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '-'}</td>
                     <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '—'}
+                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '-'}
                     </td>
                   </tr>
                 ))}

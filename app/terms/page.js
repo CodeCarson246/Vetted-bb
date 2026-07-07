@@ -128,7 +128,7 @@ export default function Terms() {
             <p className="mt-3">Vetted.bb reserves the right to remove any review that, in our sole discretion, violates these standards or is reasonably believed to be false, fraudulent, or submitted in bad faith.</p>
             <p className="mt-3">Reviews represent the opinions of individual users and do not represent the views of Vetted.bb. Vetted.bb is not liable for the content of user-submitted reviews.</p>
             <p className="mt-3">Freelancers may dispute a review by contacting <span className="font-medium" style={{ color: '#00267F' }}>support@vetted.bb</span>. Disputes are reviewed within 7 business days. Vetted.bb&apos;s decision on review disputes is final.</p>
-            <p className="mt-3">Verified badges confirm identity only — not the quality or outcome of any service delivered. Vetted.bb makes no guarantee of service quality for any listed professional.</p>
+            <p className="mt-3">Verified badges confirm identity only, not the quality or outcome of any service delivered. Vetted.bb makes no guarantee of service quality for any listed professional.</p>
           </section>
 
           <section>

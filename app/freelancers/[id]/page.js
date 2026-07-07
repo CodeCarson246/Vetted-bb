@@ -521,14 +521,14 @@ export default function FreelancerProfile() {
     const reviewPart = freelancer.review_count > 0
       ? ` with ${freelancer.review_count} review${freelancer.review_count === 1 ? '' : 's'}`
       : ''
-    const text = `Check out ${freelancer.name} on Vetted.bb — they're a ${freelancer.trade} ${loc}${reviewPart}. ${profileUrl}`
+    const text = `Check out ${freelancer.name} on Vetted.bb. They're a ${freelancer.trade} ${loc}${reviewPart}. ${profileUrl}`
     return `https://wa.me/?text=${encodeURIComponent(text)}`
   })()
 
   const profileShareUrl = `https://vetted-bb.vercel.app/freelancers/${id}`
   const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileShareUrl)}`
   const xShareUrl = (() => {
-    const text = `Check out ${freelancer.name} on Vetted.bb — ${freelancer.trade} in ${formatParish(freelancer.location) || 'Barbados'}.`
+    const text = `Check out ${freelancer.name} on Vetted.bb, a ${freelancer.trade} in ${formatParish(freelancer.location) || 'Barbados'}.`
     return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(profileShareUrl)}`
   })()
 
@@ -583,8 +583,8 @@ export default function FreelancerProfile() {
         <div style={{ backgroundColor: '#FEF9EC', borderBottom: '1px solid #F9C000', padding: '10px 16px', textAlign: 'center' }}>
           <span className="text-sm" style={{ color: '#92400e' }}>
             {freelancer.deactivated_at
-              ? 'Your account is deactivated — only you can see this profile.'
-              : 'Your profile is hidden — only you can see it. '}
+              ? 'Your account is deactivated. Only you can see this profile.'
+              : 'Your profile is hidden. Only you can see it. '}
             {!freelancer.deactivated_at && (
               <Link href="/settings" className="font-semibold underline underline-offset-2" style={{ color: '#92400e' }}>Unhide in Settings</Link>
             )}
@@ -946,7 +946,7 @@ export default function FreelancerProfile() {
                             >
                               {isNaN(n) ? fmt : `${fmt}+`}
                               <span className="absolute bottom-full left-0 mb-1.5 w-56 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 leading-snug opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
-                                Base price — final cost depends on the job scope
+                                Base price. Final cost depends on the job scope
                               </span>
                             </span>
                           )
@@ -1004,7 +1004,7 @@ export default function FreelancerProfile() {
                   <div>
                     <p style={{ fontWeight: 600, color: '#15803d', fontSize: '0.9rem', marginBottom: '4px' }}>Available</p>
                     <p style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.6 }}>
-                      Available for new projects — contact me to discuss your requirements.
+                      Available for new projects. Contact me to discuss your requirements.
                     </p>
                     <button
                       onClick={() => setContactOpen(true)}
@@ -1126,7 +1126,7 @@ export default function FreelancerProfile() {
                   padding: '10px 20px 14px', textAlign: 'center',
                 }}>
                   {availabilityBlocks.length === 0
-                    ? 'No blocks set — likely available. Contact to confirm.'
+                    ? 'No blocks set, likely available. Contact to confirm.'
                     : 'Availability is updated by the professional. Contact them to confirm.'}
                 </p>
               </div>
@@ -1211,7 +1211,7 @@ export default function FreelancerProfile() {
             {reviews.filter(r => r.type === activeTab).length === 0 ? (
               <div className="text-center py-8 flex flex-col items-center gap-4">
                 <p className="text-sm leading-relaxed max-w-sm" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
-                  No reviews yet. Be the first — send {freelancer.name.split(' ')[0]} a message to get started.
+                  No reviews yet. Be the first: send {freelancer.name.split(' ')[0]} a message to get started.
                 </p>
                 <button
                   onClick={() => user ? setContactOpen(true) : window.location.href = '/login'}
@@ -1350,7 +1350,7 @@ export default function FreelancerProfile() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Add a photo <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
-                <p className="text-xs text-gray-400 mb-2">Show the work that was done — this helps other clients and builds trust.</p>
+                <p className="text-xs text-gray-400 mb-2">Show the work that was done. This helps other clients and builds trust.</p>
                 {reviewImageUrl ? (
                   <div className="flex flex-col items-start gap-2">
                     <img
@@ -1470,7 +1470,7 @@ export default function FreelancerProfile() {
                     const total = cartTotal() > 0 ? `\n\nEstimated total: $${cartTotal().toFixed(0)}` : ''
                     const msg = `Hi ${freelancer.name.split(' ')[0]}, I am interested in the following services:\n\n${serviceList}${total}\n\nCould you confirm availability and pricing?`
                     setSenderName(senderName || '')
-                    setSubject(`Service enquiry — ${cart.length} service${cart.length > 1 ? 's' : ''}`)
+                    setSubject(`Service enquiry: ${cart.length} service${cart.length > 1 ? 's' : ''}`)
                     setContactMessage(msg)
                     setContactOpen(true)
                     setCartOpen(false)

@@ -18,7 +18,7 @@ export async function generateMetadata({ params }) {
   }
 
   const profileUrl = `https://vetted-bb.vercel.app/freelancers/${id}`
-  const ogTitle = `${f.name} — ${f.trade} in Barbados | Vetted.bb`
+  const ogTitle = `${f.name}, ${f.trade} in Barbados | Vetted.bb`
   // First line of bio (up to first newline or sentence break), capped at 160 chars
   const firstLine = f.bio
     ? (f.bio.split(/\n|(?<=\.)\s/)[0] || f.bio).slice(0, 160)
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }) {
   const ogDescription = firstLine.length === 160 ? firstLine + '…' : firstLine
 
   return {
-    title: `${f.name} — ${f.trade} in ${formatParish(f.location) || 'Barbados'}`,
+    title: `${f.name}, ${f.trade} in ${formatParish(f.location) || 'Barbados'}`,
     description: ogDescription,
     openGraph: {
       title: ogTitle,

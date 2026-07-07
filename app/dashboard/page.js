@@ -1023,7 +1023,7 @@ function DashboardInner() {
       setDeleting(false)
       setToast({ message: 'Your profile has been deleted. You can create a new one any time.', type: 'success' })
     } catch (err) {
-      console.error('[delete-profile] FAILED —', err.message)
+      console.error('[delete-profile] FAILED:', err.message)
       setDeleting(false)
       setShowDeleteConfirm(false)
       setToast({ message: 'Something went wrong deleting your profile. Please contact us at hello@vetted.bb', type: 'error' })
@@ -1074,7 +1074,7 @@ function DashboardInner() {
     "Freelancers with a profile photo receive significantly more contact requests",
     "A clear bio helps clients understand who you are before they reach out",
     "Add at least one service so clients know what you offer and at what price",
-    "Clients filter by parish — add your location to appear in local searches",
+    "Clients filter by parish. Add your location to appear in local searches",
     "Skills tags improve how you appear in search results",
     "Setting your availability helps clients know when to contact you",
   ]
@@ -1156,7 +1156,7 @@ function DashboardInner() {
                 <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between gap-3">
                   <div>
                     <h2 className="font-semibold text-gray-900">My client profile</h2>
-                    <p className="text-xs text-gray-400 mt-0.5">Freelancers you contact can see this — it helps them know who they&apos;re working with.</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Freelancers you contact can see this. It helps them know who they&apos;re working with.</p>
                   </div>
                   <Link
                     href={`/clients/${user.id}`}
@@ -1493,8 +1493,8 @@ function DashboardInner() {
             {/* At-a-glance stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
               {[
-                { label: 'Profile views (30d)', value: views30d ?? '—', href: `/freelancers/${profile.id}` },
-                { label: 'Rating', value: profile.review_count > 0 ? `★ ${profile.rating}` : '—', href: '#reviews-section' },
+                { label: 'Profile views (30d)', value: views30d ?? '-', href: `/freelancers/${profile.id}` },
+                { label: 'Rating', value: profile.review_count > 0 ? `★ ${profile.rating}` : '-', href: '#reviews-section' },
                 { label: 'Reviews', value: profile.review_count || 0, href: '#reviews-section' },
                 { label: 'Unread inquiries', value: unreadCount, href: '/inbox', highlight: unreadCount > 0 },
                 { label: 'Quotes sent', value: quoteCount, href: '/quotes' },
@@ -1756,7 +1756,7 @@ function DashboardInner() {
                         <span style={{ fontSize: '0.875rem', color: '#9CA3AF', cursor: 'help', lineHeight: 1 }}>ⓘ</span>
                       </Tooltip>
                     </label>
-                    <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Add specific things you can do or tools you use — these help clients find you when they search. e.g. if you are a Plumber: Pipe Repair, Leak Detection, Bathroom Fitting, Drain Cleaning</p>
+                    <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Add specific things you can do or tools you use. These help clients find you when they search. e.g. if you are a Plumber: Pipe Repair, Leak Detection, Bathroom Fitting, Drain Cleaning</p>
                     <input
                       type="text"
                       value={skillsInput}
@@ -2242,7 +2242,7 @@ function DashboardInner() {
                       <div className="bg-white rounded-2xl p-5 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                         <svg className="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#00267F' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <p className="text-3xl font-bold text-gray-900">
-                          {profile.min_price != null ? `$${Number.isInteger(profile.min_price) ? profile.min_price : parseFloat(profile.min_price).toFixed(0)}` : '—'}
+                          {profile.min_price != null ? `$${Number.isInteger(profile.min_price) ? profile.min_price : parseFloat(profile.min_price).toFixed(0)}` : '-'}
                         </p>
                         <p className="text-sm text-gray-500 mt-2">Starting from</p>
                       </div>
@@ -2576,11 +2576,11 @@ function DashboardInner() {
                       <div>
                         <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
                           Trade / profession
-                          <Tooltip text="This is your professional title — the one-word or short description of what you do. Clients will see this as your main category. Example: Electrician, Photographer, Baker, Football Coach">
+                          <Tooltip text="This is your professional title, the one-word or short description of what you do. Clients will see this as your main category. Example: Electrician, Photographer, Baker, Football Coach">
                             <span style={{ fontSize: '0.875rem', color: '#9CA3AF', cursor: 'help', lineHeight: 1 }}>ⓘ</span>
                           </Tooltip>
                         </label>
-                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Your main job title — what you do. e.g. Plumber, Graphic Designer, Personal Trainer, Web Developer</p>
+                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Your main job title, what you do. e.g. Plumber, Graphic Designer, Personal Trainer, Web Developer</p>
                         <div className="relative">
                           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">🔧</span>
                           <input
@@ -2595,7 +2595,7 @@ function DashboardInner() {
                         </div>
                         {createErrors.trade && <p className="text-xs text-red-500 mt-1">{createErrors.trade}</p>}
                         <CoachTip show={tourStep === 0} step={1} total={TOUR_TOTAL} title="Your trade is your headline" onNext={nextTour} onSkip={endTour}>
-                          It&apos;s the first thing clients see on your card and the main way you show up in searches. Keep it simple and recognisable — &quot;Plumber&quot; finds you more clients than &quot;Fluid Systems Specialist&quot;.
+                          It&apos;s the first thing clients see on your card and the main way you show up in searches. Keep it simple and recognisable, so &quot;Plumber&quot; finds you more clients than &quot;Fluid Systems Specialist&quot;.
                         </CoachTip>
                       </div>
 
@@ -2635,7 +2635,7 @@ function DashboardInner() {
                         {createErrors.location && <p className="text-xs text-red-500 mt-1">{createErrors.location}</p>}
                         <p style={{ fontSize: '0.78rem', color: '#6B7280', marginTop: 4 }}>Select the parish you are based in. Clients will use this to find professionals near them.</p>
                         <CoachTip show={tourStep === 1} step={2} total={TOUR_TOTAL} title="Get found by clients near you" onNext={nextTour} onSkip={endTour}>
-                          Clients filter their search by parish, and most prefer someone close by. Picking your parish puts you at the top of local results — jobs you can actually get to.
+                          Clients filter their search by parish, and most prefer someone close by. Picking your parish puts you at the top of local results, for jobs you can actually get to.
                         </CoachTip>
                       </div>
 
@@ -2655,7 +2655,7 @@ function DashboardInner() {
                           onBlur={e => e.target.style.borderColor = ''}
                         />
                         <CoachTip show={tourStep === 2} step={3} total={TOUR_TOTAL} title="Turn profile views into enquiries" onNext={nextTour} onSkip={endTour}>
-                          A couple of friendly sentences here builds instant trust. Mention your years of experience, what you specialise in, and the areas you cover — profiles with a bio get noticeably more messages than empty ones.
+                          A couple of friendly sentences here builds instant trust. Mention your years of experience, what you specialise in, and the areas you cover. Profiles with a bio get noticeably more messages than empty ones.
                         </CoachTip>
                       </div>
 
@@ -2667,7 +2667,7 @@ function DashboardInner() {
                             <span style={{ fontSize: '0.875rem', color: '#9CA3AF', cursor: 'help', lineHeight: 1 }}>ⓘ</span>
                           </Tooltip>
                         </label>
-                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Add specific things you can do or tools you use — these help clients find you when they search. e.g. if you are a Plumber: Pipe Repair, Leak Detection, Bathroom Fitting, Drain Cleaning</p>
+                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Add specific things you can do or tools you use. These help clients find you when they search. e.g. if you are a Plumber: Pipe Repair, Leak Detection, Bathroom Fitting, Drain Cleaning</p>
                         <input
                           type="text"
                           value={createSkills}
@@ -2678,7 +2678,7 @@ function DashboardInner() {
                           onBlur={e => e.target.style.borderColor = ''}
                         />
                         <CoachTip show={tourStep === 3} step={4} total={TOUR_TOTAL} title="Skills power the search engine" onNext={nextTour} onSkip={endTour} nextLabel="Next: services →">
-                          Every skill you list is a keyword clients can search for. &quot;Leak detection&quot; or &quot;wedding photography&quot; brings in searches your trade alone would miss — 3 to 8 specific skills works best. One last tip waits on the next step!
+                          Every skill you list is a keyword clients can search for. &quot;Leak detection&quot; or &quot;wedding photography&quot; brings in searches your trade alone would miss, and 3 to 8 specific skills works best. One last tip waits on the next step!
                         </CoachTip>
                       </div>
 
@@ -2753,7 +2753,7 @@ function DashboardInner() {
                         <p className="text-xs text-gray-400 mb-4">You can add these later from your dashboard.</p>
 
                         <CoachTip show={tourStep === 4 && createStep === 2} step={5} total={TOUR_TOTAL} title="Win the job before the first message" onNext={nextTour} onSkip={endTour} nextLabel="Finish tour ✓">
-                          Listing your services with prices answers the two questions every client has — &quot;can they do it?&quot; and &quot;what will it cost?&quot; Use &quot;Starting from&quot; pricing if jobs vary. Profiles with 3+ priced services get the most enquiries.
+                          Listing your services with prices answers the two questions every client has: &quot;can they do it?&quot; and &quot;what will it cost?&quot; Use &quot;Starting from&quot; pricing if jobs vary. Profiles with 3+ priced services get the most enquiries.
                         </CoachTip>
 
                         {createServices.length > 0 && (
@@ -3086,11 +3086,11 @@ function DashboardInner() {
               <tbody>
                 {(viewingClientQuote.quote.items || []).map((item, i) => (
                   <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
-                    <td className="px-3 py-2 text-gray-700">{item.description || '—'}</td>
+                    <td className="px-3 py-2 text-gray-700">{item.description || '-'}</td>
                     <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '—'}</td>
+                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '-'}</td>
                     <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '—'}
+                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '-'}
                     </td>
                   </tr>
                 ))}

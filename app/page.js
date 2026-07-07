@@ -28,8 +28,8 @@ const trustSignals = [
 ]
 
 const steps = [
-  { n: "1", icon: "🔍", title: "Search your trade", desc: "Type what you need — plumber, photographer, tutor — and filter by location or category. See real profiles with real reviews." },
-  { n: "2", icon: "💬", title: "Send a quote request", desc: "Pick services from a freelancer's portfolio, add them to your estimate cart, and send a formal quote request — all in-app." },
+  { n: "1", icon: "🔍", title: "Search your trade", desc: "Type what you need (plumber, photographer, tutor) and filter by location or category. See real profiles with real reviews." },
+  { n: "2", icon: "💬", title: "Send a quote request", desc: "Pick services from a freelancer's portfolio, add them to your estimate cart, and send a formal quote request, all in-app." },
   { n: "3", icon: "⭐", title: "Get it done & review", desc: "Work with your professional, then leave an honest review. Your feedback helps the whole Barbados community." },
 ]
 
@@ -226,7 +226,7 @@ export default function Home() {
                   lineHeight: 1,
                   marginBottom: '8px',
                 }}>
-                  {value === null ? '—' : value}
+                  {value === null ? '-' : value}
                 </p>
                 <p style={{
                   fontFamily: "'Inter', sans-serif",
@@ -522,7 +522,7 @@ export default function Home() {
               Get it done in three steps
             </h2>
             <p style={{ color: '#93b8ff', fontSize: '1rem', fontFamily: "'Inter', sans-serif" }}>
-              From search to quote in minutes — no back-and-forth, no hassle.
+              From search to quote in minutes. No back-and-forth, no hassle.
             </p>
           </div>
 

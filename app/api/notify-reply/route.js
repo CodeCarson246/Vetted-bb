@@ -108,14 +108,14 @@ export async function POST(request) {
     await sendEmail({
       to: msg.sender_email,
       subject: isReceipt
-        ? `${freelancerName} sent you a receipt — ${msg.subject || 'Vetted.bb'}`
+        ? `${freelancerName} sent you a receipt: ${msg.subject || 'Vetted.bb'}`
         : isInvoice
-        ? `${freelancerName} sent you an invoice — ${msg.subject || 'Vetted.bb'}`
+        ? `${freelancerName} sent you an invoice: ${msg.subject || 'Vetted.bb'}`
         : isReminder
-        ? `Payment reminder from ${freelancerName} — ${msg.subject || 'Vetted.bb'}`
+        ? `Payment reminder from ${freelancerName}: ${msg.subject || 'Vetted.bb'}`
         : isQuote
-        ? `${freelancerName} sent you a quote — ${msg.subject || 'Vetted.bb'}`
-        : `${freelancerName} replied — ${msg.subject || 'Vetted.bb'}`,
+        ? `${freelancerName} sent you a quote: ${msg.subject || 'Vetted.bb'}`
+        : `${freelancerName} replied: ${msg.subject || 'Vetted.bb'}`,
       html: `
         <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #f9fafb;">
           <div style="background: white; border-radius: 16px; overflow: hidden; border: 1px solid #e5e7eb;">

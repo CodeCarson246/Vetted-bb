@@ -102,7 +102,7 @@ export default function AdminPanel() {
       if (confirm('Remove the flag from this profile?')) toggleFlag(f.id, 'flagged', false)
       return
     }
-    const reason = prompt('Flag this profile — reason (optional, internal only):')
+    const reason = prompt('Flag this profile. Reason (optional, internal only):')
     if (reason === null) return // cancelled
     toggleFlag(f.id, 'flagged', true, reason.trim())
   }
@@ -148,7 +148,7 @@ export default function AdminPanel() {
   }
 
   function formatDate(str) {
-    if (!str) return '—'
+    if (!str) return '-'
     return new Date(str).toLocaleDateString('en-BB', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
@@ -291,9 +291,9 @@ export default function AdminPanel() {
                           {f.flagged && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700" title={f.flag_reason || 'Flagged'}>🚩 {f.flag_reason ? f.flag_reason.slice(0, 30) : 'Flagged'}</span>}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-gray-600 capitalize">{f.trade || '—'}</td>
-                      <td className="px-6 py-4 text-gray-600">{f.category || '—'}</td>
-                      <td className="px-6 py-4 text-gray-600">{f.rating ?? '—'}</td>
+                      <td className="px-6 py-4 text-gray-600 capitalize">{f.trade || '-'}</td>
+                      <td className="px-6 py-4 text-gray-600">{f.category || '-'}</td>
+                      <td className="px-6 py-4 text-gray-600">{f.rating ?? '-'}</td>
                       <td className="px-6 py-4 text-gray-500">{formatDate(f.created_at)}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5">
@@ -329,7 +329,7 @@ export default function AdminPanel() {
                           </button>
                           <button
                             onClick={() => flagProfile(f)}
-                            title={f.flagged ? `Flagged${f.flag_reason ? `: ${f.flag_reason}` : ''} — click to unflag` : 'Flag this profile for follow-up (internal marker, does not change visibility)'}
+                            title={f.flagged ? `Flagged${f.flag_reason ? `: ${f.flag_reason}` : ''}. Click to unflag` : 'Flag this profile for follow-up (internal marker, does not change visibility)'}
                             className="text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors"
                             style={f.flagged
                               ? { backgroundColor: '#b45309', color: 'white', borderColor: '#b45309' }
@@ -380,9 +380,9 @@ export default function AdminPanel() {
                   )}
                   {services.map((s, i) => (
                     <tr key={s.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 font-medium text-gray-900">{s.name || '—'}</td>
-                      <td className="px-6 py-4 text-gray-600 capitalize">{s.freelancers?.name || '—'}</td>
-                      <td className="px-6 py-4 text-gray-600">{s.price || '—'}</td>
+                      <td className="px-6 py-4 font-medium text-gray-900">{s.name || '-'}</td>
+                      <td className="px-6 py-4 text-gray-600 capitalize">{s.freelancers?.name || '-'}</td>
+                      <td className="px-6 py-4 text-gray-600">{s.price || '-'}</td>
                       <td className="px-6 py-4 text-gray-500">{formatDate(s.created_at)}</td>
                       <td className="px-6 py-4">
                         <button
@@ -425,14 +425,14 @@ export default function AdminPanel() {
                   )}
                   {reviews.map((r, i) => (
                     <tr key={r.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 font-medium text-gray-900">{r.author || '—'}</td>
+                      <td className="px-6 py-4 font-medium text-gray-900">{r.author || '-'}</td>
                       <td className="px-6 py-4 text-gray-600 max-w-xs">
-                        <span title={r.comment}>{r.comment ? r.comment.slice(0, 60) + (r.comment.length > 60 ? '…' : '') : '—'}</span>
+                        <span title={r.comment}>{r.comment ? r.comment.slice(0, 60) + (r.comment.length > 60 ? '…' : '') : '-'}</span>
                       </td>
-                      <td className="px-6 py-4 text-gray-600">{r.rating ?? '—'}</td>
+                      <td className="px-6 py-4 text-gray-600">{r.rating ?? '-'}</td>
                       <td className="px-6 py-4">
                         <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${r.type === 'client' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
-                          {r.type || '—'}
+                          {r.type || '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-gray-500">{formatDate(r.created_at || r.date)}</td>
@@ -477,10 +477,10 @@ export default function AdminPanel() {
                   )}
                   {messages.map((m, i) => (
                     <tr key={m.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 font-medium text-gray-900">{m.sender_name || '—'}</td>
-                      <td className="px-6 py-4 text-gray-500">{m.sender_email || '—'}</td>
+                      <td className="px-6 py-4 font-medium text-gray-900">{m.sender_name || '-'}</td>
+                      <td className="px-6 py-4 text-gray-500">{m.sender_email || '-'}</td>
                       <td className="px-6 py-4 text-gray-600 max-w-xs">
-                        <span title={m.subject}>{m.subject ? m.subject.slice(0, 60) + (m.subject.length > 60 ? '…' : '') : '—'}</span>
+                        <span title={m.subject}>{m.subject ? m.subject.slice(0, 60) + (m.subject.length > 60 ? '…' : '') : '-'}</span>
                       </td>
                       <td className="px-6 py-4 text-gray-500">{formatDate(m.created_at)}</td>
                       <td className="px-6 py-4">

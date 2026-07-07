@@ -88,12 +88,12 @@ export default function BookingWidget({ freelancerId, freelancerName }) {
         <svg width="18" height="18" fill="none" stroke="#00267F" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>
         <h2 className="font-bold text-gray-900">Request a booking</h2>
       </div>
-      <p className="text-sm text-gray-500 mb-4">{config.mode === 'slot' ? 'Pick an open time and send a request.' : 'Request a day — you’ll confirm the time together.'}</p>
+      <p className="text-sm text-gray-500 mb-4">{config.mode === 'slot' ? 'Pick an open time and send a request.' : 'Request a day. You’ll confirm the time together.'}</p>
 
       {done ? (
         <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'rgba(22,163,74,0.1)' }}>
           <p className="font-semibold" style={{ color: '#16a34a' }}>Request sent ✓</p>
-          <p className="text-sm text-gray-500 mt-1">{freelancerName || 'The professional'} will confirm or decline — you’ll be notified.</p>
+          <p className="text-sm text-gray-500 mt-1">{freelancerName || 'The professional'} will confirm or decline, and you’ll be notified.</p>
         </div>
       ) : !user ? (
         <Link href="/login" className="block text-center text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Log in to request a booking</Link>
@@ -108,8 +108,8 @@ export default function BookingWidget({ freelancerId, freelancerName }) {
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Date</label>
             <input type="date" min={minDate} value={date} onChange={e => { setDate(e.target.value); setSlot('') }} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" />
-            {isBlocked && <p className="text-xs text-red-500 mt-1">Unavailable on that date — please pick another.</p>}
-            {!isWorkDay && !isBlocked && <p className="text-xs text-red-500 mt-1">Not a working day — please pick another.</p>}
+            {isBlocked && <p className="text-xs text-red-500 mt-1">Unavailable on that date. Please pick another.</p>}
+            {!isWorkDay && !isBlocked && <p className="text-xs text-red-500 mt-1">Not a working day. Please pick another.</p>}
           </div>
 
           {config.mode === 'slot' && date && !isBlocked && isWorkDay && (

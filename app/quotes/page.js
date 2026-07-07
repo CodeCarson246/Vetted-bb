@@ -169,7 +169,7 @@ function EarningsChart({ series }) {
 }
 
 function fmtDate(str) {
-  return formatDocDate(str) || '—'
+  return formatDocDate(str) || '-'
 }
 
 export default function QuotesPage() {
@@ -294,7 +294,7 @@ export default function QuotesPage() {
         sender_name: profile.name,
         sender_user_id: authUser?.id,
         quote_id: q.id,
-        body: `Sent invoice ${invoiceNumber} — payment due ${fmtDate(dueStr)} (${terms.label.toLowerCase()})`,
+        body: `Sent invoice ${invoiceNumber}, payment due ${fmtDate(dueStr)} (${terms.label.toLowerCase()})`,
       }).then(() => {})
       fetch('/api/notify-reply', {
         method: 'POST',
@@ -302,7 +302,7 @@ export default function QuotesPage() {
         body: JSON.stringify({
           message_id: q.message_id,
           kind: 'invoice',
-          message: `Invoice ${invoiceNumber} for $${Number(q.total).toFixed(2)} — payment due ${fmtDate(dueStr)}`,
+          message: `Invoice ${invoiceNumber} for $${Number(q.total).toFixed(2)}, payment due ${fmtDate(dueStr)}`,
         }),
       }).catch(() => {})
     }
@@ -332,7 +332,7 @@ export default function QuotesPage() {
       setConfirmAction({
         title: 'Mark the job as completed?',
         body: q.client_completed_at
-          ? `${q.client_name || 'The client'} has already confirmed — this completes the job for both of you.`
+          ? `${q.client_name || 'The client'} has already confirmed. This completes the job for both of you.`
           : `Confirm the work for ${q.client_name || 'this client'} is finished. The client also confirms on their side before reviews open.`,
         confirmLabel: 'Job completed',
         onConfirm: () => updateStatus(q.id, deriveStatus(q, true, q.status === 'paid'), { completed_at: new Date().toISOString() }),
@@ -399,8 +399,9 @@ export default function QuotesPage() {
       earningsEntries.push({
         year: String(d.getFullYear()),
         month: String(d.getMonth() + 1).padStart(2, '0'),
-        // Item descriptions look like "Service name — details"; group by the name
-        service: (item.description || 'Other').split('—')[0].trim().slice(0, 60) || 'Other',
+        // Item descriptions look like "Service name - details" (older data used
+        // an em dash); group by the name before the separator.
+        service: (item.description || 'Other').split(/ [—-] /)[0].trim().slice(0, 60) || 'Other',
         client: q.client_name?.trim() || q.client_email || 'Client',
         amount,
       })
@@ -455,9 +456,9 @@ export default function QuotesPage() {
   const paidTx = paidQuotes
     .map(q => ({
       id: q.id,
-      ref: q.invoice_number || q.quote_number || '—',
+      ref: q.invoice_number || q.quote_number || '-',
       client: q.client_name?.trim() || q.client_email || 'Client',
-      title: (q.items?.[0]?.description || '').split('—')[0].trim() || 'Job',
+      title: (q.items?.[0]?.description || '').split(/ [—-] /)[0].trim() || 'Job',
       items: (q.items || []).length,
       date: new Date(q.paid_at),
       amount: Number(q.total) || 0,
@@ -540,7 +541,7 @@ export default function QuotesPage() {
   async function sendReceipt(q) {
     setBusyId(q.id)
     const ref = q.invoice_number || q.quote_number
-    const body = `Sent receipt for ${ref} — paid in full on ${fmtDate(q.paid_at)}. Total $${Number(q.total).toFixed(2)}.`
+    const body = `Sent receipt for ${ref} - paid in full on ${fmtDate(q.paid_at)}. Total $${Number(q.total).toFixed(2)}.`
     const sentAt = new Date().toISOString()
 
     if (q.message_id) {
@@ -645,7 +646,7 @@ export default function QuotesPage() {
                   const dl = q.daysLeft
                   const overdue = dl !== null && dl < 0
                   const showReminder = dl !== null && dl <= reminderThreshold(q.invoice_terms)
-                  const dueText = dl === null ? '—'
+                  const dueText = dl === null ? '-'
                     : overdue ? `${Math.abs(dl)} day${Math.abs(dl) === 1 ? '' : 's'} overdue`
                     : dl === 0 ? 'Due today'
                     : `${dl} day${dl === 1 ? '' : 's'} left`
@@ -1009,10 +1010,10 @@ export default function QuotesPage() {
                         <tbody>
                           {(q.items || []).map((item, i) => (
                             <tr key={i} className="border-t border-gray-50">
-                              <td className="px-4 py-2.5 text-gray-700">{item.description || '—'}</td>
+                              <td className="px-4 py-2.5 text-gray-700">{item.description || '-'}</td>
                               <td className="px-4 py-2.5 text-center text-gray-500">{item.qty}</td>
                               <td className="px-4 py-2.5 text-right font-medium text-gray-900">
-                                {item.price ? `$${((parseFloat(item.price) || 0) * (parseInt(item.qty) || 1)).toFixed(2)}` : '—'}
+                                {item.price ? `$${((parseFloat(item.price) || 0) * (parseInt(item.qty) || 1)).toFixed(2)}` : '-'}
                               </td>
                             </tr>
                           ))}
@@ -1045,9 +1046,9 @@ export default function QuotesPage() {
                         <CheckRow
                           label="Job completed (your confirmation)"
                           sublabel={
-                            q.completed_at && q.client_completed_at ? 'Both confirmed — reviews are open ✓'
+                            q.completed_at && q.client_completed_at ? 'Both confirmed. Reviews are open ✓'
                             : q.completed_at ? 'Waiting for the client to confirm on their side'
-                            : q.client_completed_at ? 'Client has confirmed — tick to complete the job'
+                            : q.client_completed_at ? 'Client has confirmed. Tick to complete the job'
                             : 'Tick when the work is finished'
                           }
                           checked={!!q.completed_at}
@@ -1191,7 +1192,7 @@ export default function QuotesPage() {
 
         <p className="text-xs text-gray-400 text-center mt-8">
           Clients accept or decline quotes from their messages. Once accepted, send the invoice,
-          tick the job complete, then tick it paid — your earnings update automatically.
+          tick the job complete, then tick it paid, and your earnings update automatically.
         </p>
         </>)}
       </div>

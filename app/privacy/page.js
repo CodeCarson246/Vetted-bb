@@ -137,7 +137,7 @@ export default function Privacy() {
             <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>12. Contact Us</h2>
             <p>For any questions, concerns, or requests relating to this Privacy Policy or your personal data, please contact us at:</p>
             <div className="mt-3 bg-gray-50 rounded-xl p-5 text-sm">
-              <p className="font-semibold text-gray-800">Vetted.bb — Privacy</p>
+              <p className="font-semibold text-gray-800">Vetted.bb Privacy Team</p>
               <p className="mt-1 text-gray-500">Email: <span className="font-medium" style={{ color: '#00267F' }}>privacy@vetted.bb</span></p>
               <p className="text-gray-500">Barbados</p>
             </div>

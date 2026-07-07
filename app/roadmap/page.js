@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 const phases = [
   {
     side: 'left',
-    statusLabel: 'Phase 1 — Live',
+    statusLabel: 'Phase 1: Live',
     statusBg: '#DCFCE7',
     statusColor: '#166534',
     borderTop: '#22C55E',
@@ -17,20 +17,20 @@ const phases = [
   },
   {
     side: 'right',
-    statusLabel: 'Phase 2 — Live',
+    statusLabel: 'Phase 2: Live',
     statusBg: '#DCFCE7',
     statusColor: '#166534',
     borderTop: '#22C55E',
     node: 'navy',
     title: 'Trust & Reach',
-    description: 'Vetted.bb in your pocket — install it like an app and get notified the moment something happens.',
+    description: 'Vetted.bb in your pocket. Install it like an app and get notified the moment something happens.',
     tags: ['Add to home screen', 'Push notifications', 'Quotes page', 'Saved professionals'],
     tagBg: '#DCFCE7',
     tagColor: '#166534',
   },
   {
     side: 'left',
-    statusLabel: 'Phase 3 — Live',
+    statusLabel: 'Phase 3: Live',
     statusBg: '#DCFCE7',
     statusColor: '#166534',
     borderTop: '#22C55E',
@@ -43,7 +43,7 @@ const phases = [
   },
   {
     side: 'right',
-    statusLabel: 'Phase 4 — Live',
+    statusLabel: 'Phase 4: Live',
     statusBg: '#DCFCE7',
     statusColor: '#166534',
     borderTop: '#22C55E',
@@ -56,20 +56,20 @@ const phases = [
   },
   {
     side: 'left',
-    statusLabel: 'Phase 5 — In Progress',
+    statusLabel: 'Phase 5: In Progress',
     statusBg: '#FEF3C7',
     statusColor: '#92400E',
     borderTop: '#00267F',
     node: 'pulse',
     title: 'The App',
-    description: "A fully native mobile experience on iOS and Android — Barbados's professional services platform, fully in your hands.",
+    description: "A fully native mobile experience on iOS and Android. Barbados's professional services platform, fully in your hands.",
     tags: ['iOS app', 'Android app', 'Booking history', 'Instant booking'],
     tagBg: '#EFF6FF',
     tagColor: '#1E40AF',
   },
   {
     side: 'right',
-    statusLabel: 'Phase 6 — Planned',
+    statusLabel: 'Phase 6: Planned',
     statusBg: '#F3F4F6',
     statusColor: '#6B7280',
     borderTop: '#D1D5DB',
@@ -89,7 +89,7 @@ const voteOptions = [
 ]
 
 const changelog = [
-  { date: 'Jun 2026', desc: 'Notifications centre — bell + full page, live updates', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
+  { date: 'Jun 2026', desc: 'Notifications centre: bell + full page, live updates', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
   { date: 'Jun 2026', desc: 'Live conversations via realtime (messages update instantly)', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
   { date: 'Jun 2026', desc: 'Invoicing, earnings dashboard & paid receipts', badge: 'Feature', badgeBg: '#EFF6FF', badgeColor: '#1E40AF' },
   { date: 'Jun 2026', desc: 'Phone verification & stronger account security', badge: 'Security', badgeBg: '#FEF3C7', badgeColor: '#92400E' },
@@ -438,7 +438,7 @@ export default function Roadmap() {
               borderRadius: '10px',
               backgroundColor: 'rgba(22,163,74,0.14)',
             }}>
-              ✓ Thanks — your vote has been counted.
+              ✓ Thanks, your vote has been counted.
             </p>
           ) : (
             <button

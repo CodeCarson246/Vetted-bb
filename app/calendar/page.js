@@ -131,7 +131,7 @@ export default function CalendarPage() {
     const newStatus = action === 'confirm' ? 'confirmed' : 'declined'
     setAppts(prev => prev.map(a => a.id === form.id ? { ...a, status: newStatus } : a))
     setForm(null)
-    setToast({ msg: action === 'confirm' ? 'Booking confirmed — client notified.' : 'Booking declined — client notified.' })
+    setToast({ msg: action === 'confirm' ? 'Booking confirmed. The client has been notified.' : 'Booking declined. The client has been notified.' })
     setTimeout(() => setToast(null), 3000)
   }
   function pickQuote(qid) {
@@ -139,7 +139,7 @@ export default function CalendarPage() {
     setForm(f => ({
       ...f,
       quote_id: qid,
-      title: f.title || (q ? `Job — ${q.invoice_number || q.quote_number}` : f.title),
+      title: f.title || (q ? `Job ${q.invoice_number || q.quote_number}` : f.title),
       client_name: f.client_name || q?.client_name || '',
       client_email: f.client_email || q?.client_email || '',
     }))
@@ -383,10 +383,10 @@ export default function CalendarPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">Link to a job (optional)</label>
                   <select value={form.quote_id} onChange={e => pickQuote(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400">
-                    <option value="">— None —</option>
+                    <option value="">None</option>
                     {quotes.map(q => <option key={q.id} value={q.id}>{q.invoice_number || q.quote_number} · {q.client_name || 'Client'}</option>)}
                   </select>
-                  <p className="text-xs text-gray-400 mt-1">Linking a job is just for your records — it doesn&apos;t change your public availability.</p>
+                  <p className="text-xs text-gray-400 mt-1">Linking a job is just for your records. It doesn&apos;t change your public availability.</p>
                 </div>
               )}
               <Field label={isBlock ? 'Label (optional)' : 'Title'}>
@@ -414,7 +414,7 @@ export default function CalendarPage() {
 
             {form.id && form.client_user_id && form.status === 'pending' && (
               <div className="flex items-center gap-2 mt-4 p-3 rounded-xl" style={{ backgroundColor: 'rgba(249,192,0,0.12)' }}>
-                <span className="text-xs font-medium flex-1" style={{ color: '#B45309' }}>Client booking request — confirm or decline.</span>
+                <span className="text-xs font-medium flex-1" style={{ color: '#B45309' }}>Client booking request. Confirm or decline.</span>
                 <button onClick={() => respondBooking('decline')} disabled={saving} className="text-xs font-semibold px-3.5 py-2 rounded-full border border-gray-300 text-gray-600 hover:border-gray-500 disabled:opacity-50">Decline</button>
                 <button onClick={() => respondBooking('confirm')} disabled={saving} className="text-xs font-semibold px-3.5 py-2 rounded-full text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#16a34a' }}>Confirm</button>
               </div>

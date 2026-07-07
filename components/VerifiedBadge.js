@@ -5,7 +5,7 @@
 export default function VerifiedBadge({ size = 16, withLabel = false, label = 'Verified' }) {
   return (
     <span
-      title="Verified — identity confirmed by Vetted.bb"
+      title="Verified: identity confirmed by Vetted.bb"
       style={{ display: 'inline-flex', alignItems: 'center', gap: 4, verticalAlign: 'middle', lineHeight: 0 }}
     >
       <svg width={size} height={size} viewBox="0 0 24 24" role="img" aria-label="Verified" style={{ flexShrink: 0 }}>

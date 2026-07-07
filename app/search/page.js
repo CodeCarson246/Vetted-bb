@@ -216,8 +216,8 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
               <Tooltip content={
                 <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.75rem', lineHeight: 1.6 }}>
                   <span style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>Price guide</span>
-                  <span style={{ display: 'block' }}><span style={{ color: '#93b8ff' }}>■</span> Navy — fixed rate</span>
-                  <span style={{ display: 'block' }}><span style={{ color: '#F59E0B' }}>■</span> Orange — starting from <span style={{ color: '#c0c8d8' }}>(may vary)</span></span>
+                  <span style={{ display: 'block' }}><span style={{ color: '#93b8ff' }}>■</span> Navy = fixed rate</span>
+                  <span style={{ display: 'block' }}><span style={{ color: '#F59E0B' }}>■</span> Orange = starting from <span style={{ color: '#c0c8d8' }}>(may vary)</span></span>
                 </span>
               }>
                 <span style={{ fontSize: 13, color: '#9CA3AF', cursor: 'help', marginLeft: 4, lineHeight: 1 }}>ⓘ</span>
@@ -227,7 +227,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
               <div key={svc.id} style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1.8, marginTop: i > 0 ? 4 : 0 }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#00267F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{svc.name}</span>
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F', flexShrink: 0, marginLeft: 6 }}>
-                  · ${parsePrice(svc.price)?.toFixed(0) ?? '—'}{svc.price_type === 'starting_from' ? '+' : ''}
+                  · ${parsePrice(svc.price)?.toFixed(0) ?? '-'}{svc.price_type === 'starting_from' ? '+' : ''}
                 </span>
               </div>
             ))}
@@ -240,7 +240,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
             {displayServices.map(svc => (
               <span key={svc.id} style={{ fontSize: '0.78rem' }}>
                 <span style={{ fontWeight: 500, color: '#00267F' }}>{svc.name}</span>
-                <span style={{ fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>{' · $'}{parsePrice(svc.price)?.toFixed(0) ?? '—'}{svc.price_type === 'starting_from' ? '+' : ''}</span>
+                <span style={{ fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>{' · $'}{parsePrice(svc.price)?.toFixed(0) ?? '-'}{svc.price_type === 'starting_from' ? '+' : ''}</span>
               </span>
             ))}
           </div>
@@ -524,7 +524,7 @@ function SearchPage() {
                   style={{ borderColor: '#00267F', color: '#00267F' }}
                   title="Get notified when a new matching professional joins"
                 >
-                  {searchSaved ? '✓ Saved — we’ll alert you' : savingSearch ? 'Saving…' : '🔔 Save this search'}
+                  {searchSaved ? '✓ Saved. We’ll alert you' : savingSearch ? 'Saving…' : '🔔 Save this search'}
                 </button>
               )}
             </div>

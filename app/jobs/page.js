@@ -8,7 +8,7 @@ import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { printSavedQuote } from '@/lib/printQuote'
 
 function fmtDate(str) {
-  if (!str) return '—'
+  if (!str) return '-'
   return new Date(str).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
@@ -86,7 +86,7 @@ export default function JobsPage() {
       setConfirmAction({
         title: 'Mark this job as completed?',
         body: job.completed_at
-          ? `${job.freelancers?.name || 'The professional'} has already confirmed — this completes the job, and you’ll both be able to leave a review.`
+          ? `${job.freelancers?.name || 'The professional'} has already confirmed. This completes the job, and you’ll both be able to leave a review.`
           : `Confirm the work from ${job.freelancers?.name || 'this professional'} is finished. They also confirm on their side before reviews open.`,
         confirmLabel: 'Job completed',
         onConfirm: () => setClientCompleted(job, true),
@@ -108,7 +108,7 @@ export default function JobsPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">My jobs</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Jobs you&apos;ve hired for. Mark a job complete once the work is done — when you and the professional both confirm, you can review each other.
+            Jobs you&apos;ve hired for. Mark a job complete once the work is done. When you and the professional both confirm, you can review each other.
           </p>
         </div>
 
@@ -167,10 +167,10 @@ export default function JobsPage() {
                           <span className="flex-1">
                             <span className="text-sm font-medium block text-gray-900">Mark job as completed</span>
                             <span className="text-xs text-gray-400">
-                              {mutual && job.status === 'paid' ? 'Completed & paid — you can leave a review ✓'
-                                : mutual ? 'Both confirmed — you can review once the pro marks it paid'
+                              {mutual && job.status === 'paid' ? 'Completed & paid. You can leave a review ✓'
+                                : mutual ? 'Both confirmed. You can review once the pro marks it paid'
                                 : job.client_completed_at ? `Waiting for ${f?.name || 'the professional'} to confirm`
-                                : job.completed_at ? `${f?.name || 'The professional'} has confirmed — tick to complete`
+                                : job.completed_at ? `${f?.name || 'The professional'} has confirmed. Tick to complete`
                                 : 'Tick once the work is finished'}
                             </span>
                           </span>

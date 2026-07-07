@@ -18,7 +18,7 @@ export async function generateMetadata({ params }) {
   const cat = categoryBySlug(slug)
   if (!cat) return {}
   return {
-    title: `${cat.name} in Barbados — Hire Trusted Professionals`,
+    title: `${cat.name} in Barbados | Hire Trusted Professionals`,
     description: `${cat.description} Real reviews, verified profiles, free quotes on Vetted.bb.`,
     alternates: { canonical: `https://vetted-bb.vercel.app/categories/${cat.slug}` },
     openGraph: {
@@ -97,7 +97,7 @@ export default async function CategoryPage({ params }) {
         {pros.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center">
             <p className="font-medium text-gray-900 mb-1">No professionals listed yet</p>
-            <p className="text-sm text-gray-500 mb-6">Work in this field? Claim the spot — early profiles get the most visibility.</p>
+            <p className="text-sm text-gray-500 mb-6">Work in this field? Claim the spot. Early profiles get the most visibility.</p>
             <Link
               href="/signup?role=freelancer"
               className="inline-block text-sm font-semibold px-6 py-3 rounded-full hover:opacity-90 transition-opacity"

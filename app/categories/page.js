@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { CATEGORIES } from '@/lib/categories'
 
 export const metadata = {
-  title: 'Browse All Categories — Trusted Professionals in Barbados',
-  description: 'Browse every category of vetted professional in Barbados — trades, automotive, beauty, catering, technology and more. Real reviews, free quotes.',
+  title: 'Browse All Categories | Trusted Professionals in Barbados',
+  description: 'Browse every category of vetted professional in Barbados: trades, automotive, beauty, catering, technology and more. Real reviews, free quotes.',
   alternates: { canonical: 'https://vetted-bb.vercel.app/categories' },
 }
 
@@ -16,7 +16,7 @@ export default function CategoriesIndex() {
             All categories
           </h1>
           <p className="text-base" style={{ color: 'rgba(255,255,255,0.75)' }}>
-            Every kind of professional on Vetted.bb — pick a category to see who&apos;s available.
+            Every kind of professional on Vetted.bb. Pick a category to see who&apos;s available.
           </p>
         </div>
       </section>

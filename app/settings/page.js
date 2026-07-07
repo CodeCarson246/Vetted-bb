@@ -146,7 +146,7 @@ export default function SettingsPage() {
   }
 
   const pushLabel = {
-    subscribed: 'On', unsubscribed: 'Off', denied: 'Blocked in browser', 'not-configured': 'Unavailable', unsupported: 'Not supported on this device', error: 'Error — try again', unknown: '…',
+    subscribed: 'On', unsubscribed: 'Off', denied: 'Blocked in browser', 'not-configured': 'Unavailable', unsupported: 'Not supported on this device', error: 'Error, try again', unknown: '…',
   }[pushState] || 'Off'
 
   return (
@@ -182,7 +182,7 @@ export default function SettingsPage() {
           )}
 
           {profile && bk && (
-            <Card title="Bookings" desc="Let clients request bookings for the services you choose. Off by default — quote-only trades can leave this disabled.">
+            <Card title="Bookings" desc="Let clients request bookings for the services you choose. Off by default, so quote-only trades can leave this disabled.">
               <div className="flex items-center justify-between gap-3 py-1">
                 <span className="text-sm font-medium text-gray-800">Accept booking requests</span>
                 <Switch on={!!bk.bookings_enabled} onClick={() => patchBk({ bookings_enabled: !bk.bookings_enabled })} />
@@ -258,7 +258,7 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          <Card title="Notifications" desc="Get push alerts for new messages, quotes and bookings — even when the app is closed.">
+          <Card title="Notifications" desc="Get push alerts for new messages, quotes and bookings, even when the app is closed.">
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-gray-700">Push notifications · <span className="font-semibold">{pushLabel}</span></span>
               {['subscribed', 'unsubscribed', 'error', 'unknown'].includes(pushState) && (
@@ -267,11 +267,11 @@ export default function SettingsPage() {
                 </button>
               )}
             </div>
-            {pushState === 'denied' && <p className="text-xs text-gray-400 mt-2">Notifications are blocked in your browser settings — re-enable them there to turn this on.</p>}
+            {pushState === 'denied' && <p className="text-xs text-gray-400 mt-2">Notifications are blocked in your browser settings. Re-enable them there to turn this on.</p>}
           </Card>
 
           {profile && (
-            <Card title="Profile visibility" desc="Hide your public profile without deactivating. You disappear from search, categories and featured listings — existing conversations, quotes and bookings keep working. Turn it back on any time.">
+            <Card title="Profile visibility" desc="Hide your public profile without deactivating. You disappear from search, categories and featured listings, while existing conversations, quotes and bookings keep working. Turn it back on any time.">
               <div className="flex items-center justify-between gap-3 py-1">
                 <span className="text-sm font-medium text-gray-800">
                   {hidden ? 'Profile is hidden from the marketplace' : 'Profile is visible on the marketplace'}
@@ -293,7 +293,7 @@ export default function SettingsPage() {
           <div className="rounded-2xl p-5 sm:p-6" style={{ border: '1px solid #fecaca', backgroundColor: 'rgba(239,68,68,0.04)' }}>
             <h2 className="font-semibold" style={{ color: '#b91c1c' }}>Deactivate account</h2>
             <p className="text-sm text-gray-500 mt-0.5 mb-4">
-              Takes your account down immediately. You have <strong>60 days</strong> to change your mind — just log
+              Takes your account down immediately. You have <strong>60 days</strong> to change your mind. Just log
               back in and hit Reactivate. After that, your account and all its data are permanently deleted.
             </p>
             <button
@@ -316,7 +316,7 @@ export default function SettingsPage() {
               <ul className="list-disc list-inside space-y-1">
                 {profile && <li>Your public profile and services come down immediately.</li>}
                 <li>You&apos;ll be signed out on all devices you use.</li>
-                <li>For <strong>60 days</strong> you can log back in and reactivate — everything is restored.</li>
+                <li>For <strong>60 days</strong> you can log back in and reactivate. Everything is restored.</li>
                 <li>After 60 days, your account and all data are <strong>permanently deleted</strong>.</li>
               </ul>
             </div>

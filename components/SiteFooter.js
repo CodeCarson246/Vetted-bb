@@ -89,7 +89,7 @@ export default function SiteFooter() {
               </span>
             </Link>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem', maxWidth: '220px', lineHeight: 1.6, margin: 0 }}>
-              Connecting Barbados — a free marketplace for trusted local professionals and the clients who need them.
+              Connecting Barbados: a free marketplace for trusted local professionals and the clients who need them.
             </p>
           </div>
 

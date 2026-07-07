@@ -4,7 +4,7 @@ export default function SearchEmptyState({ query, category, onClearFilters }) {
   const isCategory = !!category
 
   const headline = isCategory
-    ? "Nobody here yet — but they're coming."
+    ? "Nobody here yet, but they're coming."
     : "No professionals found"
 
   const subline = isCategory

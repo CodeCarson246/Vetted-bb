@@ -45,7 +45,7 @@ export default function PushToggle({ userId }) {
         <p className="font-semibold text-sm text-gray-900">Push notifications</p>
         <p className="text-xs text-gray-500 mt-0.5">
           {status === 'subscribed'
-            ? 'On — you’ll be notified of new inquiries on this device.'
+            ? 'On. You’ll be notified of new inquiries on this device.'
             : status === 'denied'
             ? 'Blocked in your browser settings. Allow notifications for this site to turn them on.'
             : 'Get notified the moment a client messages you, even when the site is closed.'}
