@@ -227,7 +227,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
               <div key={svc.id} style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1.8, marginTop: i > 0 ? 4 : 0 }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#00267F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{svc.name}</span>
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F', flexShrink: 0, marginLeft: 6 }}>
-                  · ${parsePrice(svc.price)?.toFixed(0) ?? '-'}{svc.price_type === 'starting_from' ? '+' : ''}
+                  · ${parsePrice(svc.price)?.toFixed(0) ?? ''}{svc.price_type === 'starting_from' ? '+' : ''}
                 </span>
               </div>
             ))}
@@ -240,7 +240,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
             {displayServices.map(svc => (
               <span key={svc.id} style={{ fontSize: '0.78rem' }}>
                 <span style={{ fontWeight: 500, color: '#00267F' }}>{svc.name}</span>
-                <span style={{ fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>{' · $'}{parsePrice(svc.price)?.toFixed(0) ?? '-'}{svc.price_type === 'starting_from' ? '+' : ''}</span>
+                <span style={{ fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>{' · $'}{parsePrice(svc.price)?.toFixed(0) ?? ''}{svc.price_type === 'starting_from' ? '+' : ''}</span>
               </span>
             ))}
           </div>

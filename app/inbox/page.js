@@ -327,10 +327,10 @@ export default function Inbox() {
     const validCompanyName = profile?.company_name?.trim().length > 3 ? profile.company_name : null
     const itemRows = quoteItems.map((item, i) => `
       <tr>
-        <td style="padding:10px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.description||'-'}</td>
+        <td style="padding:10px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.description||''}</td>
         <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:center;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.qty}</td>
-        <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+parseFloat(item.price).toFixed(2):'-'}</td>
-        <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#111827;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+((parseFloat(item.price)||0)*(parseInt(item.qty)||1)).toFixed(2):'-'}</td>
+        <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+parseFloat(item.price).toFixed(2):''}</td>
+        <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#111827;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+((parseFloat(item.price)||0)*(parseInt(item.qty)||1)).toFixed(2):''}</td>
       </tr>`).join('')
 
     const avatarHtml = profile?.avatar_url
@@ -1438,11 +1438,11 @@ export default function Inbox() {
                 <tbody>
                   {quoteItems.map((item, i) => (
                     <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
-                      <td className="px-3 py-2 text-gray-700">{item.description || '-'}</td>
+                      <td className="px-3 py-2 text-gray-700">{item.description || ''}</td>
                       <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                      <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '-'}</td>
+                      <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : ''}</td>
                       <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                        {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '-'}
+                        {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
                       </td>
                     </tr>
                   ))}
@@ -1576,11 +1576,11 @@ export default function Inbox() {
               <tbody>
                 {(viewingQuote.items || []).map((item, i) => (
                   <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
-                    <td className="px-3 py-2 text-gray-700">{item.description || '-'}</td>
+                    <td className="px-3 py-2 text-gray-700">{item.description || ''}</td>
                     <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '-'}</td>
+                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : ''}</td>
                     <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '-'}
+                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
                     </td>
                   </tr>
                 ))}

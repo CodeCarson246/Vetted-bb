@@ -23,7 +23,7 @@ export default function ReceiptLineCard({ body, fromName }) {
           )}
           <div>
             <p className="text-xs text-gray-400">Paid</p>
-            <p className="text-sm font-semibold" style={{ color: '#166534' }}>{info?.paidOn || '-'}</p>
+            <p className="text-sm font-semibold" style={{ color: '#166534' }}>{info?.paidOn || ''}</p>
           </div>
         </div>
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#DCFCE7', color: '#166534' }}>Paid ✓</span>

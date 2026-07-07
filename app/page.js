@@ -226,7 +226,7 @@ export default function Home() {
                   lineHeight: 1,
                   marginBottom: '8px',
                 }}>
-                  {value === null ? '-' : value}
+                  {value === null ? '' : value}
                 </p>
                 <p style={{
                   fontFamily: "'Inter', sans-serif",

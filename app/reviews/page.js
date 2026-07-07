@@ -98,9 +98,9 @@ export default function ReviewsPage() {
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           {[
-            { label: 'Average rating', value: total ? avg.toFixed(1) : '-', sub: total ? <Stars n={avg} /> : 'No reviews yet' },
+            { label: 'Average rating', value: total ? avg.toFixed(1) : '', sub: total ? <Stars n={avg} /> : 'No reviews yet' },
             { label: 'Total reviews', value: total, sub: `${fiveStar} five-star` },
-            { label: '5-star reviews', value: fiveStar, sub: total ? `${Math.round((fiveStar / total) * 100)}% of total` : '-' },
+            { label: '5-star reviews', value: fiveStar, sub: total ? `${Math.round((fiveStar / total) * 100)}% of total` : '' },
             { label: 'Response rate', value: `${responseRate}%`, sub: `${responded} of ${total} replied` },
           ].map(c => (
             <div key={c.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">

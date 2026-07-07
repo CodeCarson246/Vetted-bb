@@ -114,7 +114,7 @@ export default function ClientProfile() {
                   <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Client rating</p>
                   <div className="flex items-center gap-1.5">
                     <StarRating rating={avg} light />
-                    <span className="text-white text-sm font-semibold">{count > 0 ? avg : '-'}</span>
+                    <span className="text-white text-sm font-semibold">{count > 0 ? avg : ''}</span>
                     <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>({count} review{count === 1 ? '' : 's'})</span>
                   </div>
                 </div>

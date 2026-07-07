@@ -8,7 +8,7 @@ import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { printSavedQuote } from '@/lib/printQuote'
 
 function fmtDate(str) {
-  if (!str) return '-'
+  if (!str) return ''
   return new Date(str).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 

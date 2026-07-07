@@ -103,7 +103,7 @@ export default function ClientsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           {[
             { label: 'Total clients', value: total },
-            { label: 'Returning clients', value: returning, sub: total ? `${Math.round((returning / total) * 100)}% of total` : '-' },
+            { label: 'Returning clients', value: returning, sub: total ? `${Math.round((returning / total) * 100)}% of total` : '' },
             { label: 'New this month', value: newThisMonth },
             { label: 'Active jobs', value: openJobs, sub: 'open quotes & invoices' },
           ].map(c => (
@@ -154,7 +154,7 @@ export default function ClientsPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-gray-600 truncate max-w-[200px]">{c.email || '-'}</td>
+                        <td className="px-3 py-3 text-gray-600 truncate max-w-[200px]">{c.email || ''}</td>
                         <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(c.last).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                         <td className="px-3 py-3 text-center font-semibold text-gray-900">{c.jobs}</td>
                         <td className="px-3 py-3">

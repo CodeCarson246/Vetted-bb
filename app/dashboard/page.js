@@ -1493,8 +1493,8 @@ function DashboardInner() {
             {/* At-a-glance stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
               {[
-                { label: 'Profile views (30d)', value: views30d ?? '-', href: `/freelancers/${profile.id}` },
-                { label: 'Rating', value: profile.review_count > 0 ? `★ ${profile.rating}` : '-', href: '#reviews-section' },
+                { label: 'Profile views (30d)', value: views30d ?? '', href: `/freelancers/${profile.id}` },
+                { label: 'Rating', value: profile.review_count > 0 ? `★ ${profile.rating}` : '', href: '#reviews-section' },
                 { label: 'Reviews', value: profile.review_count || 0, href: '#reviews-section' },
                 { label: 'Unread inquiries', value: unreadCount, href: '/inbox', highlight: unreadCount > 0 },
                 { label: 'Quotes sent', value: quoteCount, href: '/quotes' },
@@ -2242,7 +2242,7 @@ function DashboardInner() {
                       <div className="bg-white rounded-2xl p-5 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                         <svg className="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: '#00267F' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <p className="text-3xl font-bold text-gray-900">
-                          {profile.min_price != null ? `$${Number.isInteger(profile.min_price) ? profile.min_price : parseFloat(profile.min_price).toFixed(0)}` : '-'}
+                          {profile.min_price != null ? `$${Number.isInteger(profile.min_price) ? profile.min_price : parseFloat(profile.min_price).toFixed(0)}` : ''}
                         </p>
                         <p className="text-sm text-gray-500 mt-2">Starting from</p>
                       </div>
@@ -3086,11 +3086,11 @@ function DashboardInner() {
               <tbody>
                 {(viewingClientQuote.quote.items || []).map((item, i) => (
                   <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
-                    <td className="px-3 py-2 text-gray-700">{item.description || '-'}</td>
+                    <td className="px-3 py-2 text-gray-700">{item.description || ''}</td>
                     <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '-'}</td>
+                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : ''}</td>
                     <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '-'}
+                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
                     </td>
                   </tr>
                 ))}

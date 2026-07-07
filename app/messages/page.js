@@ -385,8 +385,8 @@ export default function ClientMessages() {
                       <div>
                         <p className="text-xs text-gray-400">{asReceipt ? 'Paid' : 'Payment due'}</p>
                         <p className="text-sm font-semibold" style={{ color: asReceipt ? '#166534' : '#374151' }}>{asReceipt
-                          ? (quoteData.paid_at ? formatDocDate(quoteData.paid_at) : '-')
-                          : (dueDate ? formatDocDate(dueDate) : '-')}</p>
+                          ? (quoteData.paid_at ? formatDocDate(quoteData.paid_at) : '')
+                          : (dueDate ? formatDocDate(dueDate) : '')}</p>
                       </div>
                     </div>
                     {quoteData.status === 'sent' ? (
@@ -761,11 +761,11 @@ export default function ClientMessages() {
               <tbody>
                 {(viewingQuote.quote.items || []).map((item, i) => (
                   <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
-                    <td className="px-3 py-2 text-gray-700">{item.description || '-'}</td>
+                    <td className="px-3 py-2 text-gray-700">{item.description || ''}</td>
                     <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : '-'}</td>
+                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : ''}</td>
                     <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : '-'}
+                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
                     </td>
                   </tr>
                 ))}
