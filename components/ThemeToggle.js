@@ -1,16 +1,25 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth-context'
 
 /**
  * Light/dark switch. The actual theme is applied before hydration by
- * the inline script in app/layout.js (no flash); this button just
- * flips `data-theme` on <html> and persists the choice.
+ * the inline script in app/layout.js (no flash); this button flips
+ * `data-theme` on <html> and persists the choice to the cookie +
+ * localStorage, and — when logged in — to the user's account so it
+ * follows them across devices. Multiple instances stay in sync via
+ * the 'vetted:theme-change' event.
  */
 export default function ThemeToggle() {
+  const { user } = useAuth()
   const [theme, setTheme] = useState(null)
 
   useEffect(() => {
-    setTheme(document.documentElement.dataset.theme || 'light')
+    const read = () => setTheme(document.documentElement.dataset.theme || 'light')
+    read()
+    window.addEventListener('vetted:theme-change', read)
+    return () => window.removeEventListener('vetted:theme-change', read)
   }, [])
 
   function toggle() {
@@ -21,6 +30,9 @@ export default function ThemeToggle() {
     try { localStorage.setItem('vetted_theme', next) } catch { /* private browsing */ }
     try { document.cookie = `vetted_theme=${next};path=/;max-age=31536000;samesite=lax` } catch { /* ignore */ }
     setTheme(next)
+    try { window.dispatchEvent(new Event('vetted:theme-change')) } catch { /* ignore */ }
+    // Save to the account (cross-device) — fire-and-forget, UI already updated.
+    if (user) supabase.auth.updateUser({ data: { theme: next } }).catch(() => {})
   }
 
   if (!theme) return <span style={{ width: 32, height: 32, display: 'inline-block' }} />
