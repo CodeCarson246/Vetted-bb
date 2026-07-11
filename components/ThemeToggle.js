@@ -16,7 +16,10 @@ export default function ThemeToggle() {
   function toggle() {
     const next = theme === 'dark' ? 'light' : 'dark'
     document.documentElement.dataset.theme = next
+    // Persist in both stores so the choice survives on platforms that drop
+    // one of them (see the boot script in app/layout.js).
     try { localStorage.setItem('vetted_theme', next) } catch { /* private browsing */ }
+    try { document.cookie = `vetted_theme=${next};path=/;max-age=31536000;samesite=lax` } catch { /* ignore */ }
     setTheme(next)
   }
 

@@ -48,10 +48,15 @@ export default function RootLayout({ children }) {
     // from the server render — that one mismatch is expected.
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head>
-        {/* Apply the saved theme before first paint — prevents light flash */}
+        {/* Apply the saved theme before first paint (prevents a light flash).
+            The choice is stored in BOTH a cookie and localStorage: some
+            platforms (private mode, in-app browsers, "clear on close")
+            drop one but keep the other, so we read whichever survived and
+            heal the other. Only an explicit choice is persisted; a first-time
+            visitor still follows their OS preference until they use the toggle. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('vetted_theme');if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}`,
+            __html: `try{var c=document.cookie.match(/(?:^|; )vetted_theme=(dark|light)/);var t=(c&&c[1])||localStorage.getItem('vetted_theme');if(t==='dark'||t==='light'){try{localStorage.setItem('vetted_theme',t)}catch(e){}document.cookie='vetted_theme='+t+';path=/;max-age=31536000;samesite=lax'}else{t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}`,
           }}
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
