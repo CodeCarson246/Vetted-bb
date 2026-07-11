@@ -515,6 +515,11 @@ export default function FreelancerProfile() {
 
   const clientReviewsList = reviews.filter(r => r.type === 'client')
   const freelancerReviewsList = reviews.filter(r => r.type === 'freelancer')
+  // Capitalised first name for the review headings (DB names can be lowercase)
+  const reviewFirstName = (() => {
+    const n = (freelancer.name || '').split(' ')[0]
+    return n ? n.charAt(0).toUpperCase() + n.slice(1) : 'this pro'
+  })()
   const whatsappShareUrl = (() => {
     const profileUrl = `https://vetted-bb.vercel.app/freelancers/${id}`
     const loc = freelancer.location ? `based in ${formatParish(freelancer.location)}` : 'in Barbados'
@@ -1189,11 +1194,16 @@ export default function FreelancerProfile() {
         {/* Reviews */}
         <div className="bg-white rounded-2xl" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
           <div className="px-7 pt-6 pb-0">
-            <h2 className="text-base font-bold text-gray-900 mb-4">Reviews</h2>
-            <div className="flex gap-2">
+            <h2 className="text-base font-bold text-gray-900 mb-1">Reviews &amp; ratings</h2>
+            {freelancerReviewsList.length > 0 && (
+              <p className="text-xs text-gray-500 mb-4" style={{ lineHeight: 1.5 }}>
+                On Vetted.bb ratings go both ways: clients rate the professional, and the professional rates the clients they work with.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
               {[
-                { key: 'client', label: 'About this freelancer', count: clientReviewsList.length },
-                ...(freelancerReviewsList.length > 0 ? [{ key: 'freelancer', label: 'Their client reviews', count: freelancerReviewsList.length }] : []),
+                { key: 'client', label: `How clients rate ${reviewFirstName}`, count: clientReviewsList.length },
+                ...(freelancerReviewsList.length > 0 ? [{ key: 'freelancer', label: `How ${reviewFirstName} rates clients`, count: freelancerReviewsList.length }] : []),
               ].map(tab => (
                 <button
                   key={tab.key}
@@ -1205,6 +1215,11 @@ export default function FreelancerProfile() {
                 </button>
               ))}
             </div>
+            <p className="text-xs text-gray-400 mt-3">
+              {activeTab === 'client'
+                ? `Ratings left by clients who hired ${reviewFirstName}.`
+                : `Ratings ${reviewFirstName} left for clients after working with them.`}
+            </p>
           </div>
 
           <div className="px-7 py-6">
