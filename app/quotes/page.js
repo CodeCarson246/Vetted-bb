@@ -365,10 +365,13 @@ export default function QuotesPage() {
   }
 
   function confirmDeleteInvoice(q) {
+    const label = q.invoice_number ? 'invoice' : 'quote'
+    const ref = q.invoice_number || q.quote_number
+    const earningsNote = q.status === 'paid' ? ' and removed from your earnings' : ''
     setConfirmAction({
-      title: 'Delete this invoice?',
-      body: `${q.invoice_number || q.quote_number} for $${Number(q.total).toFixed(2)} from ${q.client_name || 'this client'} will be permanently deleted and removed from your earnings, along with its card in the conversation. This cannot be undone.`,
-      confirmLabel: 'Delete invoice',
+      title: `Delete this ${label}?`,
+      body: `${ref} for $${Number(q.total).toFixed(2)} from ${q.client_name || 'this client'} will be permanently deleted${earningsNote}, along with its card in the conversation. This cannot be undone.`,
+      confirmLabel: `Delete ${label}`,
       danger: true,
       onConfirm: () => deleteInvoice(q),
     })
@@ -1222,6 +1225,17 @@ export default function QuotesPage() {
                             Reset to sent
                           </button>
                         )}
+
+                        <button
+                          onClick={() => confirmDeleteInvoice(q)}
+                          disabled={busyId === q.id}
+                          title="Permanently delete this quote/invoice"
+                          className="text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                          style={{ borderColor: '#fca5a5', color: '#dc2626' }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M10 11v6M14 11v6" /></svg>
+                          Delete
+                        </button>
                       </div>
                     </div>
                   </div>
