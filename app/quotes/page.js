@@ -188,6 +188,7 @@ export default function QuotesPage() {
   const [busyId, setBusyId] = useState(null)
   const [view, setView] = useState('quotes')
   const [confirmAction, setConfirmAction] = useState(null)
+  const [toast, setToast] = useState(null)
   const [selYear, setSelYear] = useState('all')
   const [selMonth, setSelMonth] = useState('all')
   const [selService, setSelService] = useState('all')
@@ -356,6 +357,34 @@ export default function QuotesPage() {
         onConfirm: () => updateStatus(q.id, 'paid', { paid_at: new Date().toISOString() }),
       })
     }
+  }
+
+  function flash(msg, err = false) {
+    setToast({ msg, err })
+    setTimeout(() => setToast(null), 3200)
+  }
+
+  function confirmDeleteInvoice(q) {
+    setConfirmAction({
+      title: 'Delete this invoice?',
+      body: `${q.invoice_number || q.quote_number} for $${Number(q.total).toFixed(2)} from ${q.client_name || 'this client'} will be permanently deleted and removed from your earnings, along with its card in the conversation. This cannot be undone.`,
+      confirmLabel: 'Delete invoice',
+      danger: true,
+      onConfirm: () => deleteInvoice(q),
+    })
+  }
+
+  async function deleteInvoice(q) {
+    setBusyId(q.id)
+    // Remove the quote/invoice/receipt cards from the conversation first, then
+    // the quote itself. Both are the freelancer's own rows, so RLS permits it
+    // ("Freelancers manage own quotes" + "Authors can delete own replies").
+    await supabase.from('message_replies').delete().eq('quote_id', q.id)
+    const { error } = await supabase.from('quotes').delete().eq('id', q.id)
+    setBusyId(null)
+    if (error) { flash('Could not delete the invoice. Please try again.', true); return }
+    setQuotes(prev => prev.filter(x => x.id !== q.id))
+    flash('Invoice deleted and removed from earnings.')
   }
 
   const filtered = filter === 'all' ? quotes : quotes.filter(q => q.status === filter)
@@ -882,6 +911,7 @@ export default function QuotesPage() {
                           <th className="font-semibold px-3 py-3">Client</th>
                           <th className="font-semibold px-3 py-3">Date paid</th>
                           <th className="font-semibold px-5 sm:px-6 py-3 text-right">Amount</th>
+                          <th className="font-semibold px-3 py-3"><span className="sr-only">Actions</span></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -894,6 +924,17 @@ export default function QuotesPage() {
                             <td className="px-3 py-3 text-gray-600 capitalize">{t.client}</td>
                             <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{fmtDate(t._q.paid_at)}</td>
                             <td className="px-5 sm:px-6 py-3 text-right font-bold tabular-nums" style={{ color: '#16a34a' }}>${t.amount.toFixed(2)}</td>
+                            <td className="px-3 py-3 text-right">
+                              <button
+                                onClick={() => confirmDeleteInvoice(t._q)}
+                                disabled={busyId === t.id}
+                                title="Delete this invoice and remove it from earnings"
+                                aria-label="Delete invoice"
+                                className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40 p-1"
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M10 11v6M14 11v6" /></svg>
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1219,12 +1260,18 @@ export default function QuotesPage() {
               <button
                 onClick={() => { confirmAction.onConfirm(); setConfirmAction(null) }}
                 className="flex-1 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#00267F' }}
+                style={{ backgroundColor: confirmAction.danger ? '#dc2626' : '#00267F' }}
               >
                 {confirmAction.confirmLabel || 'Confirm'}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] px-5 py-3 rounded-full text-sm font-semibold text-white shadow-lg" style={{ backgroundColor: toast.err ? '#dc2626' : '#00267F' }}>
+          {toast.msg}
         </div>
       )}
     </main>
