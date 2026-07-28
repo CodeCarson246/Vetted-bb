@@ -150,6 +150,19 @@ export default function WeekView({ weekDays, blocks, isPublic, onCellClick }) {
                 pointerEvents: 'none',
               }}
             >
+              {/* "Now" label in the left time gutter */}
+              <div style={{
+                position: 'absolute',
+                left: 2,
+                top: -7,
+                fontSize: '0.6rem',
+                fontWeight: 700,
+                color: '#fff',
+                backgroundColor: '#EF4444',
+                borderRadius: 4,
+                padding: '1px 4px',
+                lineHeight: 1.35,
+              }}>Now</div>
               {/* Dot on the left at the time-label boundary */}
               <div style={{
                 position: 'absolute',

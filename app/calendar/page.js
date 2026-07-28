@@ -331,6 +331,11 @@ export default function CalendarPage() {
                     <span style={{ width: 9, height: 9, borderRadius: 3, backgroundColor: STATUS[k].dot }} />{STATUS[k].label}
                   </span>
                 ))}
+                {view === 'week' && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                    <span style={{ width: 9, height: 9, borderRadius: 3, backgroundColor: '#EF4444' }} />Now (current time)
+                  </span>
+                )}
               </div>
             </div>
           </div>
