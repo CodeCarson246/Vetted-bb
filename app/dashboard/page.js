@@ -119,8 +119,10 @@ function DashboardInner() {
   const [emailSaving, setEmailSaving] = useState(false)
   const [emailSuccess, setEmailSuccess] = useState(false)
   const [emailError, setEmailError] = useState(null)
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordSuccess, setPasswordSuccess] = useState(false)
   const [passwordError, setPasswordError] = useState(null)
@@ -939,17 +941,29 @@ function DashboardInner() {
 
   async function handlePasswordUpdate(e) {
     e.preventDefault()
+    setPasswordError(null)
+    setPasswordSuccess(false)
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters.')
+      return
+    }
     if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match.')
+      setPasswordError('New passwords do not match.')
       return
     }
     setPasswordSaving(true)
-    setPasswordError(null)
-    setPasswordSuccess(false)
+    // Verify the current password first (updateUser alone doesn't check it).
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword })
+    if (authErr) {
+      setPasswordError('Current password is incorrect.')
+      setPasswordSaving(false)
+      return
+    }
     const { error } = await supabase.auth.updateUser({ password: newPassword })
     if (error) {
       setPasswordError(error.message)
     } else {
+      setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
       setToast({ message: 'Password updated successfully', type: 'success' })
@@ -2910,13 +2924,18 @@ function DashboardInner() {
               {/* Change email */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-1 mt-6">Change email</h3>
-                <p className="text-sm text-gray-500 mb-4">We'll send a confirmation link to your new address.</p>
+                <p className="text-sm text-gray-500 mb-4">We&apos;ll send a confirmation link to your new address. Your email only changes once you click that link.</p>
                 <form onSubmit={handleEmailUpdate} className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-2.5">
+                    <span className="text-xs text-gray-500 flex-shrink-0">Current email</span>
+                    <span className="text-sm font-medium text-gray-900 truncate">{user?.email}</span>
+                  </div>
                   <input
                     type="email"
                     required
                     value={newEmail}
                     onChange={e => { setNewEmail(e.target.value); setEmailSuccess(false); setEmailError(null) }}
+                    placeholder="New email address"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                   />
                   {emailError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{emailError}</p>}
@@ -2937,24 +2956,39 @@ function DashboardInner() {
               {/* Change password */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-1">Change password</h3>
-                <p className="text-sm text-gray-500 mb-4">Choose a new password for your account.</p>
+                <p className="text-sm text-gray-500 mb-4">Enter your current password, then choose a new one (at least 8 characters).</p>
                 <form onSubmit={handlePasswordUpdate} className="flex flex-col gap-3">
                   <input
-                    type="password"
+                    type={showPw ? 'text' : 'password'}
+                    required
+                    value={currentPassword}
+                    onChange={e => { setCurrentPassword(e.target.value); setPasswordSuccess(false); setPasswordError(null) }}
+                    placeholder="Current password"
+                    autoComplete="current-password"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                  />
+                  <input
+                    type={showPw ? 'text' : 'password'}
                     required
                     value={newPassword}
                     onChange={e => { setNewPassword(e.target.value); setPasswordSuccess(false); setPasswordError(null) }}
                     placeholder="New password"
+                    autoComplete="new-password"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                   />
                   <input
-                    type="password"
+                    type={showPw ? 'text' : 'password'}
                     required
                     value={confirmPassword}
                     onChange={e => { setConfirmPassword(e.target.value); setPasswordSuccess(false); setPasswordError(null) }}
                     placeholder="Confirm new password"
+                    autoComplete="new-password"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                   />
+                  <label className="flex items-center gap-2 text-xs text-gray-500 select-none cursor-pointer">
+                    <input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} className="rounded border-gray-300" />
+                    Show passwords
+                  </label>
                   {passwordError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{passwordError}</p>}
                   {passwordSuccess && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">Password updated successfully.</p>}
                   <button

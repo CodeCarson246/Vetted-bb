@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase'
 export default function AuthCallback() {
   const router = useRouter()
   const [status, setStatus] = useState('working') // working | pick-role | error
+  const [errorMsg, setErrorMsg] = useState('Something interrupted the sign-in. Please try again.')
   const finishing = useRef(false)
 
   const finish = useCallback(async (user, role) => {
@@ -28,12 +29,35 @@ export default function AuthCallback() {
       try { localStorage.setItem('vetted_is_freelancer', fp ? '1' : '0') } catch { /* ignore */ }
       router.replace(fp ? '/dashboard' : '/dashboard?welcome=true')
     } else {
-      router.replace('/dashboard')
+      // Clients land on the marketplace.
+      router.replace('/search')
     }
   }, [router])
 
   useEffect(() => {
     let cancelled = false
+
+    // Expired / already-used links (email confirm, recovery, OAuth denial)
+    // come back with error params in the hash or query. Catch them up front
+    // and show a friendly message instead of waiting on a session that will
+    // never arrive.
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash
+      const search = window.location.search.startsWith('?') ? window.location.search.slice(1) : window.location.search
+      const p = new URLSearchParams(hash || search)
+      const errCode = p.get('error_code') || p.get('error')
+      if (errCode) {
+        const desc = p.get('error_description')
+        const friendly = /expired|otp_expired/i.test(errCode + (desc || ''))
+          ? 'This link has expired or was already used. Please request a new one.'
+          : (desc ? decodeURIComponent(desc.replace(/\+/g, ' ')) : 'This link could not be verified. Please try again.')
+        /* eslint-disable react-hooks/set-state-in-effect -- one-time mount check */
+        setErrorMsg(friendly)
+        setStatus('error')
+        /* eslint-enable react-hooks/set-state-in-effect */
+        return () => {}
+      }
+    }
 
     async function handleUser(user) {
       if (cancelled || finishing.current) return
@@ -64,7 +88,10 @@ export default function AuthCallback() {
       if (!cancelled && !finishing.current) {
         supabase.auth.getSession().then(({ data }) => {
           if (data.session?.user) handleUser(data.session.user)
-          else setStatus('error')
+          else {
+            setErrorMsg('We couldn’t complete that link. It may have expired or already been used — please try again.')
+            setStatus('error')
+          }
         })
       }
     }, 8000)
@@ -116,8 +143,8 @@ export default function AuthCallback() {
       {status === 'error' && (
         <div className="text-center max-w-sm">
           <p className="text-3xl mb-3" aria-hidden="true">😕</p>
-          <h1 className="text-lg font-bold text-gray-900 mb-1">Sign-in didn&apos;t complete</h1>
-          <p className="text-sm text-gray-500 mb-5">Something interrupted the Google sign-in. Please try again.</p>
+          <h1 className="text-lg font-bold text-gray-900 mb-1">We couldn&apos;t complete that</h1>
+          <p className="text-sm text-gray-500 mb-5">{errorMsg}</p>
           <Link href="/login" className="inline-block text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
             Back to log in
           </Link>
