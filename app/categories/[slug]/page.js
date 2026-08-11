@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { CATEGORIES, categoryBySlug } from '@/lib/categories'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
+import { SITE_URL } from '@/lib/siteUrl'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 
 // Server-rendered + ISR: Google gets full HTML, revalidated hourly.
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }) {
   return {
     title: `${cat.name} in Barbados | Hire Trusted Professionals`,
     description: `${cat.description} Real reviews, verified profiles, free quotes on Vetted.bb.`,
-    alternates: { canonical: `https://vetted-bb.vercel.app/categories/${cat.slug}` },
+    alternates: { canonical: `${SITE_URL}/categories/${cat.slug}` },
     openGraph: {
       title: `${cat.name} in Barbados | Vetted.bb`,
       description: cat.description,
@@ -68,7 +69,7 @@ export default async function CategoryPage({ params }) {
     itemListElement: pros.slice(0, 10).map((f, i) => ({
       '@type': 'ListItem',
       position: i + 1,
-      url: `https://vetted-bb.vercel.app/freelancers/${f.id}`,
+      url: `${SITE_URL}/freelancers/${f.id}`,
       name: f.name,
     })),
   }

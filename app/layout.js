@@ -2,6 +2,7 @@ import "./globals.css";
 import AppChrome from '@/components/AppChrome'
 import InstallPrompt from '@/components/InstallPrompt'
 import { AuthProvider } from '@/lib/auth-context'
+import { SITE_URL } from '@/lib/siteUrl'
 
 export const metadata = {
   title: {
@@ -13,7 +14,7 @@ export const metadata = {
   openGraph: {
     title: "Vetted.bb | Find Trusted Freelancers in Barbados",
     description: "Find trusted, reviewed freelancers across Barbados. Real reviews. Real accountability.",
-    url: "https://vetted-bb.vercel.app",
+    url: SITE_URL,
     siteName: "Vetted.bb",
     locale: "en_BB",
     type: "website",

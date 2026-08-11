@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { SITE_URL } from '@/lib/siteUrl'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
@@ -521,7 +522,7 @@ export default function FreelancerProfile() {
     return n ? n.charAt(0).toUpperCase() + n.slice(1) : 'this pro'
   })()
   const whatsappShareUrl = (() => {
-    const profileUrl = `https://vetted-bb.vercel.app/freelancers/${id}`
+    const profileUrl = `${SITE_URL}/freelancers/${id}`
     const loc = freelancer.location ? `based in ${formatParish(freelancer.location)}` : 'in Barbados'
     const reviewPart = freelancer.review_count > 0
       ? ` with ${freelancer.review_count} review${freelancer.review_count === 1 ? '' : 's'}`
@@ -530,7 +531,7 @@ export default function FreelancerProfile() {
     return `https://wa.me/?text=${encodeURIComponent(text)}`
   })()
 
-  const profileShareUrl = `https://vetted-bb.vercel.app/freelancers/${id}`
+  const profileShareUrl = `${SITE_URL}/freelancers/${id}`
   const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileShareUrl)}`
   const xShareUrl = (() => {
     const text = `Check out ${freelancer.name} on Vetted.bb, a ${freelancer.trade} in ${formatParish(freelancer.location) || 'Barbados'}.`
@@ -571,7 +572,7 @@ export default function FreelancerProfile() {
       bestRating: 5,
       worstRating: 1,
     } : undefined,
-    url: `https://vetted-bb.vercel.app/freelancers/${freelancer.id}`,
+    url: `${SITE_URL}/freelancers/${freelancer.id}`,
   } : null
 
   return (

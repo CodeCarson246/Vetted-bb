@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { CATEGORIES } from '@/lib/categories'
+import { SITE_URL } from '@/lib/siteUrl'
 
 export const metadata = {
   title: 'Browse All Categories | Trusted Professionals in Barbados',
   description: 'Browse every category of vetted professional in Barbados: trades, automotive, beauty, catering, technology and more. Real reviews, free quotes.',
-  alternates: { canonical: 'https://vetted-bb.vercel.app/categories' },
+  alternates: { canonical: `${SITE_URL}/categories` },
 }
 
 export default function CategoriesIndex() {

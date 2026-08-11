@@ -3,6 +3,7 @@ import { escapeHtml } from '@/lib/escapeHtml'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { sendPushToUser } from '@/lib/serverPush'
 import { createNotification } from '@/lib/serverNotify'
+import { SITE_URL, SITE_HOST } from '@/lib/siteUrl'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 
@@ -135,13 +136,13 @@ export async function POST(request) {
                 <p style="color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 6px;">${isReceipt ? 'Receipt' : isReminder ? 'Reminder' : 'Reply'}</p>
                 <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${safeBody}</p>` : ''}
               </div>
-              <a href="https://vetted.bb/messages" style="display: block; background: #00267F; color: white; text-align: center; padding: 14px 24px; border-radius: 100px; text-decoration: none; font-weight: 600; font-size: 14px;">
+              <a href="${SITE_URL}/messages" style="display: block; background: #00267F; color: white; text-align: center; padding: 14px 24px; border-radius: 100px; text-decoration: none; font-weight: 600; font-size: 14px;">
                 ${isReceipt ? 'View your receipt →' : isInvoice ? 'View your invoice →' : isReminder ? 'View & pay →' : isQuote ? 'View your quote →' : 'View the conversation →'}
               </a>
             </div>
             <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; text-align: center;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                Vetted.bb · Connecting Barbados · <a href="https://vetted.bb" style="color: #00267F;">vetted.bb</a>
+                Vetted.bb · Connecting Barbados · <a href="${SITE_URL}" style="color: #00267F;">${SITE_HOST}</a>
               </p>
             </div>
           </div>

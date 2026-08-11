@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
 import { getQuoteId, dedupeThreadReplies, conversationPreview, quoteReplyKind, isReceiptBody } from '@/lib/quoteReply'
 import { parsePrice } from '@/lib/price'
+import { SITE_URL } from '@/lib/siteUrl'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
@@ -1073,7 +1074,7 @@ export default function Inbox() {
               No messages yet. Share your profile to start receiving enquiries.
             </p>
             {profile && (() => {
-              const profileUrl = `https://vetted-bb.vercel.app/freelancers/${profile.id}`
+              const profileUrl = `${SITE_URL}/freelancers/${profile.id}`
               const loc = profile.location ? `based in ${formatParish(profile.location)}` : 'in Barbados'
               const text = `Check out ${profile.name} on Vetted.bb. They're a ${profile.trade} ${loc}. ${profileUrl}`
               const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`

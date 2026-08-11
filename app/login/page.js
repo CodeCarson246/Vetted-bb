@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { SITE_URL } from '@/lib/siteUrl'
 import GoogleAuthButton from '@/components/GoogleAuthButton'
 
 const trustPoints = [
@@ -50,7 +51,7 @@ export default function Login() {
     setResetError(null)
 
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: 'https://vetted-bb.vercel.app/reset-password',
+      redirectTo: `${SITE_URL}/reset-password`,
     })
 
     if (error) {

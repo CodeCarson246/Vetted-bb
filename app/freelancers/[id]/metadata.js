@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { formatParish } from '@/lib/formatParish'
+import { SITE_URL } from '@/lib/siteUrl'
 
 export async function generateMetadata({ params }) {
   const { id } = await params
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }) {
     }
   }
 
-  const profileUrl = `https://vetted-bb.vercel.app/freelancers/${id}`
+  const profileUrl = `${SITE_URL}/freelancers/${id}`
   const ogTitle = `${f.name}, ${f.trade} in Barbados | Vetted.bb`
   // First line of bio (up to first newline or sentence break), capped at 160 chars
   const firstLine = f.bio

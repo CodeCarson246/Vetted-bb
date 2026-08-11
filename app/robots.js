@@ -1,3 +1,5 @@
+import { SITE_URL } from '@/lib/siteUrl'
+
 export default function robots() {
   return {
     rules: {
@@ -5,6 +7,6 @@ export default function robots() {
       allow: '/',
       disallow: ['/dashboard', '/inbox', '/admin'],
     },
-    sitemap: 'https://vetted-bb.vercel.app/sitemap.xml',
+    sitemap: `${SITE_URL}/sitemap.xml`,
   }
 }

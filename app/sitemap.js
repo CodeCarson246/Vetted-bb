@@ -1,8 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/categories'
+import { SITE_URL } from '@/lib/siteUrl'
 
 export default async function sitemap() {
-  const baseUrl = 'https://vetted-bb.vercel.app'
+  const baseUrl = SITE_URL
 
   const staticPages = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },

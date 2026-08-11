@@ -12,6 +12,7 @@ import { formatDocDate } from '@/lib/formatDate'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
 import Tooltip from '@/components/Tooltip'
 import CoachTip from '@/components/CoachTip'
+import { SITE_URL, SITE_HOST } from '@/lib/siteUrl'
 import PushToggle from '@/components/PushToggle'
 import PhoneVerify from '@/components/PhoneVerify'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
@@ -1793,12 +1794,12 @@ function DashboardInner() {
             <div className="bg-white rounded-2xl border border-gray-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 mb-0.5">Share your profile</p>
-                <p className="text-xs text-gray-400 truncate">vetted-bb.vercel.app/freelancers/{profile.id}</p>
+                <p className="text-xs text-gray-400 truncate">{SITE_HOST}/freelancers/{profile.id}</p>
               </div>
               <div className="flex flex-wrap gap-2 flex-shrink-0">
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`https://vetted-bb.vercel.app/freelancers/${profile.id}`)
+                    navigator.clipboard.writeText(`${SITE_URL}/freelancers/${profile.id}`)
                     setCopied(true)
                     setTimeout(() => setCopied(false), 2000)
                   }}
@@ -1807,7 +1808,7 @@ function DashboardInner() {
                   {copied ? '✓ Copied!' : 'Copy link'}
                 </button>
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`Check out my profile on Vetted.bb: https://vetted-bb.vercel.app/freelancers/${profile.id}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`Check out my profile on Vetted.bb: ${SITE_URL}/freelancers/${profile.id}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs px-4 py-2 rounded-full font-medium text-white hover:opacity-90 transition-opacity"
@@ -1816,7 +1817,7 @@ function DashboardInner() {
                   WhatsApp
                 </a>
                 <a
-                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://vetted-bb.vercel.app/freelancers/${profile.id}`)}`}
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${SITE_URL}/freelancers/${profile.id}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs px-4 py-2 rounded-full font-medium text-white hover:opacity-90 transition-opacity"
@@ -1825,7 +1826,7 @@ function DashboardInner() {
                   Facebook
                 </a>
                 <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out my profile on Vetted.bb!')}&url=${encodeURIComponent(`https://vetted-bb.vercel.app/freelancers/${profile.id}`)}`}
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out my profile on Vetted.bb!')}&url=${encodeURIComponent(`${SITE_URL}/freelancers/${profile.id}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs px-4 py-2 rounded-full font-medium text-white hover:opacity-90 transition-opacity"
