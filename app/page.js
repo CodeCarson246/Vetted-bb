@@ -125,7 +125,7 @@ export default function Home() {
             A professional marketplace, for Bajans by Bajans <img src="https://flagcdn.com/bb.svg" alt="Barbados flag" width="18" height="12" style={{display:'inline-block', verticalAlign:'middle', marginLeft:'6px', borderRadius:'2px'}} />
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold text-white mb-6 leading-tight tracking-tight">
-            Stop guessing.<br className="hidden sm:block" />
+            Stop guessing.<br />
             Find verified professionals<span style={{ color: '#F9C000' }}> in Barbados</span>
           </h1>
           <p className="text-lg sm:text-xl mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
