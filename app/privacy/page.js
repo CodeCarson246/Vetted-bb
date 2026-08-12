@@ -1,3 +1,9 @@
+export const metadata = {
+  title: 'Privacy Policy',
+  description: 'How Vetted.bb collects, uses, and protects your personal data.',
+  alternates: { canonical: 'https://vetted.bb/privacy' },
+}
+
 export default function Privacy() {
   return (
     <main className="min-h-screen bg-gray-50">

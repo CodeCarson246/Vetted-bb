@@ -1,3 +1,9 @@
+export const metadata = {
+  title: 'Terms of Service',
+  description: 'The terms governing use of Vetted.bb, the marketplace for trusted professionals in Barbados.',
+  alternates: { canonical: 'https://vetted.bb/terms' },
+}
+
 export default function Terms() {
   return (
     <main className="min-h-screen bg-gray-50">
