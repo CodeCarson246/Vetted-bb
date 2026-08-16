@@ -1437,7 +1437,9 @@ export default function FreelancerProfile() {
       {/* Estimate cart */}
       {cart.length > 0 && (
         <div
-          className="fixed bottom-6 left-1/2 z-40 w-full max-w-sm"
+          // Sits ABOVE the mobile sticky action bar (z-50, ~68px tall) —
+          // otherwise the bar covers the "Send estimate" button.
+          className={`fixed left-1/2 z-[60] w-full max-w-sm px-4 sm:px-0 ${stickyVisible ? 'bottom-24 md:bottom-6' : 'bottom-6'}`}
           style={{ transform: 'translateX(-50%)' }}
         >
           {cartOpen ? (
