@@ -202,6 +202,7 @@ function DashboardInner() {
   const [createServices, setCreateServices] = useState([])
   const [showCreateSvcForm, setShowCreateSvcForm] = useState(false)
   const [createSvcName, setCreateSvcName] = useState('')
+  const [createSvcBusinessGroup, setCreateSvcBusinessGroup] = useState('')
   const [createSvcPrice, setCreateSvcPrice] = useState('')
   const [createSvcPriceType, setCreateSvcPriceType] = useState('fixed')
   const [createSvcDescription, setCreateSvcDescription] = useState('')
@@ -452,6 +453,7 @@ function DashboardInner() {
             price_type: svc.price_type || 'fixed',
             description: svc.description || null,
             duration: svc.duration || null,
+            business_group: svc.business_group || null,
           }).select().single()
         )
       )
@@ -479,12 +481,14 @@ function DashboardInner() {
       price_type: createSvcPriceType,
       description: createSvcDescription.trim(),
       duration: createSvcDuration.trim(),
+      business_group: createSvcBusinessGroup.trim() || null,
     }])
     setCreateSvcName('')
     setCreateSvcPrice('')
     setCreateSvcPriceType('fixed')
     setCreateSvcDescription('')
     setCreateSvcDuration('')
+    // Keep the venture name — the next service is usually for the same one.
     setShowCreateSvcForm(false)
   }
 
@@ -2833,7 +2837,7 @@ function DashboardInner() {
                         <p className="text-xs text-gray-400 mb-4">You can add these later from your dashboard.</p>
 
                         <CoachTip show={tourStep === 4 && createStep === 2} step={5} total={TOUR_TOTAL} title="Win the job before the first message" onNext={nextTour} onSkip={endTour} nextLabel="Finish tour ✓">
-                          Listing your services with prices answers the two questions every client has: &quot;can they do it?&quot; and &quot;what will it cost?&quot; Use &quot;Starting from&quot; pricing if jobs vary. Profiles with 3+ priced services get the most enquiries.
+                          Listing your services with prices answers the two questions every client has: &quot;can they do it?&quot; and &quot;what will it cost?&quot; Use &quot;Starting from&quot; pricing if jobs vary. Profiles with 3+ priced services get the most enquiries. <strong>Run more than one business?</strong> Name it in the &quot;Which business is this for?&quot; box and each venture gets its own tab on your profile.
                         </CoachTip>
 
                         {createServices.length > 0 && (
@@ -2842,6 +2846,11 @@ function DashboardInner() {
                               <div key={i} className="flex items-start justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3">
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-gray-900 text-sm capitalize">{svc.name}</p>
+                                  {svc.business_group && (
+                                    <span className="inline-block text-[0.65rem] font-bold px-2 py-0.5 rounded-full mt-1" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                                      {svc.business_group}
+                                    </span>
+                                  )}
                                   <div className="flex items-center gap-2 mt-0.5">
                                     <span className="text-sm font-semibold" style={{ color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>
                                       {(() => {
@@ -2872,6 +2881,29 @@ function DashboardInner() {
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">Service name</label>
                               <input type="text" value={createSvcName} onChange={e => setCreateSvcName(e.target.value)} placeholder="e.g. Full house rewire" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Which business is this for? <span className="text-gray-400 font-normal">(optional)</span>
+                              </label>
+                              <input
+                                type="text"
+                                list="create-business-group-options"
+                                value={createSvcBusinessGroup}
+                                onChange={e => setCreateSvcBusinessGroup(e.target.value)}
+                                placeholder="e.g. Joe's Landscaping"
+                                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white"
+                                onFocus={e => e.target.style.borderColor = '#00267F'}
+                                onBlur={e => e.target.style.borderColor = ''}
+                              />
+                              <datalist id="create-business-group-options">
+                                {[...new Set(createServices.map(s => s.business_group).filter(Boolean))].map(g => (
+                                  <option key={g} value={g} />
+                                ))}
+                              </datalist>
+                              <p className="text-xs text-gray-400 mt-1">
+                                Run more than one business? Name it and clients get a tab for each on your profile. Leave blank if you only have one.
+                              </p>
                             </div>
                             <div>
                               {/* Price type toggle */}

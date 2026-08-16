@@ -12,6 +12,13 @@ const trustPoints = [
   'Built for Barbados',
 ]
 
+// Freelancers see the pitch aimed at them once they pick that role.
+const freelancerTrustPoints = [
+  'Free to join, no commission on your jobs',
+  'Run several businesses? List them all on one profile',
+  'Build your reputation with verified reviews',
+]
+
 export default function SignupPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-white" />}>
@@ -38,6 +45,7 @@ function SignupContent() {
     }
   }, [searchParams])
 
+  const points = role === 'freelancer' ? freelancerTrustPoints : trustPoints
   const checks = passwordChecks(password, { name: fullName, email })
   const pwValid = POLICY_KEYS.every(k => checks[k])
 
@@ -115,7 +123,7 @@ function SignupContent() {
 
           {/* Trust bullets */}
           <div className="flex flex-col gap-7">
-            {trustPoints.map(point => (
+            {points.map(point => (
               <div key={point} className="flex items-center gap-4">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}>
                   <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -136,7 +144,7 @@ function SignupContent() {
           {/* Mobile logo */}
           <Link href="/" className="md:hidden text-2xl font-bold mb-6 hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>Vetted.bb</Link>
           <div className="md:hidden flex flex-col gap-2 mb-8 w-full max-w-md">
-            {trustPoints.map(point => (
+            {points.map(point => (
               <div key={point} className="flex items-center gap-3">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EEF2FF' }}>
                   <svg className="w-3 h-3" fill="none" stroke="#00267F" strokeWidth="2.5" viewBox="0 0 24 24">

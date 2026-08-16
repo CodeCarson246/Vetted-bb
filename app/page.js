@@ -593,6 +593,7 @@ export default function Home() {
                 {[
                   'Free to join. No commission on your jobs.',
                   'Clients can send you quote requests directly through the platform',
+                  'Run several businesses? List them all on one profile, each with its own tab',
                   'Build your reputation with verified reviews',
                 ].map(benefit => (
                   <li key={benefit} className="flex items-start gap-3">
