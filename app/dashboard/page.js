@@ -142,6 +142,8 @@ function DashboardInner() {
   const [skillsInput, setSkillsInput] = useState('')
   const [category, setCategory] = useState('')
   const [extraCategories, setExtraCategories] = useState([])
+  const [ventures, setVentures] = useState([])
+  const [ventureInput, setVentureInput] = useState('')
   const [location, setLocation] = useState('')
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
@@ -203,6 +205,9 @@ function DashboardInner() {
   const [showCreateSvcForm, setShowCreateSvcForm] = useState(false)
   const [createSvcName, setCreateSvcName] = useState('')
   const [createSvcBusinessGroup, setCreateSvcBusinessGroup] = useState('')
+  const [createMultiVenture, setCreateMultiVenture] = useState(null) // null = unanswered
+  const [createVentures, setCreateVentures] = useState([])
+  const [createVentureInput, setCreateVentureInput] = useState('')
   const [createSvcPrice, setCreateSvcPrice] = useState('')
   const [createSvcPriceType, setCreateSvcPriceType] = useState('fixed')
   const [createSvcDescription, setCreateSvcDescription] = useState('')
@@ -297,6 +302,13 @@ function DashboardInner() {
           setViews30d(vCount ?? 0)
           setServices(svc || [])
           setPortfolioItems(portfolio || [])
+          // Canonical venture list = whatever's saved on the profile, plus any
+          // names already used on services (from before this list existed), so
+          // nothing a pro typed earlier gets orphaned.
+          setVentures([...new Set([
+            ...(Array.isArray(p.ventures) ? p.ventures : []),
+            ...(svc || []).map(s => s.business_group).filter(Boolean),
+          ])])
 
           // Reviewable clients = those who share a MUTUALLY-COMPLETED job
           // with this freelancer (both confirmation timestamps set). The
@@ -389,6 +401,7 @@ function DashboardInner() {
       category,
       // Never keep the primary in the extras list, and respect the cap.
       extra_categories: extraCategories.filter(c => c && c !== category).slice(0, MAX_CATEGORIES - 1),
+      ventures,
       location,
     }
 
@@ -426,6 +439,7 @@ function DashboardInner() {
         available: createAvailable,
         skills,
         category: createCategory || null,
+        ventures: createVentures,
         user_id: user.id,
         email: user.email,
         rating: 0,
@@ -1795,6 +1809,64 @@ function DashboardInner() {
                         </p>
                       )}
                     </div>
+
+                    {/* Ventures — the canonical list the service form picks from */}
+                    <div className="mt-5 pt-5 border-t border-gray-100">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Your businesses <span className="text-gray-400 font-normal">(optional)</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mb-2.5">
+                        Run more than one? Name each business here, then choose which one every service belongs to. Clients get a tab per business on your profile.
+                      </p>
+                      {ventures.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2.5">
+                          {ventures.map(v => (
+                            <span key={v} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                              {v}
+                              <button
+                                type="button"
+                                onClick={() => setVentures(prev => prev.filter(x => x !== v))}
+                                className="hover:opacity-70"
+                                aria-label={`Remove ${v}`}
+                              >×</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={ventureInput}
+                          onChange={e => setVentureInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              const v = ventureInput.trim()
+                              if (v && !ventures.includes(v)) setVentures(prev => [...prev, v])
+                              setVentureInput('')
+                            }
+                          }}
+                          placeholder="e.g. Joe's Landscaping"
+                          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-900 text-sm outline-none bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const v = ventureInput.trim()
+                            if (v && !ventures.includes(v)) setVentures(prev => [...prev, v])
+                            setVentureInput('')
+                          }}
+                          disabled={!ventureInput.trim()}
+                          className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
+                          style={{ backgroundColor: '#00267F' }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1.5">
+                        Removing a business here won&apos;t delete its services. They&apos;ll move back under &quot;General&quot; on your profile.
+                      </p>
+                    </div>
                   </div>
 
                   <div>
@@ -1929,27 +2001,24 @@ function DashboardInner() {
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Business / venture <span className="text-gray-400 font-normal">(optional)</span>
-                      </label>
-                      <input
-                        type="text"
-                        list="business-group-options"
-                        value={serviceBusinessGroup}
-                        onChange={e => setServiceBusinessGroup(e.target.value)}
-                        placeholder="e.g. Joe's Landscaping"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
-                      />
-                      <datalist id="business-group-options">
-                        {[...new Set(services.map(s => s.business_group).filter(Boolean))].map(g => (
-                          <option key={g} value={g} />
-                        ))}
-                      </datalist>
-                      <p className="text-xs text-gray-400 mt-1.5">
-                        Run more than one business? Name it here and your profile will group these services under that heading. Leave blank if you only have one.
-                      </p>
-                    </div>
+                    {/* Only relevant once they've named more than one business.
+                        A dropdown (not free text) so names can't drift apart. */}
+                    {ventures.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Which business is this for?</label>
+                        <select
+                          value={serviceBusinessGroup}
+                          onChange={e => setServiceBusinessGroup(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                        >
+                          <option value="">Not specific to one</option>
+                          {ventures.map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1.5">
+                          Manage this list under &quot;Your businesses&quot; in Edit profile.
+                        </p>
+                      </div>
+                    )}
                     <div>
                       {/* Price type toggle */}
                       <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-3">
@@ -2694,11 +2763,85 @@ function DashboardInner() {
                           onBlur={e => e.target.style.borderColor = ''}
                         >
                           <option value="">Select a category</option>
-                          {["Trades & Construction","AC & Solar","Landscaping & Outdoors","Automotive","Cleaning & Domestic","Beauty & Wellness","Food & Catering","Sports & Fitness","Creative & Design","Technology","Events & Entertainment","Education & Tutoring","Business & Professional","Health & Care","Other"].map(c => (
-                            <option key={c} value={c}>{c}</option>
+                          {CATEGORIES.map(c => (
+                            <option key={c.name} value={c.name}>{c.name}</option>
                           ))}
                         </select>
                         <p className="text-xs text-gray-400 mt-1.5">This helps clients find you when browsing categories.</p>
+                      </div>
+
+                      {/* Multiple businesses? Collected up front so the service
+                          form can offer a dropdown instead of free text. */}
+                      <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(0,38,127,0.03)', border: '1px solid var(--border-card)' }}>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Do you run more than one business?</label>
+                        <p className="text-xs text-gray-500 mb-3">
+                          You can list them all on this one profile. Clients get a tab for each, so a landscaping business and a catering business stay neatly separate.
+                        </p>
+                        <div className="flex gap-2 mb-1">
+                          {[['no', 'Just one'], ['yes', 'More than one']].map(([val, label]) => {
+                            const on = createMultiVenture === val
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => { setCreateMultiVenture(val); if (val === 'no') { setCreateVentures([]); setCreateVentureInput('') } }}
+                                className="flex-1 py-2.5 rounded-lg border-2 text-sm font-semibold transition-colors"
+                                style={on
+                                  ? { borderColor: '#00267F', backgroundColor: 'var(--selected-fill)', color: 'var(--accent)' }
+                                  : { borderColor: 'var(--border-card)', color: 'var(--foreground)' }}
+                              >
+                                {label}
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        {createMultiVenture === 'yes' && (
+                          <div className="mt-3">
+                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Name each business</label>
+                            {createVentures.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mb-2">
+                                {createVentures.map(v => (
+                                  <span key={v} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                                    {v}
+                                    <button type="button" onClick={() => setCreateVentures(prev => prev.filter(x => x !== v))} className="hover:opacity-70" aria-label={`Remove ${v}`}>×</button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={createVentureInput}
+                                onChange={e => setCreateVentureInput(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    const v = createVentureInput.trim()
+                                    if (v && !createVentures.includes(v)) setCreateVentures(prev => [...prev, v])
+                                    setCreateVentureInput('')
+                                  }
+                                }}
+                                placeholder="e.g. Joe's Landscaping"
+                                className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const v = createVentureInput.trim()
+                                  if (v && !createVentures.includes(v)) setCreateVentures(prev => [...prev, v])
+                                  setCreateVentureInput('')
+                                }}
+                                disabled={!createVentureInput.trim()}
+                                className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
+                                style={{ backgroundColor: '#00267F' }}
+                              >
+                                Add
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1.5">You&apos;ll pick which business each service belongs to in the next step. You can add or rename these later.</p>
+                          </div>
+                        )}
                       </div>
 
                       {/* Location */}
@@ -2882,29 +3025,21 @@ function DashboardInner() {
                               <label className="block text-xs font-medium text-gray-600 mb-1">Service name</label>
                               <input type="text" value={createSvcName} onChange={e => setCreateSvcName(e.target.value)} placeholder="e.g. Full house rewire" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
                             </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">
-                                Which business is this for? <span className="text-gray-400 font-normal">(optional)</span>
-                              </label>
-                              <input
-                                type="text"
-                                list="create-business-group-options"
-                                value={createSvcBusinessGroup}
-                                onChange={e => setCreateSvcBusinessGroup(e.target.value)}
-                                placeholder="e.g. Joe's Landscaping"
-                                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white"
-                                onFocus={e => e.target.style.borderColor = '#00267F'}
-                                onBlur={e => e.target.style.borderColor = ''}
-                              />
-                              <datalist id="create-business-group-options">
-                                {[...new Set(createServices.map(s => s.business_group).filter(Boolean))].map(g => (
-                                  <option key={g} value={g} />
-                                ))}
-                              </datalist>
-                              <p className="text-xs text-gray-400 mt-1">
-                                Run more than one business? Name it and clients get a tab for each on your profile. Leave blank if you only have one.
-                              </p>
-                            </div>
+                            {/* Only shown when they said they run several
+                                businesses — a dropdown, so names can't drift. */}
+                            {createVentures.length > 0 && (
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Which business is this for?</label>
+                                <select
+                                  value={createSvcBusinessGroup}
+                                  onChange={e => setCreateSvcBusinessGroup(e.target.value)}
+                                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white"
+                                >
+                                  <option value="">Not specific to one</option>
+                                  {createVentures.map(v => <option key={v} value={v}>{v}</option>)}
+                                </select>
+                              </div>
+                            )}
                             <div>
                               {/* Price type toggle */}
                               <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-2">

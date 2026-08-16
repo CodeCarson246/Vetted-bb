@@ -170,11 +170,12 @@ const SECTIONS = [
       {
         title: 'Running more than one business',
         steps: [
-          'You don\'t need a second account. On each service, fill in "Which business is this for?" (Dashboard > your services) and name the venture, for example "Joe\'s Landscaping".',
-          'Your public profile then shows a tab per business, so clients can switch between them instead of scrolling one long mixed list.',
-          'In Edit profile, use "Also appears in" to pick up to 2 extra categories. You\'ll then show up when clients browse those categories too, not just your main one.',
+          'You don\'t need a second account. In Edit profile, under "Your businesses", name each one (for example "Joe\'s Landscaping" and "Joe\'s Catering"). New profiles are asked this during setup.',
+          'Then on each service, pick which business it belongs to from the "Which business is this for?" dropdown. Services you leave as "Not specific to one" sit under a General tab.',
+          'Your public profile shows a tab per business, so clients switch between them instead of scrolling one long mixed list.',
+          'Also in Edit profile, use "Also appears in" to pick up to 2 extra categories, so you show up when clients browse those categories too.',
         ],
-        tip: 'Keep the venture name identical across services (the box suggests names you\'ve already used) so they group under one tab instead of splitting into several.',
+        tip: 'Removing a business from the list never deletes its services. They simply move back under the General tab, so it is safe to rename or tidy up later.',
       },
       {
         title: 'The verified badge',

@@ -813,3 +813,17 @@ ALTER TABLE services
 
 ALTER TABLE freelancers
   ADD COLUMN IF NOT EXISTS extra_categories text[] DEFAULT '{}';
+
+-- ============================================================
+-- SECTION 25 — VENTURE LIST ON THE PROFILE (2026-08-16)
+-- The named businesses a pro runs. Collected during profile creation
+-- ("Do you run more than one business?") and manageable afterwards, so the
+-- service form can offer a DROPDOWN instead of free text. That stops near
+-- duplicates ("CTech" vs "C-Tech") splitting into two tabs on the profile.
+-- services.business_group still holds which venture each service belongs
+-- to; this is just the canonical list of names to choose from.
+-- Empty array = single-business pro, which is the default for everyone.
+-- ============================================================
+
+ALTER TABLE freelancers
+  ADD COLUMN IF NOT EXISTS ventures text[] DEFAULT '{}';
