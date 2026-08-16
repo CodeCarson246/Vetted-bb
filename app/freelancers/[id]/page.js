@@ -514,6 +514,19 @@ export default function FreelancerProfile() {
     )
   }
 
+  // Services grouped by the venture they belong to. Ungrouped services come
+  // first (the common case); named ventures follow, each under its own
+  // heading, so one profile can present several businesses cleanly.
+  const serviceGroups = (() => {
+    const map = new Map()
+    for (const s of services) {
+      const key = (s.business_group || '').trim()
+      if (!map.has(key)) map.set(key, [])
+      map.get(key).push(s)
+    }
+    return [...map.entries()].sort((a, b) => (a[0] ? 1 : -1) - (b[0] ? 1 : -1) || a[0].localeCompare(b[0]))
+  })()
+
   const clientReviewsList = reviews.filter(r => r.type === 'client')
   const freelancerReviewsList = reviews.filter(r => r.type === 'freelancer')
   // Capitalised first name for the review headings (DB names can be lowercase)
@@ -895,8 +908,19 @@ export default function FreelancerProfile() {
                 Add one or more services below to build your estimate, then send your quote request.
               </div>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {services.map(s => (
+            {serviceGroups.map(([groupName, groupItems]) => (
+            <div key={groupName || '__ungrouped'} className={groupName ? 'mt-7 first:mt-0' : ''}>
+              {groupName && (
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1" /></svg>
+                    {groupName}
+                  </span>
+                  <span className="flex-1 h-px" style={{ backgroundColor: 'rgba(0,38,127,0.12)' }} />
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {groupItems.map(s => (
                 <div
                   key={s.id}
                   className="rounded-2xl overflow-hidden flex flex-col"
@@ -978,7 +1002,9 @@ export default function FreelancerProfile() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
+            ))}
           </div>
         ) : user?.id === freelancer.user_id ? (
           <div className="bg-white rounded-2xl px-7 py-10 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>

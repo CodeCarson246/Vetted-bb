@@ -788,3 +788,15 @@ DROP POLICY IF EXISTS "Users read own deactivation" ON account_deactivations;
 CREATE POLICY "Users read own deactivation"
   ON account_deactivations FOR SELECT
   USING (user_id = auth.uid());
+
+-- ============================================================
+-- SECTION 23 — SERVICE BUSINESS GROUPS (2026-08-16)
+-- Entrepreneurs often run several ventures under one name (e.g. a
+-- landscaping business AND a catering business). Rather than multiple
+-- profiles, a service can be tagged with the venture it belongs to; the
+-- public profile then renders services grouped under those headings.
+-- NULL/empty = ungrouped, which is the existing behaviour for everyone.
+-- ============================================================
+
+ALTER TABLE services
+  ADD COLUMN IF NOT EXISTS business_group text;

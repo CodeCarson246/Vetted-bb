@@ -107,6 +107,7 @@ function DashboardInner() {
   const [serviceDescription, setServiceDescription] = useState('')
   const [serviceDuration, setServiceDuration] = useState('')
   const [serviceDurationMinutes, setServiceDurationMinutes] = useState(null)
+  const [serviceBusinessGroup, setServiceBusinessGroup] = useState('')
   const [serviceSaving, setServiceSaving] = useState(false)
   const [serviceError, setServiceError] = useState(null)
   const [serviceImages, setServiceImages] = useState([])
@@ -633,6 +634,7 @@ function DashboardInner() {
     setServiceDescription(svc?.description || '')
     setServiceDuration(svc?.duration || '')
     setServiceDurationMinutes(svc?.duration_minutes ?? null)
+    setServiceBusinessGroup(svc?.business_group || '')
     setServiceError(null)
     setServiceImages([])
     setExistingServiceImages([])
@@ -657,6 +659,7 @@ function DashboardInner() {
     setServiceDescription('')
     setServiceDuration('')
     setServiceDurationMinutes(null)
+    setServiceBusinessGroup('')
     setServiceError(null)
     setServiceImages([])
     setExistingServiceImages([])
@@ -743,6 +746,7 @@ function DashboardInner() {
       description: serviceDescription,
       duration: serviceDuration || null,
       duration_minutes: serviceDurationMinutes,
+      business_group: serviceBusinessGroup.trim() || null,
     }
 
     let error
@@ -1880,6 +1884,27 @@ function DashboardInner() {
                         placeholder="e.g. Full house rewire"
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Business / venture <span className="text-gray-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        list="business-group-options"
+                        value={serviceBusinessGroup}
+                        onChange={e => setServiceBusinessGroup(e.target.value)}
+                        placeholder="e.g. Joe's Landscaping"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                      />
+                      <datalist id="business-group-options">
+                        {[...new Set(services.map(s => s.business_group).filter(Boolean))].map(g => (
+                          <option key={g} value={g} />
+                        ))}
+                      </datalist>
+                      <p className="text-xs text-gray-400 mt-1.5">
+                        Run more than one business? Name it here and your profile will group these services under that heading. Leave blank if you only have one.
+                      </p>
                     </div>
                     <div>
                       {/* Price type toggle */}
