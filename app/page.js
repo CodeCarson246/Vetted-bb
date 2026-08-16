@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
-import { CATEGORIES as categories } from '@/lib/categories'
+import { CATEGORIES as categories, effectiveCategories } from '@/lib/categories'
 import TrustBar from '@/components/TrustBar'
 import VerifiedBadge from '@/components/VerifiedBadge'
 
@@ -70,15 +70,18 @@ export default function Home() {
     })
   }, [])
 
-  // Fetch per-category counts by matching the category column exactly.
+  // Per-category counts. A profile counts under its primary category and any
+  // extra ones, so multi-venture pros are tallied everywhere they appear.
   useEffect(() => {
-    supabase.from('freelancers').select('category').not('category', 'is', null).eq('hidden', false).is('deactivated_at', null).then(({ data }) => {
+    supabase.from('freelancers').select('category, extra_categories').eq('hidden', false).is('deactivated_at', null).then(({ data }) => {
       if (!data) return
       const counts = {}
       for (const cat of categories) counts[cat.name] = 0
       for (const row of data) {
-        const matched = categories.find(cat => cat.name.toLowerCase() === (row.category || '').toLowerCase())
-        if (matched) counts[matched.name]++
+        for (const name of effectiveCategories(row)) {
+          const matched = categories.find(cat => cat.name.toLowerCase() === name.toLowerCase())
+          if (matched) counts[matched.name]++
+        }
       }
       setCategoryCounts(counts)
     })

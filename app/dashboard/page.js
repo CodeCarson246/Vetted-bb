@@ -13,6 +13,7 @@ import ReceiptLineCard from '@/components/ReceiptLineCard'
 import Tooltip from '@/components/Tooltip'
 import CoachTip from '@/components/CoachTip'
 import { SITE_URL, SITE_HOST } from '@/lib/siteUrl'
+import { CATEGORIES, MAX_CATEGORIES } from '@/lib/categories'
 import PushToggle from '@/components/PushToggle'
 import PhoneVerify from '@/components/PhoneVerify'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
@@ -140,6 +141,7 @@ function DashboardInner() {
   const [available, setAvailable] = useState(false)
   const [skillsInput, setSkillsInput] = useState('')
   const [category, setCategory] = useState('')
+  const [extraCategories, setExtraCategories] = useState([])
   const [location, setLocation] = useState('')
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
@@ -270,6 +272,7 @@ function DashboardInner() {
           setAvailable(p.available || false)
           setSkillsInput((p.skills || []).join(', '))
           setCategory(p.category || '')
+          setExtraCategories(Array.isArray(p.extra_categories) ? p.extra_categories : [])
           setLocation(p.location || '')
           setAvatarUrl(p.avatar_url || '')
 
@@ -383,6 +386,8 @@ function DashboardInner() {
       available,
       skills,
       category,
+      // Never keep the primary in the extras list, and respect the cap.
+      extra_categories: extraCategories.filter(c => c && c !== category).slice(0, MAX_CATEGORIES - 1),
       location,
     }
 
@@ -1746,11 +1751,46 @@ function DashboardInner() {
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
                     >
                       <option value="">Select a category</option>
-                      {["Trades & Construction","AC & Solar","Landscaping & Outdoors","Automotive","Cleaning & Domestic","Beauty & Wellness","Food & Catering","Sports & Fitness","Creative & Design","Technology","Events & Entertainment","Education & Tutoring","Business & Professional","Health & Care","Other"].map(c => (
-                        <option key={c} value={c}>{c}</option>
+                      {CATEGORIES.map(c => (
+                        <option key={c.name} value={c.name}>{c.name}</option>
                       ))}
                     </select>
                     <p className="text-xs text-gray-400 mt-1.5">This helps clients find you when browsing categories.</p>
+
+                    {/* Extra categories — for pros running more than one venture */}
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Also appears in <span className="text-gray-400 font-normal">(optional)</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mb-2.5">
+                        Run more than one business? Pick up to {MAX_CATEGORIES - 1} more categories and you&apos;ll show up when clients browse those too.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {CATEGORIES.filter(c => c.name !== category).map(c => {
+                          const on = extraCategories.includes(c.name)
+                          const full = extraCategories.length >= MAX_CATEGORIES - 1
+                          return (
+                            <button
+                              key={c.name}
+                              type="button"
+                              disabled={!on && full}
+                              onClick={() => setExtraCategories(prev => on ? prev.filter(x => x !== c.name) : [...prev, c.name])}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              style={on
+                                ? { backgroundColor: '#00267F', color: 'white', borderColor: '#00267F' }
+                                : { borderColor: 'var(--border-card)', color: 'var(--foreground)' }}
+                            >
+                              {on ? '✓ ' : '+ '}{c.icon} {c.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {extraCategories.length >= MAX_CATEGORIES - 1 && (
+                        <p className="text-xs mt-2" style={{ color: '#b45309' }}>
+                          That&apos;s the maximum. Untick one to choose a different category.
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div>

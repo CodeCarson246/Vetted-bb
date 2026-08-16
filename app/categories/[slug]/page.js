@@ -50,16 +50,26 @@ export default async function CategoryPage({ params }) {
   const cat = categoryBySlug(slug)
   if (!cat) notFound()
 
-  const { data: freelancers } = await sb()
+  // Match the primary category OR an extra one (multi-venture profiles).
+  // Two queries rather than .or(): category names contain '&' and spaces,
+  // which break PostgREST filter-string parsing. Cheap here since the page
+  // is ISR-cached (revalidate above).
+  const COLS = 'id, name, trade, avatar_url, location, rating, review_count, available, bio, verified, phone_verified, services(price)'
+  const base = () => sb()
     .from('freelancers')
-    .select('id, name, trade, avatar_url, location, rating, review_count, available, bio, verified, phone_verified, services(price)')
-    .eq('category', cat.name)
+    .select(COLS)
     .eq('hidden', false)
     .is('deactivated_at', null)
-    .order('rating', { ascending: false })
-    .order('review_count', { ascending: false })
 
-  const pros = freelancers || []
+  const [{ data: primary }, { data: extra }] = await Promise.all([
+    base().eq('category', cat.name),
+    base().contains('extra_categories', [cat.name]),
+  ])
+
+  const pros = [...(primary || []), ...(extra || [])]
+    // Dedupe (a profile can't match both, but stay safe) then rank as before.
+    .filter((f, i, arr) => arr.findIndex(x => x.id === f.id) === i)
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || (b.review_count ?? 0) - (a.review_count ?? 0))
 
   const jsonLd = {
     '@context': 'https://schema.org',

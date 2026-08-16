@@ -19,8 +19,13 @@ test('requires a mix of letters and numbers', () => {
 })
 
 test('accepts a compliant password', () => {
-  assert.equal(validatePassword('Password1', {}).valid, true)
-  assert.equal(validatePassword('Abc12345', {}).valid, true)
+  // Must satisfy every rule INCLUDING the special-character requirement.
+  assert.equal(validatePassword('Password1!', {}).valid, true)
+  assert.equal(validatePassword('Abc12345@', {}).valid, true)
+})
+
+test('rejects an otherwise-strong password with no special character', () => {
+  assert.equal(validatePassword('Password1', {}).valid, false)
 })
 
 test('rejects passwords containing the user name', () => {

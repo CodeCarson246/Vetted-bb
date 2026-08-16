@@ -800,3 +800,16 @@ CREATE POLICY "Users read own deactivation"
 
 ALTER TABLE services
   ADD COLUMN IF NOT EXISTS business_group text;
+
+-- ============================================================
+-- SECTION 24 — EXTRA CATEGORIES (2026-08-16)
+-- A freelancer running more than one venture can appear under several
+-- categories without needing separate profiles. `category` stays the
+-- PRIMARY category (drives the card's main pill and is unchanged);
+-- `extra_categories` lists the others. Capped at 2 extras in the UI
+-- (3 categories total) so nobody blankets every category page.
+-- Empty array = today's behaviour for everyone.
+-- ============================================================
+
+ALTER TABLE freelancers
+  ADD COLUMN IF NOT EXISTS extra_categories text[] DEFAULT '{}';

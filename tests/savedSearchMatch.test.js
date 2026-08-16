@@ -22,6 +22,19 @@ test('a freelancer with no category still matches a category search (lenient)', 
   assert.equal(matchesSavedSearch({ ...plumber, category: null }, { category: 'Trades & Construction' }), true)
 })
 
+test('matches on an extra category too (multi-venture profiles)', () => {
+  const multi = { ...plumber, extra_categories: ['Food & Catering'] }
+  assert.equal(matchesSavedSearch(multi, { category: 'Trades & Construction' }), true, 'primary still matches')
+  assert.equal(matchesSavedSearch(multi, { category: 'Food & Catering' }), true, 'extra category matches')
+  assert.equal(matchesSavedSearch(multi, { category: 'Automotive' }), false, 'unrelated category does not')
+})
+
+test('extra_categories alone can match when there is no primary', () => {
+  const noPrimary = { ...plumber, category: null, extra_categories: ['Food & Catering'] }
+  assert.equal(matchesSavedSearch(noPrimary, { category: 'Food & Catering' }), true)
+  assert.equal(matchesSavedSearch(noPrimary, { category: 'Automotive' }), false)
+})
+
 test('keyword matches name, trade or skills (case-insensitive)', () => {
   assert.equal(matchesSavedSearch(plumber, { query: 'plumber' }), true)
   assert.equal(matchesSavedSearch(plumber, { query: 'LEAK' }), true)

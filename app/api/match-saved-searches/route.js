@@ -17,7 +17,7 @@ export async function POST(request) {
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
     const { data: f } = await admin
       .from('freelancers')
-      .select('id, user_id, name, trade, category, location, skills, hidden, deactivated_at')
+      .select('id, user_id, name, trade, category, extra_categories, location, skills, hidden, deactivated_at')
       .eq('id', freelancer_id)
       .maybeSingle()
     // Never announce a profile its owner has hidden or deactivated

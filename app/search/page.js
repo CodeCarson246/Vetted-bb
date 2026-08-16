@@ -10,6 +10,7 @@ import SearchEmptyState from '@/components/SearchEmptyState'
 import Tooltip from '@/components/Tooltip'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
+import { effectiveCategories } from '@/lib/categories'
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #00267F, #1a3f9e)',
@@ -345,8 +346,8 @@ function SearchPage() {
         if (!nameMatch && !tradeMatch && !skillMatch && !svcTitleMatch && !svcDescMatch) return false
       }
 
-      // b) Category filter
-      if (category && f.category !== category) return false
+      // b) Category filter — matches the primary category or any extra one
+      if (category && !effectiveCategories(f).includes(category)) return false
 
       // c) Availability filter
       if (availability === 'available' && !f.available) return false

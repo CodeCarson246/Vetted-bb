@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { SITE_URL } from '@/lib/siteUrl'
+import { effectiveCategories } from '@/lib/categories'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
@@ -664,6 +665,22 @@ export default function FreelancerProfile() {
                   <p className="font-semibold mt-0.5 capitalize" style={{ color: '#F9C000' }}>{freelancer.trade}</p>
                   {freelancer.location && (
                     <p className="text-sm mt-0.5 capitalize" style={{ color: '#93b8ff' }}>📍 {formatParish(freelancer.location)}</p>
+                  )}
+
+                  {/* Categories this pro appears under (multi-venture profiles
+                      list more than one). Shown on the profile only. */}
+                  {effectiveCategories(freelancer).length > 1 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
+                      {effectiveCategories(freelancer).map(name => (
+                        <span
+                          key={name}
+                          className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }}
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
                   )}
 
                   {/* Trust signals */}
