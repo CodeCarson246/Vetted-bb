@@ -78,6 +78,7 @@ export default function FreelancerProfile() {
   const [portfolioLightbox, setPortfolioLightbox] = useState(null)
   const [cart, setCart] = useState([])
   const [cartOpen, setCartOpen] = useState(false)
+  const [serviceTab, setServiceTab] = useState(null) // active venture tab
   const [shareOpen, setShareOpen] = useState(false) // mobile bar share popover
   const [servicesHighlight, setServicesHighlight] = useState(false)
   const [lightboxService, setLightboxService] = useState(null)
@@ -528,6 +529,14 @@ export default function FreelancerProfile() {
     return [...map.entries()].sort((a, b) => (a[0] ? 1 : -1) - (b[0] ? 1 : -1) || a[0].localeCompare(b[0]))
   })()
 
+  // Only tab when there's more than one venture; a single group renders
+  // exactly as it always has. Derived (not an effect) so it self-heals if
+  // the active tab ever points at a group that no longer exists.
+  const hasVentures = serviceGroups.length > 1
+  const tabKey = g => g || '__general'
+  const activeGroup = serviceGroups.find(([g]) => tabKey(g) === serviceTab) || serviceGroups[0] || ['', []]
+  const activeServices = activeGroup[1]
+
   const clientReviewsList = reviews.filter(r => r.type === 'client')
   const freelancerReviewsList = reviews.filter(r => r.type === 'freelancer')
   // Capitalised first name for the review headings (DB names can be lowercase)
@@ -919,25 +928,42 @@ export default function FreelancerProfile() {
         {/* Services */}
         {services.length > 0 ? (
           <div id="services-section" className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: servicesHighlight ? '0 0 0 3px rgba(249,192,0,0.6)' : '0 2px 12px rgba(0,38,127,0.08)', scrollMarginTop: '90px', transition: 'box-shadow 0.3s ease' }}>
-            <h2 className="text-base font-bold text-gray-900 mb-5">Services</h2>
+            <h2 className={`text-base font-bold text-gray-900 ${hasVentures ? 'mb-3' : 'mb-5'}`}>Services</h2>
+
+            {/* Venture tabs — only when this pro runs more than one business */}
+            {hasVentures && (
+              <div className="flex flex-wrap gap-2 mb-5">
+                {serviceGroups.map(([groupName, groupItems]) => {
+                  const key = tabKey(groupName)
+                  const active = tabKey(activeGroup[0]) === key
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setServiceTab(key)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full border transition-colors"
+                      style={active
+                        ? { backgroundColor: '#00267F', color: '#fff', borderColor: '#00267F' }
+                        : { backgroundColor: 'transparent', color: 'var(--foreground)', borderColor: 'var(--border-card)' }}
+                    >
+                      {groupName ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1" /></svg>
+                      ) : null}
+                      {groupName || 'General'}
+                      <span style={{ opacity: 0.65 }}>({groupItems.length})</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
             {servicesHighlight && (
               <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ backgroundColor: 'rgba(249,192,0,0.12)', color: '#92400E', border: '1px solid rgba(249,192,0,0.4)' }}>
                 Add one or more services below to build your estimate, then send your quote request.
               </div>
             )}
-            {serviceGroups.map(([groupName, groupItems]) => (
-            <div key={groupName || '__ungrouped'} className={groupName ? 'mt-7 first:mt-0' : ''}>
-              {groupName && (
-                <div className="flex items-center gap-2.5 mb-3">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1" /></svg>
-                    {groupName}
-                  </span>
-                  <span className="flex-1 h-px" style={{ backgroundColor: 'rgba(0,38,127,0.12)' }} />
-                </div>
-              )}
+            <div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {groupItems.map(s => (
+              {activeServices.map(s => (
                 <div
                   key={s.id}
                   className="rounded-2xl overflow-hidden flex flex-col"
@@ -1021,7 +1047,6 @@ export default function FreelancerProfile() {
               ))}
               </div>
             </div>
-            ))}
           </div>
         ) : user?.id === freelancer.user_id ? (
           <div className="bg-white rounded-2xl px-7 py-10 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
