@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import ThemeToggle from '@/components/ThemeToggle'
+import InstallAppCard from '@/components/InstallAppCard'
 import { getPushStatus, enablePush, disablePush } from '@/lib/push'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
@@ -269,6 +270,8 @@ export default function SettingsPage() {
             </div>
             {pushState === 'denied' && <p className="text-xs text-gray-400 mt-2">Notifications are blocked in your browser settings. Re-enable them there to turn this on.</p>}
           </Card>
+
+          <InstallAppCard />
 
           {profile && (
             <Card title="Profile visibility" desc="Hide your public profile without deactivating. You disappear from search, categories and featured listings, while existing conversations, quotes and bookings keep working. Turn it back on any time.">

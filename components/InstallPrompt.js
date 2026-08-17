@@ -1,13 +1,15 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { subscribeInstall, canInstall, promptInstall } from '@/lib/install'
 
 // Mobile "Add to Home Screen" prompt.
-// - Android/Chrome: captures beforeinstallprompt and offers a one-tap Install.
+// - Android/Chrome: uses the shared install store (beforeinstallprompt) to
+//   offer a one-tap Install.
 // - iOS Safari (no beforeinstallprompt): shows the manual Share → Add to Home
 //   Screen hint (also the only way push works on iOS — installed PWA only).
-// Hidden when already installed (standalone) or previously dismissed.
+// Hidden when already installed (standalone) or previously dismissed. A
+// persistent button lives in Settings for anyone who dismisses this.
 export default function InstallPrompt() {
-  const [deferred, setDeferred] = useState(null)
   const [show, setShow] = useState(false)
   // Derived once from the UA, not via effect setState. SSR returns false;
   // it's only read once `show` is true (set later), so no hydration mismatch.
@@ -34,9 +36,11 @@ export default function InstallPrompt() {
       return
     }
 
-    const onBIP = (e) => { e.preventDefault(); setDeferred(e); setShow(true) }
-    window.addEventListener('beforeinstallprompt', onBIP)
-    return () => window.removeEventListener('beforeinstallprompt', onBIP)
+    // Android: reveal once the install event is available (it may have already
+    // fired before mount, or arrive shortly after).
+    if (canInstall()) setShow(true)
+    const unsub = subscribeInstall(() => { if (canInstall()) setShow(true) })
+    return unsub
   }, [isIOS])
 
   function dismiss() {
@@ -45,10 +49,7 @@ export default function InstallPrompt() {
   }
 
   async function install() {
-    if (!deferred) return
-    deferred.prompt()
-    try { await deferred.userChoice } catch { /* ignore */ }
-    setDeferred(null)
+    await promptInstall()
     dismiss()
   }
 
