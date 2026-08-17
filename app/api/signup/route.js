@@ -23,6 +23,12 @@ export async function POST(request) {
       return Response.json({ error: 'Email and password are required.' }, { status: 400 })
     }
 
+    // Terms acceptance is enforced in the form, and again here so it can't be
+    // bypassed by posting directly to the API.
+    if (body.agreedToTerms !== true) {
+      return Response.json({ error: 'You must accept the Terms of Service to sign up.' }, { status: 400 })
+    }
+
     const { valid } = validatePassword(password, { name: fullName, email })
     if (!valid) {
       return Response.json({
@@ -37,7 +43,7 @@ export async function POST(request) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role } },
+      options: { data: { full_name: fullName, role, terms_accepted_at: new Date().toISOString() } },
     })
 
     if (error) {

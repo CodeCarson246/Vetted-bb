@@ -13,6 +13,7 @@ export default function AuthCallback() {
   const router = useRouter()
   const [status, setStatus] = useState('working') // working | pick-role | error
   const [errorMsg, setErrorMsg] = useState('Something interrupted the sign-in. Please try again.')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const finishing = useRef(false)
 
   const finish = useCallback(async (user, role) => {
@@ -20,8 +21,13 @@ export default function AuthCallback() {
     finishing.current = true
     try { localStorage.removeItem('vetted_oauth_role') } catch { /* ignore */ }
 
+    // First time we set a role = the account is being established, so record
+    // Terms acceptance now too (they agreed on the signup page, or on the
+    // pick-role screen below). Existing users keep their original stamp.
     if (!user.user_metadata?.role) {
-      await supabase.auth.updateUser({ data: { role } })
+      const patch = { role }
+      if (!user.user_metadata?.terms_accepted_at) patch.terms_accepted_at = new Date().toISOString()
+      await supabase.auth.updateUser({ data: patch })
     }
 
     if (role === 'freelancer') {
@@ -100,6 +106,7 @@ export default function AuthCallback() {
   }, [finish])
 
   async function pickRole(role) {
+    if (!agreedToTerms) return
     setStatus('working')
     const { data } = await supabase.auth.getUser()
     if (data.user) finish(data.user, role)
@@ -118,11 +125,30 @@ export default function AuthCallback() {
       {status === 'pick-role' && (
         <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Almost there!</h1>
-          <p className="text-sm text-gray-500 mb-8">Tell us how you&apos;ll be using Vetted.bb.</p>
+          <p className="text-sm text-gray-500 mb-6">Tell us how you&apos;ll be using Vetted.bb.</p>
+
+          {/* Google users who signed in from the login page haven't accepted
+              the terms yet — gate the role choice on it. */}
+          <label className="flex items-start gap-2.5 mb-5 text-left cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={e => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 w-4 h-4 flex-shrink-0"
+            />
+            <span className="text-sm text-gray-600 leading-snug">
+              I agree to Vetted.bb&apos;s{' '}
+              <Link href="/terms" target="_blank" className="font-semibold underline" style={{ color: '#00267F' }}>Terms of Service</Link>
+              {' '}and{' '}
+              <Link href="/privacy" target="_blank" className="font-semibold underline" style={{ color: '#00267F' }}>Privacy Policy</Link>.
+            </span>
+          </label>
+
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => pickRole('client')}
-              className="flex-1 rounded-xl border-2 border-gray-200 bg-white p-5 text-left hover:border-gray-400 transition-colors"
+              disabled={!agreedToTerms}
+              className="flex-1 rounded-xl border-2 border-gray-200 bg-white p-5 text-left hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200"
             >
               <span className="block text-2xl mb-2" aria-hidden="true">🔍</span>
               <span className="block font-bold text-gray-900">I&apos;m a client</span>
@@ -130,7 +156,8 @@ export default function AuthCallback() {
             </button>
             <button
               onClick={() => pickRole('freelancer')}
-              className="flex-1 rounded-xl border-2 border-gray-200 bg-white p-5 text-left hover:border-gray-400 transition-colors"
+              disabled={!agreedToTerms}
+              className="flex-1 rounded-xl border-2 border-gray-200 bg-white p-5 text-left hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200"
             >
               <span className="block text-2xl mb-2" aria-hidden="true">🛠️</span>
               <span className="block font-bold text-gray-900">I&apos;m a freelancer</span>
