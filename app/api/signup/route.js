@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { validatePassword } from '@/lib/passwordPolicy'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { createNotification } from '@/lib/serverNotify'
+import { TERMS_VERSION } from '@/lib/terms'
 
 // All signups go through here so the password policy is enforced
 // server-side, not just in the form. The route validates against the same
@@ -43,7 +44,7 @@ export async function POST(request) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role, terms_accepted_at: new Date().toISOString() } },
+      options: { data: { full_name: fullName, role, terms_accepted_at: new Date().toISOString(), terms_accepted_version: TERMS_VERSION } },
     })
 
     if (error) {

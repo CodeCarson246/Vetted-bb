@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { TERMS_VERSION } from '@/lib/terms'
 
 // Lands here after Google redirects back. supabase-js picks the session out
 // of the URL automatically; this page just waits for it, makes sure the user
@@ -26,7 +27,10 @@ export default function AuthCallback() {
     // pick-role screen below). Existing users keep their original stamp.
     if (!user.user_metadata?.role) {
       const patch = { role }
-      if (!user.user_metadata?.terms_accepted_at) patch.terms_accepted_at = new Date().toISOString()
+      if (!user.user_metadata?.terms_accepted_at) {
+        patch.terms_accepted_at = new Date().toISOString()
+        patch.terms_accepted_version = TERMS_VERSION
+      }
       await supabase.auth.updateUser({ data: patch })
     }
 
