@@ -5,6 +5,9 @@ import { AuthProvider } from '@/lib/auth-context'
 import { SITE_URL } from '@/lib/siteUrl'
 
 export const metadata = {
+  // Resolves relative asset URLs (og:image, icons) to absolute ones. Uses the
+  // custom domain in prod, localhost in dev, via NEXT_PUBLIC_SITE_URL.
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Vetted.bb | Find Trusted Freelancers in Barbados",
     template: "%s | Vetted.bb",
@@ -18,11 +21,15 @@ export const metadata = {
     siteName: "Vetted.bb",
     locale: "en_BB",
     type: "website",
+    images: [
+      { url: "/og-image.png", width: 1200, height: 630, alt: "Vetted.bb, trusted professionals in Barbados" },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Vetted.bb | Find Trusted Freelancers in Barbados",
     description: "Find trusted, reviewed freelancers across Barbados.",
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
@@ -34,6 +41,12 @@ export const metadata = {
     statusBarStyle: "default",
   },
   icons: {
+    // app/favicon.ico is auto-served at /favicon.ico by Next; these add the
+    // modern PNG favicons and the iOS home-screen icon.
+    icon: [
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
     apple: "/apple-touch-icon.png",
   },
 };

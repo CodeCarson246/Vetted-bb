@@ -36,11 +36,15 @@ export async function generateMetadata({ params }) {
       siteName: 'Vetted.bb',
       locale: 'en_BB',
       type: 'profile',
+      // A page-level openGraph replaces (not merges with) the root one, so
+      // the site default image must be restated here for share previews.
+      images: [{ url: `${SITE_URL}/og-image.png`, width: 1200, height: 630, alt: `${f.name} on Vetted.bb` }],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: ogTitle,
       description: ogDescription,
+      images: [`${SITE_URL}/og-image.png`],
     },
   }
 }
