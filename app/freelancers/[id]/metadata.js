@@ -38,13 +38,15 @@ export async function generateMetadata({ params }) {
       type: 'profile',
       // A page-level openGraph replaces (not merges with) the root one, so
       // the site default image must be restated here for share previews.
-      images: [{ url: `${SITE_URL}/og-image.png`, width: 1200, height: 630, alt: `${f.name} on Vetted.bb` }],
+      // JPEG (not PNG): WhatsApp renders a transparency-free JPEG as a large
+      // banner instead of the small cropped thumbnail it uses for PNGs.
+      images: [{ url: `${SITE_URL}/og-image.jpg`, width: 1200, height: 630, type: 'image/jpeg', alt: `${f.name} on Vetted.bb` }],
     },
     twitter: {
       card: 'summary_large_image',
       title: ogTitle,
       description: ogDescription,
-      images: [`${SITE_URL}/og-image.png`],
+      images: [`${SITE_URL}/og-image.jpg`],
     },
   }
 }

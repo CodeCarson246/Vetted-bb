@@ -22,14 +22,17 @@ export const metadata = {
     locale: "en_BB",
     type: "website",
     images: [
-      { url: "/og-image.png", width: 1200, height: 630, alt: "Vetted.bb, trusted professionals in Barbados" },
+      // JPEG (not PNG): consumer WhatsApp reliably renders a JPEG without
+      // transparency as a large banner, but falls back to a small cropped
+      // thumbnail for PNGs with an alpha channel.
+      { url: "/og-image.jpg", width: 1200, height: 630, type: "image/jpeg", alt: "Vetted.bb, trusted professionals in Barbados" },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Vetted.bb | Find Trusted Freelancers in Barbados",
     description: "Find trusted, reviewed freelancers across Barbados.",
-    images: ["/og-image.png"],
+    images: ["/og-image.jpg"],
   },
   robots: {
     index: true,
