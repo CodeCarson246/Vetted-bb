@@ -11,9 +11,17 @@ export default function Terms() {
       {/* Content */}
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-14">
 
-        <div className="mb-10">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2" style={{ color: '#00267F' }}>Terms of Service</h1>
-          <p className="text-sm text-gray-400">Last updated: March 2026</p>
+          <p className="text-sm text-gray-400">Last updated: August 2026</p>
+        </div>
+
+        {/* Plain-language summary of the liability position */}
+        <div className="mb-8 rounded-2xl px-5 py-4" style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A' }}>
+          <p className="text-sm font-semibold mb-1" style={{ color: '#92400E' }}>In plain terms</p>
+          <p className="text-sm" style={{ color: '#92400E', lineHeight: 1.65 }}>
+            Vetted.bb is only a middleman that helps clients and freelancers find each other. We do not provide the services, handle any payments, or take part in your agreements. Any transaction, booking, or goods or services are entirely between you and the other user, and you use the Platform at your own risk. This summary is not a substitute for the full terms below (see sections 2, 8, 13, 14 and 15).
+          </p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-10 flex flex-col gap-10 text-gray-600 leading-relaxed">
@@ -26,7 +34,7 @@ export default function Terms() {
 
           <section>
             <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>2. Description of Service</h2>
-            <p>Vetted.bb is an online marketplace that connects clients with independent freelancers based in Barbados. We provide a platform for discovery, communication, and review. We are not a staffing agency, employer, or service provider.</p>
+            <p>Vetted.bb is an online marketplace that connects clients with independent freelancers based in Barbados. We provide tools for discovery, communication, quotes, bookings, and reviews. We act only as a neutral venue (a middleman) that helps users find and contact one another. We are not a staffing agency, employer, broker, agent, or service provider, and we are not a party to any transaction between users.</p>
             <p className="mt-3">Vetted.bb does not employ freelancers, does not guarantee the quality or completion of any work, and is not a party to any agreement made between a client and a freelancer. Any contract for services is solely between the client and the freelancer. Vetted.bb accepts no liability for disputes, losses, or damages arising from those arrangements.</p>
             <p className="mt-3">We reserve the right to modify, suspend, or discontinue any aspect of the Platform at any time without prior notice.</p>
           </section>
@@ -97,6 +105,10 @@ export default function Terms() {
             <p>To the fullest extent permitted by applicable law, Vetted.bb and its operators shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or in connection with your use of the Platform, including but not limited to:</p>
             <ul className="list-disc list-inside mt-2 flex flex-col gap-1.5 text-gray-500">
               <li>The quality, safety, or outcome of any work performed by a freelancer</li>
+              <li>The delivery, non-delivery, or standard of any goods or services</li>
+              <li>Any payment, non-payment, or refund between users</li>
+              <li>Any booking that is missed, cancelled, or not honoured by either party</li>
+              <li>Any fraud, theft, personal injury, or property damage arising from a connection made through the Platform</li>
               <li>Disputes between clients and freelancers</li>
               <li>Loss of income, data, or business opportunity</li>
               <li>Unauthorised access to your account</li>
@@ -143,7 +155,27 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>14. Contact</h2>
+            <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>14. Transactions, Payments and Goods</h2>
+            <p>Vetted.bb is a neutral venue that helps clients and freelancers find and contact one another. We act only as a middleman. We are not a party to, and accept no responsibility or liability for, any transaction, agreement, booking, service, or sale arranged between users.</p>
+            <p className="mt-3">To the fullest extent permitted by applicable law, Vetted.bb gives no warranty and accepts no responsibility for:</p>
+            <ul className="list-disc list-inside mt-2 flex flex-col gap-1.5 text-gray-500">
+              <li>the quality, safety, legality, fitness, or timeliness of any goods or services provided by a freelancer;</li>
+              <li>whether any user actually performs, attends, delivers, or pays as agreed;</li>
+              <li>the accuracy of any listing, price, quote, invoice, review, or profile information;</li>
+              <li>any payment between users. Vetted.bb does not process, hold, collect, or handle money. All payments are arranged and made directly between the client and the freelancer, off the Platform, using methods they choose;</li>
+              <li>any loss, damage, injury, theft, fraud, or dispute arising from a connection made through the Platform.</li>
+            </ul>
+            <p className="mt-3">Quotes, invoices, and booking requests created through Vetted.bb are communication tools only. They are not offered, sold, guaranteed, or enforced by Vetted.bb and do not make us a party to any resulting agreement. Any contract for goods or services is solely between the client and the freelancer, and any dispute must be resolved directly between them. You use the Platform, and transact with other users, entirely at your own risk.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>15. Assumption of Risk and Indemnification</h2>
+            <p>You use Vetted.bb, and engage with other users, at your own risk. You are responsible for exercising your own judgement, taking your own precautions, and verifying the identity, credentials, insurance, and reliability of anyone you deal with before entering into any agreement or making any payment.</p>
+            <p className="mt-3">You agree to indemnify, defend, and hold harmless Vetted.bb and its operators from and against any and all claims, liabilities, damages, losses, costs, and expenses (including reasonable legal fees) arising out of or connected with: (a) your use of the Platform; (b) any transaction, agreement, booking, or dispute between you and another user; (c) any goods or services you provide or receive; or (d) your breach of these Terms or of any applicable law.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold mb-3" style={{ color: '#00267F' }}>16. Contact</h2>
             <p>If you have questions about these Terms of Service, please contact us at <span className="font-medium" style={{ color: '#00267F' }}>hello@vetted.bb</span>.</p>
           </section>
 

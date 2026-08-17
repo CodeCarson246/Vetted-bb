@@ -37,6 +37,7 @@ function SignupContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   useEffect(() => {
     const param = searchParams.get('role')
@@ -52,6 +53,11 @@ function SignupContent() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
+
+    if (!agreedToTerms) {
+      setError('Please accept the Terms of Service and Privacy Policy to continue.')
+      return
+    }
 
     if (!validatePassword(password, { name: fullName, email }).valid) {
       setError('Please meet all the password requirements below.')
@@ -194,7 +200,23 @@ function SignupContent() {
                   </div>
                 </div>
 
-                <GoogleAuthButton role={role} label={`Sign up with Google as a ${role}`} />
+                {/* Terms acceptance gates BOTH the Google and email sign-up */}
+                <label className="flex items-start gap-2.5 mb-5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setError(null) }}
+                    className="mt-0.5 w-4 h-4 flex-shrink-0"
+                  />
+                  <span className="text-sm text-gray-600 leading-snug">
+                    I agree to Vetted.bb&apos;s{' '}
+                    <Link href="/terms" target="_blank" className="font-semibold underline" style={{ color: '#00267F' }}>Terms of Service</Link>
+                    {' '}and{' '}
+                    <Link href="/privacy" target="_blank" className="font-semibold underline" style={{ color: '#00267F' }}>Privacy Policy</Link>.
+                  </span>
+                </label>
+
+                <GoogleAuthButton role={role} label={`Sign up with Google as a ${role}`} disabled={!agreedToTerms} />
 
                 <div className="flex items-center gap-3 my-5">
                   <div className="flex-1 h-px bg-gray-200" />
@@ -266,7 +288,7 @@ function SignupContent() {
 
                   <button
                     type="submit"
-                    disabled={loading || !pwValid}
+                    disabled={loading || !pwValid || !agreedToTerms}
                     className="w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: '#00267F' }}
                   >

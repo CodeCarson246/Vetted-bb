@@ -6,8 +6,9 @@ import { supabase } from '@/lib/supabase'
 // localStorage so /auth/callback can write it into user metadata after
 // Google redirects back; on the login page no role is passed and existing
 // users keep whatever role they signed up with.
-export default function GoogleAuthButton({ role, label = 'Continue with Google' }) {
+export default function GoogleAuthButton({ role, label = 'Continue with Google', disabled = false }) {
   async function signIn() {
+    if (disabled) return
     try {
       if (role) localStorage.setItem('vetted_oauth_role', role)
       else localStorage.removeItem('vetted_oauth_role')
@@ -22,7 +23,8 @@ export default function GoogleAuthButton({ role, label = 'Continue with Google' 
     <button
       type="button"
       onClick={signIn}
-      className="w-full flex items-center justify-center gap-3 py-3 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold hover:border-gray-400 transition-colors"
+      disabled={disabled}
+      className="w-full flex items-center justify-center gap-3 py-3 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
