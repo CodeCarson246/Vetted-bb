@@ -243,7 +243,7 @@ export default function AvailabilitySettings({ freelancerId, services, onToast }
               Show my calendar on my public profile
             </p>
             <p style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '2px' }}>
-              Clients see busy/free blocks — never your private notes
+              Clients see busy/free blocks, never your private notes
             </p>
           </div>
           <button

@@ -99,7 +99,7 @@ export default function AuthCallback() {
         supabase.auth.getSession().then(({ data }) => {
           if (data.session?.user) handleUser(data.session.user)
           else {
-            setErrorMsg('We couldn’t complete that link. It may have expired or already been used — please try again.')
+            setErrorMsg('We couldn’t complete that link. It may have expired or already been used. Please try again.')
             setStatus('error')
           }
         })

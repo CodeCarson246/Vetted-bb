@@ -273,7 +273,7 @@ export default function AddBlockModal({
               <div>
                 <label style={labelStyle}>
                   Fill from a service{' '}
-                  <span style={{ fontWeight: 400, color: '#9CA3AF' }}>(optional — sets end time)</span>
+                  <span style={{ fontWeight: 400, color: '#9CA3AF' }}>(optional, sets end time)</span>
                 </label>
                 <select value={serviceId} onChange={e => fillFromService(e.target.value)} style={inputStyle}>
                   <option value="">Select a service…</option>
