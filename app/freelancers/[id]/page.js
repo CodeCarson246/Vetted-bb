@@ -533,6 +533,8 @@ export default function FreelancerProfile() {
   // exactly as it always has. Derived (not an effect) so it self-heals if
   // the active tab ever points at a group that no longer exists.
   const hasVentures = serviceGroups.length > 1
+  // Named ventures only — the ungrouped 'General' bucket is not a business.
+  const namedVentureCount = serviceGroups.filter(([g]) => g).length
   const tabKey = g => g || '__general'
   const activeGroup = serviceGroups.find(([g]) => tabKey(g) === serviceTab) || serviceGroups[0] || ['', []]
   const activeServices = activeGroup[1]
@@ -930,7 +932,13 @@ export default function FreelancerProfile() {
           <div id="services-section" className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: servicesHighlight ? '0 0 0 3px rgba(249,192,0,0.6)' : '0 2px 12px rgba(0,38,127,0.08)', scrollMarginTop: '90px', transition: 'box-shadow 0.3s ease' }}>
             <h2 className={`text-base font-bold text-gray-900 ${hasVentures ? 'mb-3' : 'mb-5'}`}>Services</h2>
 
-            {/* Venture tabs — only when this pro runs more than one business */}
+            {/* Venture tabs — only when this pro runs more than one business.
+                The line above them frames it as range rather than clutter. */}
+            {hasVentures && (
+              <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                {freelancer.name?.split(' ')[0] || 'This pro'} runs {namedVentureCount > 1 ? `${namedVentureCount} businesses` : 'more than one line of work'}, all backed by the same reviews and rating you see above. Switch between them below.
+              </p>
+            )}
             {hasVentures && (
               <div className="flex flex-wrap gap-2 mb-5">
                 {serviceGroups.map(([groupName, groupItems]) => {

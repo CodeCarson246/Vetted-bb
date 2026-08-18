@@ -49,6 +49,9 @@ export default function Inbox() {
   })
   const [quotePaymentTerms, setQuotePaymentTerms] = useState('net14')
   const [quoteNotes, setQuoteNotes] = useState('')
+  // Which venture this quote belongs to, for pros running several businesses.
+  // '' = not tied to one, which is what single-business pros always send.
+  const [quoteVenture, setQuoteVenture] = useState('')
   const [quoteClientName, setQuoteClientName] = useState('')
   const [quoteClientEmail, setQuoteClientEmail] = useState('')
   const [quoteToast, setQuoteToast] = useState(null)
@@ -182,7 +185,7 @@ export default function Inbox() {
 
       const { data: p } = await supabase
         .from('freelancers')
-        .select('id, name, avatar_url, trade, company_name, location, email, verified, phone_verified')
+        .select('id, name, avatar_url, trade, company_name, location, email, verified, phone_verified, ventures')
         .eq('user_id', user.id)
         .single()
 
@@ -190,7 +193,7 @@ export default function Inbox() {
         setProfile(p)
         const { data: svc } = await supabase
           .from('services')
-          .select('id, name, price, description, duration')
+          .select('id, name, price, description, duration, business_group')
           .eq('freelancer_id', p.id)
           .order('created_at', { ascending: true })
         setFreelancerServices(svc || [])
@@ -252,6 +255,7 @@ export default function Inbox() {
     setQuoteDate(astDate)
     setQuotePaymentTerms('net14')
     setQuoteNotes('')
+    setQuoteVenture('')
     setQuoteNumber(`QT-${astDate.replace(/-/g, '').slice(0, 8)}-${Math.floor(Math.random()*900)+100}`)
   }
 
@@ -279,6 +283,14 @@ export default function Inbox() {
     return items
   }
 
+  // Ventures the pro can file a quote under: the canonical list from the
+  // profile, plus any group already used on a service (covers pros who
+  // grouped services before the venture list existed).
+  const ventureOptions = [...new Set([
+    ...(profile?.ventures || []),
+    ...freelancerServices.map(s => s.business_group).filter(Boolean),
+  ])].sort()
+
   function quoteTotal() {
     return quoteItems.reduce((sum, item) => {
       const p = parseFloat(item.price) || 0
@@ -300,6 +312,9 @@ export default function Inbox() {
   }
 
   function addServiceToQuote(service) {
+    // Adopt the venture of the first grouped service added, so the pro
+    // usually never has to set it by hand.
+    if (service.business_group) setQuoteVenture(v => v || service.business_group)
     const price = parsePrice(service.price) ?? ''
     const newItem = {
       description: service.name + (service.description ? ' - ' + service.description : ''),
@@ -493,6 +508,7 @@ export default function Inbox() {
         subtotal: quoteTotal(),
         total: quoteTotal(),
         notes: quoteNotes,
+        business_group: quoteVenture || null,
         status: 'sent',
       })
       .select()
@@ -1316,6 +1332,17 @@ export default function Inbox() {
                       {PAYMENT_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </div>
+                  {ventureOptions.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Business</label>
+                      <select value={quoteVenture} onChange={e => setQuoteVenture(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white">
+                        <option value="">Not tied to a business</option>
+                        {ventureOptions.map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                      <p className="text-xs text-gray-400 mt-1">Keeps this job and its earnings under the right business.</p>
+                    </div>
+                  )}
                   <div className="text-xs text-gray-400 bg-gray-50 rounded-xl px-4 py-3">
                     Due date: <span className="font-semibold text-gray-600">{quoteDueDate()}</span>
                   </div>

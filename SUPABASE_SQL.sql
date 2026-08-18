@@ -827,3 +827,38 @@ ALTER TABLE freelancers
 
 ALTER TABLE freelancers
   ADD COLUMN IF NOT EXISTS ventures text[] DEFAULT '{}';
+
+-- ============================================================
+-- SECTION 26 — VENTURE ON QUOTES / JOBS / EARNINGS (2026-08-17)
+-- Which venture a quote belongs to, so a pro running several businesses
+-- can filter jobs (open/completed/paid) and earnings per venture instead
+-- of seeing one merged pile. Stamped when the quote is created, from the
+-- venture the quoted services belong to, so later renaming or deleting a
+-- service can't retroactively change historic earnings.
+-- NULL = not tied to a venture (single-business pros, and every quote
+-- raised before this shipped), which is the default and stays valid.
+-- ============================================================
+
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS business_group text;
+
+CREATE INDEX IF NOT EXISTS quotes_business_group_idx
+  ON quotes (freelancer_id, business_group);
+
+-- One-time backfill for quotes raised before the column existed. Line item
+-- descriptions are stored as "Service name - details", so match the part
+-- before the separator back to the service and inherit its venture. Only
+-- fills rows that are still NULL, so it is safe to re-run.
+UPDATE quotes q
+   SET business_group = s.business_group
+  FROM services s
+ WHERE q.business_group IS NULL
+   AND s.freelancer_id = q.freelancer_id
+   AND s.business_group IS NOT NULL
+   AND EXISTS (
+     SELECT 1
+       FROM jsonb_array_elements(
+              CASE jsonb_typeof(q.items::jsonb) WHEN 'array' THEN q.items::jsonb ELSE '[]'::jsonb END
+            ) AS item
+      WHERE split_part(item->>'description', ' - ', 1) = s.name
+   );

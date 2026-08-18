@@ -128,6 +128,14 @@ export default function WorkspaceSidebar({ open, onClose }) {
           <Link href="/search" onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
             <NavIcon name="search" /> <span className="flex-1">Browse marketplace</span>
           </Link>
+
+          {/* Legal. The installed app has no site footer, so these are the only
+              way to reach the policies from the home-screen app. */}
+          <div className="mt-auto pt-3 px-3 pb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Link href="/terms" onClick={onClose} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textDecoration: 'none' }}>Terms of Service</Link>
+            <span aria-hidden="true" style={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.72rem' }}>·</span>
+            <Link href="/privacy" onClick={onClose} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textDecoration: 'none' }}>Privacy Policy</Link>
+          </div>
         </nav>
 
         {/* Profile footer */}

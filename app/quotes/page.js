@@ -193,6 +193,7 @@ export default function QuotesPage() {
   const [selMonth, setSelMonth] = useState('all')
   const [selService, setSelService] = useState('all')
   const [selClient, setSelClient] = useState('all')
+  const [venture, setVenture] = useState('all')  // page-wide business scope
   const [remindedIds, setRemindedIds] = useState(() => new Set())
   const [receiptSentIds, setReceiptSentIds] = useState(() => new Set())
   const [chartRange, setChartRange] = useState('12m') // '30d' | '12m'
@@ -204,7 +205,7 @@ export default function QuotesPage() {
     async function load() {
       const { data: p } = await supabase
         .from('freelancers')
-        .select('id, name, company_name, trade, location, email, avatar_url')
+        .select('id, name, company_name, trade, location, email, avatar_url, ventures')
         .eq('user_id', authUser.id)
         .maybeSingle()
 
@@ -390,7 +391,21 @@ export default function QuotesPage() {
     flash('Invoice deleted and removed from earnings.')
   }
 
-  const filtered = filter === 'all' ? quotes : quotes.filter(q => q.status === filter)
+  // Ventures to offer: the canonical list on the profile, plus any group
+  // already stamped on a quote (covers quotes filed before a venture was
+  // renamed or removed, so their history stays reachable).
+  const ventureOptions = [...new Set([
+    ...(profile?.ventures || []),
+    ...quotes.map(q => q.business_group).filter(Boolean),
+  ])].sort()
+  const hasVentures = ventureOptions.length > 0
+  // Quotes carry business_group once filed. 'none' surfaces the ones not
+  // tied to any venture so they never become invisible.
+  const matchesVenture = q => venture === 'all'
+    || (venture === 'none' ? !q.business_group : q.business_group === venture)
+
+  const byVenture = hasVentures ? quotes.filter(matchesVenture) : quotes
+  const filtered = filter === 'all' ? byVenture : byVenture.filter(q => q.status === filter)
 
   // Quotes-list month/year filter + sort (by quote date, falling back to created)
   const quoteDateOf = q => q.quote_date || q.created_at || ''
@@ -407,18 +422,18 @@ export default function QuotesPage() {
       const cmp = quoteDateOf(a).localeCompare(quoteDateOf(b))
       return quoteSort === 'oldest' ? cmp : -cmp
     })
-  const sumWhere = statuses => quotes
+  const sumWhere = statuses => byVenture
     .filter(q => statuses.includes(q.status))
     .reduce((sum, q) => sum + (Number(q.total) || 0), 0)
   const totalEarned = sumWhere(['paid'])
   const pendingPayment = sumWhere(['invoiced', 'completed'])
-  const pendingCount = quotes.filter(q => q.status === 'sent').length
+  const pendingCount = byVenture.filter(q => q.status === 'sent').length
 
   // ── Earnings breakdowns (paid quotes only) ──
   // Earnings are broken down at the LINE-ITEM level so year, month and
   // service filters can combine: "Service A in June", "Service A all
   // year", "everything in 2026", etc.
-  const paidQuotes = quotes.filter(q => q.status === 'paid' && q.paid_at)
+  const paidQuotes = byVenture.filter(q => q.status === 'paid' && q.paid_at)
   const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -435,6 +450,7 @@ export default function QuotesPage() {
         // an em dash); group by the name before the separator.
         service: (item.description || 'Other').split(/ [—-] /)[0].trim().slice(0, 60) || 'Other',
         client: q.client_name?.trim() || q.client_email || 'Client',
+        venture: q.business_group || '',
         amount,
       })
     }
@@ -533,7 +549,7 @@ export default function QuotesPage() {
   }
 
   // ── Outstanding payments: invoiced but not yet paid ──
-  const outstanding = quotes
+  const outstanding = byVenture
     .filter(q => ['invoiced', 'completed'].includes(q.status) && q.invoice_due_date)
     .map(q => ({ ...q, daysLeft: daysUntil(q.invoice_due_date) }))
     .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999))
@@ -638,6 +654,26 @@ export default function QuotesPage() {
             </div>
           ))}
         </div>
+
+        {/* Business switcher — only for pros running more than one venture.
+            Scopes the ENTIRE page: the headline stats, the quotes list,
+            pending payments and the earnings breakdown all follow it, so a
+            pro can read one business's numbers without the others mixed in. */}
+        {hasVentures && (
+          <div className="flex gap-2 mb-5 overflow-x-auto pb-1 items-center">
+            <span className="flex-shrink-0 text-xs font-semibold text-gray-400 uppercase tracking-wide pr-1">Business</span>
+            {['all', ...ventureOptions, 'none'].map(v => (
+              <button
+                key={v}
+                onClick={() => setVenture(v)}
+                className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${venture === v ? '' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400'}`}
+                style={venture === v ? { backgroundColor: '#F9C000', color: '#00267F' } : {}}
+              >
+                {v === 'all' ? 'All businesses' : v === 'none' ? 'Unassigned' : v}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* View switch: quotes · outstanding · earnings */}
         <div className="flex gap-1 mb-6 bg-white rounded-full border border-gray-200 p-1 max-w-full overflow-x-auto no-scrollbar">

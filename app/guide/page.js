@@ -170,9 +170,9 @@ const SECTIONS = [
       {
         title: 'Running more than one business',
         steps: [
-          'You don\'t need a second account. In Edit profile, under "Your businesses", name each one (for example "Joe\'s Landscaping" and "Joe\'s Catering"). New profiles are asked this during setup.',
+          'You don\'t need a second account, and you would not want one. Every venture you run lives on this single profile, so one rating, one set of reviews and one inbox serve all of them. Split across two listings, each would be starting from zero. In Edit profile, under "Your businesses", name each one (for example "Joe\'s Landscaping" and "Joe\'s Catering"). New profiles are asked this during setup.',
           'Then on each service, pick which business it belongs to from the "Which business is this for?" dropdown. Services you leave as "Not specific to one" sit under a General tab.',
-          'Your public profile shows a tab per business, so clients switch between them instead of scrolling one long mixed list.',
+          'Your public profile shows a tab per business, so clients switch between them instead of scrolling one long mixed list. Someone who came for your landscaping can see that you cater too, which is work you would never have won from a separate listing.',
           'Also in Edit profile, use "Also appears in" to pick up to 2 extra categories, so you show up when clients browse those categories too.',
         ],
         tip: 'Removing a business from the list never deletes its services. They simply move back under the General tab, so it is safe to rename or tidy up later.',

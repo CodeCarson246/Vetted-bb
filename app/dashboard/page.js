@@ -1816,7 +1816,7 @@ function DashboardInner() {
                         Your businesses <span className="text-gray-400 font-normal">(optional)</span>
                       </label>
                       <p className="text-xs text-gray-400 mb-2.5">
-                        Run more than one? Name each business here, then choose which one every service belongs to. Clients get a tab per business on your profile.
+                        Every venture you run lives here, on one profile. Name each business, then pick which one each service belongs to. Your rating and reviews carry across all of them instead of starting from zero on a second listing, and a client who came for one business can see everything else you offer.
                       </p>
                       {ventures.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-2.5">
@@ -2775,7 +2775,7 @@ function DashboardInner() {
                       <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(0,38,127,0.03)', border: '1px solid var(--border-card)' }}>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Do you run more than one business?</label>
                         <p className="text-xs text-gray-500 mb-3">
-                          You can list them all on this one profile. Clients get a tab for each, so a landscaping business and a catering business stay neatly separate.
+                          Run them all from this one profile. Everywhere else you would build a separate listing for each and split your reputation between them. Here your reviews, your rating and your enquiries all build up in one place and work for every venture you own. One login, one inbox, one reputation. Clients see the full range of what you do, with each business kept in its own section.
                         </p>
                         <div className="flex gap-2 mb-1">
                           {[['no', 'Just one'], ['yes', 'More than one']].map(([val, label]) => {
@@ -2980,7 +2980,7 @@ function DashboardInner() {
                         <p className="text-xs text-gray-400 mb-4">You can add these later from your dashboard.</p>
 
                         <CoachTip show={tourStep === 4 && createStep === 2} step={5} total={TOUR_TOTAL} title="Win the job before the first message" onNext={nextTour} onSkip={endTour} nextLabel="Finish tour ✓">
-                          Listing your services with prices answers the two questions every client has: &quot;can they do it?&quot; and &quot;what will it cost?&quot; Use &quot;Starting from&quot; pricing if jobs vary. Profiles with 3+ priced services get the most enquiries. <strong>Run more than one business?</strong> Name it in the &quot;Which business is this for?&quot; box and each venture gets its own tab on your profile.
+                          Listing your services with prices answers the two questions every client has: &quot;can they do it?&quot; and &quot;what will it cost?&quot; Use &quot;Starting from&quot; pricing if jobs vary. Profiles with 3+ priced services get the most enquiries. <strong>Run more than one business?</strong> Name it in the &quot;Which business is this for?&quot; box. Every venture you own sits on this one profile, so the reputation you build works for all of them at once, and a client who came for one can discover the rest.
                         </CoachTip>
 
                         {createServices.length > 0 && (
