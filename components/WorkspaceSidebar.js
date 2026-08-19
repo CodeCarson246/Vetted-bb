@@ -18,6 +18,7 @@ const ICONS = {
   guide: <path strokeLinecap="round" strokeLinejoin="round" d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15zM9 7h7M9 11h7" />,
   invite: <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM20 8v6M23 11h-6" />,
   sent: <path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />,
+  rising: <path strokeLinecap="round" strokeLinejoin="round" d="M23 6l-9.5 9.5-5-5L1 18M17 6h6v6" />,
 }
 
 const NAV = [
@@ -127,6 +128,11 @@ export default function WorkspaceSidebar({ open, onClose }) {
           )}
           <Link href="/search" onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
             <NavIcon name="search" /> <span className="flex-1">Browse marketplace</span>
+          </Link>
+          {/* Public programme page. Reachable from the site footer on desktop,
+              but the workspace has no footer, so it needs a home here too. */}
+          <Link href="/vetted-rising" onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
+            <NavIcon name="rising" /> <span className="flex-1">Vetted Rising</span>
           </Link>
 
           {/* Legal. The installed app has no site footer, so these are the only
