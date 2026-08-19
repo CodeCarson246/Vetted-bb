@@ -85,7 +85,7 @@ const CARD = {
 
 export default function VettedRising() {
   return (
-    <main className="min-h-screen" style={{ backgroundColor: '#F3F4F8' }}>
+    <main className="min-h-screen" style={{ backgroundColor: 'var(--page-bg)' }}>
 
       {/* 1. Hero */}
       <section className="w-full px-4 sm:px-8 py-16 sm:py-24" style={{ backgroundColor: '#00267F' }}>
@@ -149,7 +149,7 @@ export default function VettedRising() {
       </section>
 
       {/* 3. What participants get */}
-      <section className="px-4 sm:px-8 py-16 sm:py-20" style={{ backgroundColor: '#fff' }}>
+      <section className="px-4 sm:px-8 py-16 sm:py-20" style={{ backgroundColor: 'var(--surface-card)' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.5px' }}>
             What you get
