@@ -2525,7 +2525,7 @@ function DashboardInner() {
                     <h3 className="font-semibold text-gray-900 mb-1">Review a client</h3>
                     <p className="text-sm text-gray-500 mb-6">Rate a client you've worked with so other freelancers know what to expect.</p>
                     {threadClients.length === 0 ? (
-                      <div className="rounded-xl px-4 py-6 text-center" style={{ backgroundColor: '#F9FAFB', border: '1px dashed #d1d5db' }}>
+                      <div className="rounded-xl px-4 py-6 text-center" style={{ backgroundColor: 'var(--row-stripe)', border: '1px dashed var(--border-card)' }}>
                         <p className="text-sm text-gray-500">
                           You can review a client once you&apos;ve both marked a job as completed.
                           Tying reviews to finished jobs keeps them trustworthy for other freelancers.
