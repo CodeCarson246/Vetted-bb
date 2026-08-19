@@ -110,7 +110,7 @@ export async function POST(request) {
     try {
       await sendAdminEmail(application)
     } catch {
-      /* ignore — the row is in the database, which is what matters */
+      /* ignore: the row is in the database, which is what matters */
     }
 
     return Response.json({ success: true })

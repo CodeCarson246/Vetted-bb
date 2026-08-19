@@ -1,5 +1,5 @@
 -- ============================================================
--- VETTED RISING — APPLICATIONS TABLE
+-- VETTED RISING: APPLICATIONS TABLE
 -- Run once in the Supabase SQL Editor. Safe to re-run.
 --
 -- Admin reads are NOT granted through RLS here. This codebase already

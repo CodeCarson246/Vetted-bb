@@ -2,7 +2,7 @@ import Link from 'next/link'
 import VettedRisingForm from '@/components/VettedRisingForm'
 import { SITE_URL } from '@/lib/siteUrl'
 
-const TITLE = 'Vetted Rising — Helping young Barbadians turn skills into work'
+const TITLE = 'Vetted Rising: Helping young Barbadians turn skills into work'
 const DESCRIPTION = 'A programme giving young Barbadians aged 16–30 a professional profile, guided support and real visibility to clients across the island.'
 
 export const metadata = {
