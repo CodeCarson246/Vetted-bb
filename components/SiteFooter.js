@@ -48,6 +48,7 @@ export default function SiteFooter() {
       heading: 'Company',
       links: [
         { label: 'About', href: '/about' },
+        { label: 'Vetted Rising', href: '/vetted-rising' },
         { label: 'Roadmap', href: '/roadmap' },
         { label: 'FAQ', href: '/faq' },
         { label: 'Contact', href: 'mailto:hello@vetted.bb' },
