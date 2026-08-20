@@ -80,7 +80,11 @@ export default function WorkspaceSidebar({ open, onClose }) {
   const isActive = href => pathname === href || pathname.startsWith(href + '/')
   const initials = (profile?.name || user?.email || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
-  const linkBase = 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors'
+  const linkBase = 'flex items-center gap-3 px-3 py-2.5 md:py-1.5 rounded-xl text-sm font-medium transition-colors'
+  // Tighter only from md up, so the whole panel clears a laptop viewport
+  // without scrolling. The mobile drawer can scroll, so it keeps full-size
+  // tap targets.
+  const linkSub = 'flex items-center gap-3 px-3 py-2 md:py-1 rounded-xl text-[13px] font-medium transition-colors'
 
   return (
     <>
@@ -90,14 +94,14 @@ export default function WorkspaceSidebar({ open, onClose }) {
         style={{ backgroundColor: '#001652' }}
       >
         {/* Logo — the only route back to the marketplace homepage from the workspace */}
-        <Link href="/" onClick={onClose} className="flex items-center px-6 flex-shrink-0" style={{ height: 68, textDecoration: 'none' }}>
+        <Link href="/" onClick={onClose} className="flex items-center px-6 flex-shrink-0" style={{ height: 60, textDecoration: 'none' }}>
           <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '1.35rem', letterSpacing: '-0.5px', lineHeight: 1 }}>
             <span style={{ color: '#fff' }}>Vetted</span><span style={{ color: '#F9C000' }}>.</span><span style={{ color: '#fff' }}>bb</span>
           </span>
         </Link>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1">
+        <nav className="sidebar-scroll flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-0.5">
           {NAV.map(item => {
             const active = isActive(item.href)
             return (
@@ -119,25 +123,25 @@ export default function WorkspaceSidebar({ open, onClose }) {
             )
           })}
 
-          <div className="my-3 mx-2" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }} />
+          <div className="my-2 mx-2" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }} />
 
           {profile && (
-            <Link href={`/freelancers/${profile.id}`} onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
+            <Link href={`/freelancers/${profile.id}`} onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
               <NavIcon name="user" /> <span className="flex-1">View public profile</span>
             </Link>
           )}
-          <Link href="/search" onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
+          <Link href="/search" onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
             <NavIcon name="search" /> <span className="flex-1">Browse marketplace</span>
           </Link>
           {/* Public programme page. Reachable from the site footer on desktop,
               but the workspace has no footer, so it needs a home here too. */}
-          <Link href="/vetted-rising" onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
+          <Link href="/vetted-rising" onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
             <NavIcon name="rising" /> <span className="flex-1">Vetted Rising</span>
           </Link>
 
           {/* Legal. The installed app has no site footer, so these are the only
               way to reach the policies from the home-screen app. */}
-          <div className="mt-auto pt-3 px-3 pb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="mt-auto pt-2 px-3 pb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             <Link href="/terms" onClick={onClose} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textDecoration: 'none' }}>Terms of Service</Link>
             <span aria-hidden="true" style={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.72rem' }}>·</span>
             <Link href="/privacy" onClick={onClose} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textDecoration: 'none' }}>Privacy Policy</Link>
@@ -145,7 +149,7 @@ export default function WorkspaceSidebar({ open, onClose }) {
         </nav>
 
         {/* Profile footer */}
-        <Link href="/dashboard" onClick={onClose} className="flex items-center gap-3 px-4 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', textDecoration: 'none' }}>
+        <Link href="/dashboard" onClick={onClose} className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', textDecoration: 'none' }}>
           <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F9C000', color: '#00267F', fontWeight: 700, fontSize: '0.78rem' }}>
             {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : initials}
           </div>

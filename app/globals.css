@@ -278,3 +278,15 @@ h1, h2, h3, h4 {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Workspace sidebar scroll area. The nav is sized to fit a laptop viewport
+   without scrolling; on very short windows it still scrolls, but without the
+   heavy default scrollbar that was cutting across the panel. */
+.sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}

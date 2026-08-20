@@ -154,17 +154,25 @@ export default function VettedRising() {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.5px' }}>
             What you get
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Equal-height tinted cards. The heading sits in a fixed-height box
+              from md up so the body copy starts on the same line in all three,
+              which a plain stacked layout could not guarantee once one title
+              wrapped to two lines. */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
             {BENEFITS.map(b => (
-              <div key={b.n}>
-                <p
-                  className="text-3xl font-extrabold mb-3"
-                  style={{ color: '#F9C000', fontFamily: "'Sora', sans-serif", letterSpacing: '-1px' }}
+              <div
+                key={b.n}
+                className="flex flex-col rounded-2xl px-6 py-7 h-full"
+                style={{ backgroundColor: 'var(--selected-fill)', borderTop: '4px solid #F9C000' }}
+              >
+                <span
+                  className="inline-flex items-center justify-center rounded-full text-sm font-extrabold mb-4 flex-shrink-0"
+                  style={{ width: 40, height: 40, backgroundColor: '#00267F', color: '#F9C000', fontFamily: "'Sora', sans-serif" }}
                   aria-hidden="true"
                 >
                   {b.n}
-                </p>
-                <h3 className="text-lg font-bold text-gray-900 mb-2.5 leading-snug">{b.title}</h3>
+                </span>
+                <h3 className="text-lg font-bold text-gray-900 mb-2.5 leading-snug md:min-h-[3.5rem]">{b.title}</h3>
                 <p className="text-sm text-gray-600 leading-relaxed">{b.body}</p>
               </div>
             ))}
