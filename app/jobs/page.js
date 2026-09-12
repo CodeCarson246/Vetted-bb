@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { printSavedQuote } from '@/lib/printQuote'
+import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
 
 function fmtDate(str) {
   if (!str) return ''
@@ -24,10 +25,16 @@ export default function JobsPage() {
   // logged-in email). Only those that became real jobs.
   const load = useCallback(async () => {
     if (!authUser) return
-    const { data } = await supabase
+    // An organisation user sees every quote addressed to the organisation,
+    // whichever colleague requested it, on top of any addressed to them.
+    const orgId = isOrganisationUser(authUser) ? (await fetchMyOrganisation())?.organisation?.id : null
+    let q = supabase
       .from('quotes')
       .select('*, freelancers(id, name, company_name, trade, location, email, avatar_url)')
-      .eq('client_email', authUser.email)
+    q = orgId
+      ? q.or(`organisation_id.eq.${orgId},client_email.eq."${authUser.email}"`)
+      : q.eq('client_email', authUser.email)
+    const { data } = await q
       .in('status', ['accepted', 'invoiced', 'completed', 'paid'])
       .order('created_at', { ascending: false })
     setJobs(data || [])

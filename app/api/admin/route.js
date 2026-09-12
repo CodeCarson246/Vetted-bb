@@ -43,6 +43,7 @@ export async function GET(request) {
     { data: reviews },
     { data: messages },
     { data: services },
+    { data: organisations },
   ] = await Promise.all([
     supabase.from('freelancers').select('*', { count: 'exact', head: true }),
     supabase.from('clients').select('*', { count: 'exact', head: true }),
@@ -53,6 +54,7 @@ export async function GET(request) {
     supabase.from('reviews').select('id, author, comment, rating, type, date, created_at').order('created_at', { ascending: false }),
     supabase.from('messages').select('id, sender_name, sender_email, subject, created_at, read').order('created_at', { ascending: false }),
     supabase.from('services').select('id, name, price, created_at, freelancer_id, freelancers(name)').order('created_at', { ascending: false }),
+    supabase.from('organisations').select('id, name, division, kind, parish, email, verified, created_at').order('created_at', { ascending: false }),
   ])
 
   return Response.json({
@@ -67,6 +69,7 @@ export async function GET(request) {
     reviews: reviews || [],
     messages: messages || [],
     services: services || [],
+    organisations: organisations || [],
   })
 }
 
@@ -79,6 +82,16 @@ export async function PATCH(request) {
   const { supabase } = ctx
 
   const { id, field, value, reason } = await request.json()
+
+  // Organisation verification: a manual check that the organisation is who
+  // it says it is, shown to freelancers so an enquiry from it can be trusted.
+  if (field === 'org_verified') {
+    if (!id || typeof value !== 'boolean') return Response.json({ error: 'Invalid request.' }, { status: 400 })
+    const { error } = await supabase.from('organisations').update({ verified: value, updated_at: new Date().toISOString() }).eq('id', id)
+    if (error) return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ success: true })
+  }
+
   if (!id || !['verified', 'featured', 'hidden', 'flagged'].includes(field) || typeof value !== 'boolean') {
     return Response.json({ error: 'Invalid request.' }, { status: 400 })
   }

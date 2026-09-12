@@ -122,6 +122,10 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
               )}
               {/* Verified badge */}
               {isVerified(f) && <VerifiedBadge size={16} />}
+              {/* Registered government vendor */}
+              {f.govt_vendor_status === 'registered' && (
+                <span title="Registered government vendor" style={{ background: '#EEF2FF', color: '#00267F', fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 999, lineHeight: 1.6, whiteSpace: 'nowrap' }}>Govt vendor</span>
+              )}
               {/* Availability dot */}
               <span className="flex items-center gap-1">
                 <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${f.available ? 'bg-green-400' : 'bg-gray-300'}`} />
@@ -280,6 +284,9 @@ function SearchPage() {
   const [availability, setAvailability] = useState('all')
   const [budget, setBudget] = useState('all')
   const [location, setLocation] = useState('')
+  // Organisations hiring for government work can limit results to
+  // professionals already registered as Treasury vendors.
+  const [vendorOnly, setVendorOnly] = useState(false)
   const PARISHES = ['Christ Church','Saint Andrew','Saint George','Saint James','Saint John','Saint Joseph','Saint Lucy','Saint Michael','Saint Peter','Saint Philip','Saint Thomas']
 
   useEffect(() => {
@@ -297,6 +304,7 @@ function SearchPage() {
     availability !== 'all',
     budget !== 'all',
     location !== '',
+    vendorOnly,
   ].filter(Boolean).length
 
   function clearFilters() {
@@ -305,6 +313,7 @@ function SearchPage() {
     setAvailability('all')
     setBudget('all')
     setLocation('')
+    setVendorOnly(false)
   }
 
   // Re-enable the save button whenever the search changes
@@ -366,6 +375,9 @@ function SearchPage() {
 
       // e) Location filter
       if (location && formatParish(f.location).toLowerCase() !== formatParish(location).toLowerCase()) return false
+
+      // f) Registered government vendor filter
+      if (vendorOnly && f.govt_vendor_status !== 'registered') return false
 
       return true
     })
@@ -445,6 +457,12 @@ function SearchPage() {
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${availability === 'available' ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 style={availability === 'available' ? { backgroundColor: '#00267F' } : {}}
               >Available only</button>
+              <button
+                onClick={() => setVendorOnly(v => !v)}
+                title="Professionals already registered as government vendors with Treasury"
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${vendorOnly ? '' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                style={vendorOnly ? { backgroundColor: '#F9C000', color: '#00267F' } : {}}
+              >Registered vendors</button>
             </div>
 
             <div className="w-px h-4 bg-gray-200 hidden sm:block" />

@@ -17,6 +17,7 @@ import Tooltip from '@/components/Tooltip'
 import WeekView from '@/components/calendar/WeekView'
 import MonthView from '@/components/calendar/MonthView'
 import { nowAST, getWeekStart, getWeekDays, MONTHS } from '@/components/calendar/calUtils'
+import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
 
 function StarRating({ rating, light = false }) {
   return (
@@ -58,6 +59,9 @@ export default function FreelancerProfile() {
   const [contactOpen, setContactOpen] = useState(false)
   const [senderName, setSenderName] = useState('')
   const [senderEmail, setSenderEmail] = useState('')
+  // Set when the signed-in user acts for an organisation: the enquiry is
+  // sent as that organisation and shared with every member of it.
+  const [orgContext, setOrgContext] = useState(null)
   const [subject, setSubject] = useState('')
   const [contactMessage, setContactMessage] = useState('')
   const [contactSubmitting, setContactSubmitting] = useState(false)
@@ -113,6 +117,11 @@ export default function FreelancerProfile() {
     setUser(u)
     if (!u) return
     setSenderEmail(u.email)
+    if (isOrganisationUser(u)) {
+      fetchMyOrganisation().then(entry => {
+        setOrgContext(entry ? { id: entry.organisation.id, name: entry.organisation.name, verified: !!entry.organisation.verified } : null)
+      })
+    }
     if (u.user_metadata?.role !== 'client') {
       supabase.from('freelancers').select('id, name, avatar_url').eq('user_id', u.id).single().then(({ data: fp }) => {
         setFreelancerProfile(fp || null)
@@ -239,11 +248,14 @@ export default function FreelancerProfile() {
     // into one thread instead of creating separate threads per entry point.
 
     // Step 1 — Check for an existing thread between this client and freelancer
-    const { data: existingThreads } = await supabase
+    let threadQuery = supabase
       .from('messages')
       .select('id')
       .eq('freelancer_id', freelancer.id)
-      .eq('sender_email', senderEmail)
+    // An organisation shares one thread per freelancer across its whole
+    // team; an individual is matched by email as before.
+    threadQuery = orgContext ? threadQuery.eq('organisation_id', orgContext.id) : threadQuery.eq('sender_email', senderEmail)
+    const { data: existingThreads } = await threadQuery
       .order('created_at', { ascending: true })
       .limit(1)
 
@@ -278,6 +290,7 @@ export default function FreelancerProfile() {
         sender_name: senderName,
         sender_email: senderEmail,
         sender_user_id: user?.id ?? null,
+        organisation_id: orgContext?.id ?? null,
         subject,
         message: contactMessage,
         created_at: new Date().toISOString(),
@@ -1623,6 +1636,11 @@ export default function FreelancerProfile() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Your name</label>
+                      {orgContext && (
+                        <p className="text-xs rounded-lg px-3 py-2 mb-2" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                          Enquiring as <strong>{orgContext.name}</strong>. Your whole team will see this conversation.
+                        </p>
+                      )}
                       <input
                         type="text"
                         required

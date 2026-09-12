@@ -15,6 +15,7 @@ import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
+import { formatAddressBlock } from '@/lib/organisations'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -40,6 +41,7 @@ export default function Inbox() {
   const [threadQuotes, setThreadQuotes] = useState({})
   const [viewingQuote, setViewingQuote] = useState(null)
   const [freelancerServices, setFreelancerServices] = useState([])
+  const [billing, setBilling] = useState(null)
   const [quoteNumber, setQuoteNumber] = useState('')
   const [quoteItems, setQuoteItems] = useState([{ description: '', qty: 1, price: '' }])
   const [quoteDate, setQuoteDate] = useState(() => {
@@ -52,6 +54,8 @@ export default function Inbox() {
   // Which venture this quote belongs to, for pros running several businesses.
   // '' = not tied to one, which is what single-business pros always send.
   const [quoteVenture, setQuoteVenture] = useState('')
+  // Optional purchase-order / requisition reference the organisation gave.
+  const [quoteReference, setQuoteReference] = useState('')
   const [quoteClientName, setQuoteClientName] = useState('')
   const [quoteClientEmail, setQuoteClientEmail] = useState('')
   const [quoteToast, setQuoteToast] = useState(null)
@@ -109,7 +113,7 @@ export default function Inbox() {
   async function loadInboxList(p) {
     const { data: msgs } = await supabase
       .from('messages')
-      .select('*')
+      .select('*, organisations(id, name, division, verified, address_line1, address_line2, city_town, parish, country, default_payment_terms)')
       .eq('freelancer_id', p.id)
       .order('created_at', { ascending: false })
 
@@ -197,6 +201,9 @@ export default function Inbox() {
           .eq('freelancer_id', p.id)
           .order('created_at', { ascending: true })
         setFreelancerServices(svc || [])
+        // Billing address, printed in the "From" block of every quote.
+        const { data: bill } = await supabase.from('freelancer_billing').select('*').eq('freelancer_id', p.id).maybeSingle()
+        setBilling(bill || null)
         await loadInboxList(p)
       } else {
         // No freelancer profile → this user is a client. /inbox is the
@@ -246,14 +253,17 @@ export default function Inbox() {
 
   function openQuote(msg, prefillItems = null) {
     setQuoteMsg(msg)
-    setQuoteClientName(msg.sender_name || '')
+    // An enquiry sent as an organisation is billed to the organisation,
+    // not to the colleague who happened to send it.
+    setQuoteClientName(msg.organisations?.name || msg.sender_name || '')
     setQuoteClientEmail(msg.sender_email || '')
+    setQuoteReference('')
     setQuoteItems(prefillItems?.length > 0 ? prefillItems : [{ description: '', qty: 1, price: '' }])
     const now = new Date()
     const ast = new Date(now.getTime() - (4 * 60 * 60 * 1000))
     const astDate = ast.toISOString().split('T')[0]
     setQuoteDate(astDate)
-    setQuotePaymentTerms('net14')
+    setQuotePaymentTerms(msg.organisations?.default_payment_terms || 'net14')
     setQuoteNotes('')
     setQuoteVenture('')
     setQuoteNumber(`QT-${astDate.replace(/-/g, '').slice(0, 8)}-${Math.floor(Math.random()*900)+100}`)
@@ -383,6 +393,7 @@ export default function Inbox() {
               <div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div>
               <div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${formatParish(profile?.location)||''}</div>
               ${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}
+              ${formatAddressBlock(billing).split('\n').filter(Boolean).map(l=>`<div style="font-size:12px;color:#6b7280;margin-bottom:1px">${l}</div>`).join('')}
             </td>
           </tr>
         </table>
@@ -402,7 +413,9 @@ export default function Inbox() {
   <div style="margin-bottom:24px">
     <div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Billed to</div>
     <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:3px">${quoteClientName||'Client'}</div>
+    ${quoteMsg?.organisations?.division?`<div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:2px">${quoteMsg.organisations.division}</div>`:''}
     <div style="font-size:13px;color:#6b7280">${quoteClientEmail}</div>
+    ${formatAddressBlock(quoteMsg?.organisations).split('\n').filter(Boolean).map(l=>`<div style="font-size:12px;color:#6b7280;margin-top:1px">${l}</div>`).join('')}
   </div>
 
   <!-- Line items -->
@@ -509,6 +522,14 @@ export default function Inbox() {
         total: quoteTotal(),
         notes: quoteNotes,
         business_group: quoteVenture || null,
+        organisation_id: quoteMsg.organisation_id ?? null,
+        currency: 'BBD',
+        reference: quoteReference.trim() || null,
+        // Snapshots: what the document said when issued, so it never changes
+        // if either party later edits their details.
+        from_address: formatAddressBlock(billing) || null,
+        bill_to_division: quoteMsg.organisations?.division || null,
+        bill_to_address: formatAddressBlock(quoteMsg.organisations) || null,
         status: 'sent',
       })
       .select()
@@ -1168,6 +1189,15 @@ export default function Inbox() {
                     <div className="flex items-center justify-between gap-2">
                       <span className={`text-sm truncate ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
                         {clientProfiles[msg.sender_user_id]?.display_name || msg.sender_name}
+                        {msg.organisations && (
+                          <span
+                            className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle"
+                            title={msg.organisations.verified ? 'Verified organisation' : 'Organisation (not yet verified)'}
+                            style={msg.organisations.verified ? { backgroundColor: '#F9C000', color: '#00267F' } : { backgroundColor: '#EEF2FF', color: '#00267F' }}
+                          >
+                            {msg.organisations.verified ? '✓ ' : ''}{msg.organisations.name}
+                          </span>
+                        )}
                       </span>
                       <span className="text-[11px] text-gray-400 flex-shrink-0">
                         {new Date(msg.last_activity_at || msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
@@ -1332,6 +1362,11 @@ export default function Inbox() {
                       {PAYMENT_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Their reference <span className="text-gray-400">(optional)</span></label>
+                    <input value={quoteReference} onChange={e => setQuoteReference(e.target.value)} placeholder="PO or requisition number, if they gave one"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white" />
+                  </div>
                   {ventureOptions.length > 0 && (
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Business</label>
@@ -1450,7 +1485,9 @@ export default function Inbox() {
               <div className="mb-6">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Billed to</p>
                 <p className="font-semibold text-gray-900">{quoteClientName || 'Client name'}</p>
+                {quoteMsg?.organisations?.division && <p className="text-sm font-medium text-gray-700">{quoteMsg.organisations.division}</p>}
                 <p className="text-sm text-gray-500">{quoteClientEmail}</p>
+                {formatAddressBlock(quoteMsg?.organisations).split('\n').filter(Boolean).map((l, i) => <p key={i} className="text-xs text-gray-500">{l}</p>)}
               </div>
 
               {/* Line items table */}
@@ -1589,7 +1626,10 @@ export default function Inbox() {
             <div className="mb-6">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Billed to</p>
               <p className="font-semibold text-gray-900">{viewingQuote.client_name}</p>
+              {viewingQuote.bill_to_division && <p className="text-sm font-medium text-gray-700">{viewingQuote.bill_to_division}</p>}
               <p className="text-sm text-gray-500">{viewingQuote.client_email}</p>
+              {(viewingQuote.bill_to_address || '').split('\n').filter(Boolean).map((l, i) => <p key={i} className="text-xs text-gray-500">{l}</p>)}
+              {viewingQuote.reference && <p className="text-xs text-gray-400 mt-1">Their ref. {viewingQuote.reference}</p>}
             </div>
 
             <table className="w-full mb-6 text-sm">

@@ -11,6 +11,7 @@ import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
+import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -149,11 +150,16 @@ export default function ClientMessages() {
   // Pull the thread list + every thread's replies, enrich previews and sort
   // by latest activity. Shared by the initial load and the live-refresh poll.
   async function loadThreads(u) {
-    const { data: msgs } = await supabase
+    // Organisation members see every thread the organisation started,
+    // whichever colleague sent it, on top of any they sent personally.
+    const orgId = isOrganisationUser(u) ? (await fetchMyOrganisation())?.organisation?.id : null
+    let query = supabase
       .from('messages')
       .select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, verified, phone_verified)')
-      .eq('sender_email', u.email)
-      .order('created_at', { ascending: false })
+    query = orgId
+      ? query.or(`organisation_id.eq.${orgId},sender_email.eq."${u.email}"`)
+      : query.eq('sender_email', u.email)
+    const { data: msgs } = await query.order('created_at', { ascending: false })
 
     const list = msgs || []
     const byThread = {}

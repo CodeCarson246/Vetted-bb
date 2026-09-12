@@ -18,6 +18,7 @@ import PushToggle from '@/components/PushToggle'
 import PhoneVerify from '@/components/PhoneVerify'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
 import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
+import VendorDetailsCard from '@/components/VendorDetailsCard'
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -3127,6 +3128,9 @@ function DashboardInner() {
             )}
           </div>
         )}
+
+        {/* Billing address + government vendor details — freelancers only */}
+        {profile && <VendorDetailsCard freelancerId={profile.id} initialStatus={profile.govt_vendor_status} />}
 
         {/* Account settings — shown for all roles */}
         <div id="account-settings" className="bg-white rounded-2xl border border-gray-100 overflow-hidden mt-6">

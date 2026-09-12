@@ -25,6 +25,7 @@ export default function AdminPanel() {
   const [reviews, setReviews] = useState([])
   const [messages, setMessages] = useState([])
   const [services, setServices] = useState([])
+  const [organisations, setOrganisations] = useState([])
   const [serviceCount, setServiceCount] = useState(0)
 
   // UI
@@ -60,6 +61,7 @@ export default function AdminPanel() {
       setReviews(data.reviews)
       setMessages(data.messages)
       setServices(data.services || [])
+      setOrganisations(data.organisations || [])
       setLoading(false)
     }
     fetchData()
@@ -76,6 +78,26 @@ export default function AdminPanel() {
       return false
     }
     return true
+  }
+
+  // Organisation verification is a manual check that the organisation is
+  // who it says it is; freelancers see the mark on enquiries from it.
+  async function toggleOrgVerified(org) {
+    const next = !org.verified
+    if (!confirm(next
+      ? `Mark ${org.name} as a verified organisation? Only do this after checking they are who they say they are.`
+      : `Remove verification from ${org.name}?`)) return
+    const res = await fetch('/api/admin', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ id: org.id, field: 'org_verified', value: next }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      alert(body.error || 'Update failed. Please try again.')
+      return
+    }
+    setOrganisations(prev => prev.map(x => x.id === org.id ? { ...x, verified: next } : x))
   }
 
   async function toggleFlag(id, field, value, reason) {
@@ -173,6 +195,7 @@ export default function AdminPanel() {
     { key: 'services', label: `Services (${serviceCount})` },
     { key: 'reviews', label: `Reviews (${reviewCount})` },
     { key: 'messages', label: `Messages (${messageCount})` },
+    { key: 'organisations', label: `Organisations (${organisations.length})` },
   ]
 
   return (
@@ -450,6 +473,55 @@ export default function AdminPanel() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* ── Organisations ── */}
+        {activeSection === 'organisations' && (
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h2 className="font-semibold" style={{ color: '#00267F' }}>Organisations ({organisations.length})</h2>
+              <p className="text-xs text-gray-500 mt-1">Verify an organisation only after confirming it is genuine. Freelancers see the verified mark on its enquiries.</p>
+            </div>
+            {organisations.length === 0 ? (
+              <p className="px-6 py-8 text-sm text-gray-400">No organisations yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
+                    <tr>
+                      <th className="px-6 py-3">Organisation</th>
+                      <th className="px-6 py-3">Type</th>
+                      <th className="px-6 py-3">Contact</th>
+                      <th className="px-6 py-3">Joined</th>
+                      <th className="px-6 py-3">Verified</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {organisations.map(org => (
+                      <tr key={org.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <p className="font-semibold text-gray-900">{org.name}</p>
+                          {org.division && <p className="text-xs text-gray-500">{org.division}</p>}
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 capitalize">{org.kind}{org.parish ? ` · ${org.parish}` : ''}</td>
+                        <td className="px-6 py-4 text-gray-600">{org.email || ''}</td>
+                        <td className="px-6 py-4 text-gray-500">{new Date(org.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => toggleOrgVerified(org)}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-90"
+                            style={org.verified ? { backgroundColor: '#DCFCE7', color: '#166534' } : { backgroundColor: '#F3F4F6', color: '#4B5563' }}
+                          >
+                            {org.verified ? '✓ Verified' : 'Mark verified'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
