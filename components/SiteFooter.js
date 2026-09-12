@@ -48,6 +48,7 @@ export default function SiteFooter() {
       heading: 'Company',
       links: [
         { label: 'About', href: '/about' },
+        { label: 'For organisations', href: '/for-organisations' },
         { label: 'Vetted Rising', href: '/vetted-rising' },
         { label: 'Roadmap', href: '/roadmap' },
         { label: 'FAQ', href: '/faq' },

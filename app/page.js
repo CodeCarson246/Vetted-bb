@@ -572,6 +572,24 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Organisation front door: a team, a company or a public body arriving
+          from a pitch needs an obvious way in; the hero speaks to individuals. */}
+      <section className="px-4 sm:px-8 py-10">
+        <div
+          className="max-w-5xl mx-auto rounded-2xl px-6 py-7 sm:px-10 sm:py-8 flex flex-col md:flex-row md:items-center gap-5"
+          style={{ backgroundColor: 'var(--selected-fill)', borderLeft: '4px solid #F9C000' }}
+        >
+          <div className="flex-1">
+            <p className="text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: '#00267F' }}>For organisations</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1.5" style={{ letterSpacing: '-0.4px' }}>Hiring for a team, a company or a government department?</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">One account for your whole organisation. Search the pool, enquire together, and keep every quote and invoice in one place. Professionals invoice you directly, and we take nothing.</p>
+          </div>
+          <Link href="/for-organisations" className="inline-flex items-center justify-center text-sm font-bold px-6 py-3 rounded-full text-white hover:opacity-90 transition-opacity flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
+            How it works for organisations
+          </Link>
+        </div>
+      </section>
+
       {/* Provider recruitment */}
       <section className="px-4 sm:px-8 py-16 sm:py-20" style={{ backgroundColor: '#00267F' }}>
         <div className="max-w-5xl mx-auto">

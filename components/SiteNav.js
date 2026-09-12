@@ -233,6 +233,26 @@ export default function SiteNav() {
             Browse Professionals
           </Link>
 
+          {/* Organisation front door: teams, companies and public bodies */}
+          <Link
+            href="/for-organisations"
+            className="nav-auth-link"
+            style={{
+              color: '#00267F',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              padding: '8px 14px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              transition: 'background 0.15s',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(0,38,127,0.06)')}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            For organisations
+          </Link>
+
           {user ? (
             <>
               {/* Quotes — freelancers only */}
@@ -628,6 +648,7 @@ export default function SiteNav() {
               <Link href="/invite" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Invite friends</Link>
               <Link href="/settings" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Settings</Link>
               <Link href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</Link>
+              <Link href="/for-organisations" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>For organisations</Link>
               <button
                 onClick={() => supabase.auth.signOut().then(() => { window.location.href = '/login' })}
                 style={{ textAlign: 'left', color: '#ef4444', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}
@@ -638,6 +659,7 @@ export default function SiteNav() {
           ) : (
             <>
               <Link href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</Link>
+              <Link href="/for-organisations" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>For organisations</Link>
               <Link href="/login" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Log in</Link>
               <Link href="/signup?role=client" onClick={() => setMenuOpen(false)} style={{ color: '#00267F', fontWeight: 600, textDecoration: 'none' }}>Join as a Client</Link>
               <Link

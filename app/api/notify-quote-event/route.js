@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
-import { createNotification } from '@/lib/serverNotify'
-import { sendPushToUser } from '@/lib/serverPush'
+import { isOrganisationMember, fanOut } from '@/lib/serverOrgRecipients'
 
 // Cross-party quote-lifecycle notifications. The caller (JWT) must be a
 // participant in the quote; the recipient (the OTHER party) is resolved
@@ -33,7 +32,7 @@ export async function POST(request) {
 
     const { data: quote } = await admin
       .from('quotes')
-      .select('id, message_id, client_email, client_name, quote_number, invoice_number, freelancer_id, freelancers(user_id, name, company_name)')
+      .select('id, message_id, organisation_id, client_email, client_name, quote_number, invoice_number, freelancer_id, freelancers(user_id, name, company_name)')
       .eq('id', quote_id)
       .maybeSingle()
     if (!quote) return Response.json({ error: 'Quote not found' }, { status: 404 })
@@ -50,9 +49,19 @@ export async function POST(request) {
       clientUserId = msg?.sender_user_id || null
     }
 
+    // An organisation's quote notifies every member of it, and any member
+    // may act on it, not only the colleague who sent the enquiry.
+    let clientUserIds = clientUserId ? [clientUserId] : []
+    let isOrgMember = false
+    if (quote.organisation_id) {
+      const { data: members } = await admin.from('organisation_members').select('user_id').eq('organisation_id', quote.organisation_id)
+      clientUserIds = [...new Set((members || []).map(m => m.user_id).filter(Boolean))]
+      isOrgMember = await isOrganisationMember(admin, quote.organisation_id, user.id)
+    }
+
     // Authorise: caller must be the freelancer owner or the addressed client
     const isFreelancer = user.id === freelancerUserId
-    const isClient = (quote.client_email && user.email && quote.client_email === user.email) || user.id === clientUserId
+    const isClient = (quote.client_email && user.email && quote.client_email === user.email) || user.id === clientUserId || isOrgMember
     if (!isFreelancer && !isClient) {
       return Response.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -60,27 +69,26 @@ export async function POST(request) {
     const ref = quote.invoice_number || quote.quote_number || ''
     const clientName = quote.client_name || 'The client'
 
-    let recipient = null
+    let recipients = []
     let payload = null
     if (event === 'accepted' || event === 'declined') {
-      recipient = freelancerUserId
+      recipients = freelancerUserId ? [freelancerUserId] : []
       payload = { type: `quote_${event}`, title: `${clientName} ${event} your quote ${ref}`.trim(), link: '/quotes' }
     } else if (event === 'paid') {
-      recipient = clientUserId
+      recipients = clientUserIds
       payload = { type: 'job_paid', title: `${freelancerName} marked your job as paid`, body: ref ? `Receipt for ${ref}` : null, link: '/jobs' }
     } else if (event === 'completed') {
       if (isFreelancer) {
-        recipient = clientUserId
+        recipients = clientUserIds
         payload = { type: 'job_completed', title: `${freelancerName} marked the job complete`, link: '/jobs' }
       } else {
-        recipient = freelancerUserId
+        recipients = freelancerUserId ? [freelancerUserId] : []
         payload = { type: 'job_completed', title: `${clientName} marked the job complete`, link: '/quotes' }
       }
     }
 
-    if (recipient && payload) {
-      await createNotification(recipient, payload)
-      await sendPushToUser(recipient, { title: payload.title, body: payload.body || '', url: payload.link }).catch(() => {})
+    if (recipients.length > 0 && payload) {
+      await fanOut(recipients, payload)
     }
 
     return Response.json({ success: true })
