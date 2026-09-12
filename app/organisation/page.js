@@ -36,10 +36,13 @@ function Card({ title, desc, children, action }) {
 }
 
 export default function OrganisationDashboard() {
-  const { org, isOwner, loading, refresh } = useOrganisation()
+  const { user, org, isOwner, loading, refresh } = useOrganisation()
   const [stats, setStats] = useState({ enquiries: 0, toReview: 0, active: 0, completed: 0 })
   const [recent, setRecent] = useState([])
   const [ready, setReady] = useState(false)
+  // First-run checklist: counts the dashboard doesn't otherwise need.
+  const [setup, setSetup] = useState({ members: 0, saved: 0 })
+  const [setupDismissed, setSetupDismissed] = useState(false)
 
   // A pending invite from an earlier visit is redeemed here too, so the
   // login path (which does not know about invites) still completes it.
@@ -51,11 +54,15 @@ export default function OrganisationDashboard() {
     if (loading || !org) return
     let cancelled = false
     ;(async () => {
-      const [{ count: enquiries }, { data: quotes }] = await Promise.all([
+      const [{ count: enquiries }, { data: quotes }, { count: members }, { count: saved }] = await Promise.all([
         supabase.from('messages').select('*', { count: 'exact', head: true }).eq('organisation_id', org.id),
         supabase.from('quotes').select('id, quote_number, client_name, total, status, created_at, freelancers(name, trade)').eq('organisation_id', org.id).order('created_at', { ascending: false }),
+        supabase.from('organisation_members').select('*', { count: 'exact', head: true }).eq('organisation_id', org.id),
+        user ? supabase.from('saved_professionals').select('*', { count: 'exact', head: true }).eq('user_id', user.id) : Promise.resolve({ count: 0 }),
       ])
       if (cancelled) return
+      setSetup({ members: members || 0, saved: saved || 0 })
+      try { setSetupDismissed(localStorage.getItem(`vetted_org_setup_done_${org.id}`) === '1') } catch { /* ignore */ }
       const qs = quotes || []
       setStats({
         enquiries: enquiries || 0,
@@ -67,7 +74,7 @@ export default function OrganisationDashboard() {
       setReady(true)
     })()
     return () => { cancelled = true }
-  }, [loading, org])
+  }, [loading, org, user])
 
   if (loading || !org) {
     return <main className="min-h-screen page-bg flex items-center justify-center"><p className="text-sm text-gray-400">Loading…</p></main>
@@ -93,6 +100,7 @@ export default function OrganisationDashboard() {
             </div>
             <p className="text-sm text-gray-500 mt-1">
               {org.division ? `${org.division} · ` : ''}{kindLabel} · Payment terms: {termLabel(org.default_payment_terms)}
+              {' · '}<Link href={`/organisations/${org.id}`} className="font-semibold" style={{ color: '#00267F' }}>Public page</Link>
             </p>
           </div>
           <div className="flex gap-2 flex-shrink-0">
@@ -111,12 +119,48 @@ export default function OrganisationDashboard() {
             <strong>Verification pending.</strong> Vetted.bb checks organisations manually so professionals know an enquiry from you is genuine. You can search and enquire in the meantime; the verified mark appears once the check is done.
           </div>
         )}
-        {missingDetails && isOwner && (
-          <div className="rounded-2xl px-5 py-4 mb-4 text-sm flex flex-col sm:flex-row sm:items-center gap-3" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
-            <span className="flex-1"><strong>Add your billing address.</strong> Professionals print it on their quotes and invoices to you, so it needs to be right.</span>
-            <Link href="/organisation/settings" className="text-sm font-semibold underline flex-shrink-0">Open settings</Link>
-          </div>
-        )}
+        {/* First-run checklist: shown until every step is done, or dismissed
+            once it is. Absorbs the old "add your billing address" nudge. */}
+        {ready && !setupDismissed && (() => {
+          const steps = [
+            { done: !missingDetails, label: 'Add your billing address', sub: 'Professionals print it on every quote and invoice to you.', href: '/organisation/settings', cta: 'Open settings' },
+            { done: setup.members >= 2, label: 'Invite a colleague', sub: 'So quotes are never stuck in one person’s inbox.', href: '/organisation/team', cta: 'Team' },
+            { done: setup.saved >= 1, label: 'Shortlist a professional', sub: 'Tap the heart on anyone you might hire.', href: '/search', cta: 'Search' },
+            { done: stats.enquiries >= 1, label: 'Send your first enquiry', sub: 'Or ask several at once with a quote request.', href: '/organisation/requests/new', cta: 'Request quotes' },
+          ]
+          const doneCount = steps.filter(s => s.done).length
+          const allDone = doneCount === steps.length
+          return (
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 mb-6" style={{ borderTop: '3px solid #F9C000' }}>
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="font-semibold text-gray-900">{allDone ? 'You’re set up' : 'Get set up'} <span className="text-gray-400 font-normal">({doneCount} of {steps.length})</span></h2>
+                  <p className="text-sm text-gray-500 mt-0.5">{allDone ? 'Everything is in place. This card won’t show again.' : 'Four steps, and the workspace works the way it should.'}</p>
+                </div>
+                {allDone && (
+                  <button onClick={() => { try { localStorage.setItem(`vetted_org_setup_done_${org.id}`, '1') } catch { /* ignore */ } setSetupDismissed(true) }} className="text-xs font-medium text-gray-400 hover:text-gray-600 flex-shrink-0">Dismiss</button>
+                )}
+              </div>
+              <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-4">
+                <div className="h-full rounded-full transition-all" style={{ width: `${(doneCount / steps.length) * 100}%`, backgroundColor: '#00267F' }} />
+              </div>
+              <ol className="flex flex-col divide-y divide-gray-100">
+                {steps.map(s => (
+                  <li key={s.label} className="py-2.5 flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: s.done ? '#16a34a' : '#E5E7EB' }} aria-hidden="true">
+                      {s.done && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className={`block text-sm ${s.done ? 'text-gray-400 line-through' : 'font-medium text-gray-900'}`}>{s.label}</span>
+                      {!s.done && <span className="block text-xs text-gray-400">{s.sub}</span>}
+                    </span>
+                    {!s.done && <Link href={s.href} className="text-xs font-semibold flex-shrink-0" style={{ color: '#00267F' }}>{s.cta} →</Link>}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )
+        })()}
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

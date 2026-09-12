@@ -1199,13 +1199,15 @@ export default function Inbox() {
                       <span className={`text-sm truncate ${!msg.read ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
                         {clientProfiles[msg.sender_user_id]?.display_name || msg.sender_name}
                         {msg.organisations && (
-                          <span
-                            className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle"
-                            title={msg.organisations.verified ? 'Verified organisation' : 'Organisation (not yet verified)'}
-                            style={msg.organisations.verified ? { backgroundColor: '#F9C000', color: '#00267F' } : { backgroundColor: '#EEF2FF', color: '#00267F' }}
+                          <Link
+                            href={`/organisations/${msg.organisations.id}`}
+                            onClick={e => e.stopPropagation()}
+                            className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle hover:opacity-80"
+                            title={msg.organisations.verified ? 'Verified organisation. Open its page' : 'Organisation (not yet verified). Open its page'}
+                            style={msg.organisations.verified ? { backgroundColor: '#F9C000', color: '#00267F', textDecoration: 'none' } : { backgroundColor: '#EEF2FF', color: '#00267F', textDecoration: 'none' }}
                           >
                             {msg.organisations.verified && <TrustMark kind="organisation" size={11} />}{msg.organisations.name}
-                          </span>
+                          </Link>
                         )}
                       </span>
                       <span className="text-[11px] text-gray-400 flex-shrink-0">

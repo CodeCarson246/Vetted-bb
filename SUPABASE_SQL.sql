@@ -1290,3 +1290,37 @@ CREATE POLICY "quote-attachments participants read" ON storage.objects FOR SELEC
 DROP POLICY IF EXISTS "quote-attachments uploader delete" ON storage.objects;
 CREATE POLICY "quote-attachments uploader delete" ON storage.objects FOR DELETE
   USING (bucket_id = 'quote-attachments' AND owner = auth.uid());
+
+-- ============================================================
+-- SECTION 31 — PUBLIC ORGANISATION PAGE (2026-09-12)
+-- A light public profile at /organisations/<id>: name, type, parish,
+-- verified mark, member since, and how much it has done on the platform.
+-- Organisations are otherwise readable only by their members and by
+-- freelancers they have contacted, so this SECURITY DEFINER lookup exposes
+-- exactly the public fields and two counts, nothing else (no address, no
+-- email, no members, no amounts).
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.organisation_public(p_id uuid)
+RETURNS TABLE (
+  id              uuid,
+  name            text,
+  division        text,
+  kind            text,
+  parish          text,
+  verified        boolean,
+  created_at      timestamptz,
+  jobs_completed  integer,
+  quotes_received integer
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT o.id, o.name, o.division, o.kind, o.parish, o.verified, o.created_at,
+         (SELECT count(*)::int FROM quotes q WHERE q.organisation_id = o.id AND q.status IN ('completed', 'paid')),
+         (SELECT count(*)::int FROM quotes q WHERE q.organisation_id = o.id)
+    FROM organisations o
+   WHERE o.id = p_id
+   LIMIT 1
+$$;
+GRANT EXECUTE ON FUNCTION public.organisation_public(uuid) TO anon, authenticated;
