@@ -6,6 +6,7 @@ import { formatDisplayName } from '@/lib/formatDisplayName'
 import { CATEGORIES as categories, effectiveCategories } from '@/lib/categories'
 import TrustBar from '@/components/TrustBar'
 import VerifiedBadge from '@/components/VerifiedBadge'
+import TrustMark from '@/components/TrustMark'
 import CategoryIcon from '@/components/CategoryIcon'
 import SectionHeading from '@/components/SectionHeading'
 
@@ -335,19 +336,7 @@ export default function Home() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '3px' }}>
                       <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '1rem', color: '#00267F', lineHeight: 1.2 }}>{f.name}</span>
                       {(f.phone_verified || f.verified) && <VerifiedBadge size={15} />}
-                      {f.featured && (
-                        <span style={{
-                          backgroundColor: '#F9C000',
-                          color: '#00267F',
-                          fontSize: '0.62rem',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
-                          padding: '2px 8px',
-                          borderRadius: 999,
-                          lineHeight: 1.6,
-                        }}>★ Featured</span>
-                      )}
+                      {f.featured && <TrustMark kind="featured" />}
                     </div>
                     <p style={{ fontSize: '0.82rem', color: '#6B7280', marginTop: '2px', textTransform: 'capitalize' }}>{f.trade}</p>
                   </div>
@@ -489,7 +478,7 @@ export default function Home() {
                   e.currentTarget.style.boxShadow = 'none'
                 }}
               >
-                <span className="flex items-center justify-center rounded-2xl" style={{ width: 56, height: 56, backgroundColor: 'var(--selected-fill)', color: '#00267F' }}>
+                <span className="flex items-center justify-center rounded-2xl" style={{ width: 56, height: 56, backgroundColor: 'var(--selected-fill)', color: 'var(--accent)' }}>
                   <CategoryIcon slug={cat.slug} size={28} />
                 </span>
                 <span className="font-medium text-gray-700 text-sm text-center leading-snug">{cat.name}</span>

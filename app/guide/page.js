@@ -243,7 +243,7 @@ const SECTIONS = [
           "Verified professional (blue tick): granted once we confirm you are who you say you are, usually by confirming your phone number, or after a manual check. Dashboard, then follow the Get verified steps. Verified profiles stand out in search and win more trust.",
           "Verified organisation (gold tick): shown on an enquiry from an organisation we have checked is genuine, so you know a message from a ministry, a company or a charity is real.",
           "Registered government vendor (navy Govt vendor pill): you set this yourself once you are registered as a vendor with the Treasury. Organisations hiring for government work can filter search to registered vendors.",
-          "Featured (gold star): chosen by Vetted.bb for the homepage. It is not paid for and cannot be bought.",
+          "Featured (navy star on gold): chosen by Vetted.bb for the homepage. It is not paid for and cannot be bought.",
         ],
         tip: "The full explanation lives at vetted.bb/badges. Send that link to any client who asks what a badge means.",
       },

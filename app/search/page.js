@@ -109,19 +109,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
                 {f.name}
               </h3>
               {/* Featured badge */}
-              {f.featured && (
-                <span style={{
-                  background: '#F9C000',
-                  color: '#00267F',
-                  fontSize: '0.65rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                  lineHeight: 1.6,
-                }}>★ Featured</span>
-              )}
+              {f.featured && <TrustMark kind="featured" />}
               {/* Verified badge */}
               {isVerified(f) && <VerifiedBadge size={16} />}
               {/* Registered government vendor */}

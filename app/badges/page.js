@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import TrustMark, { TRUST_MARKS } from '@/components/TrustMark'
+import { TRUST_MARKS } from '@/components/TrustMark'
+import BadgeGlyph from '@/components/badgeArt'
 
 export const metadata = {
   title: 'What our badges mean',
@@ -57,7 +58,8 @@ export default function Badges() {
               <div key={d.kind} className="bg-white px-6 py-6 sm:px-8 sm:py-7" style={CARD}>
                 <div className="flex items-center gap-3 mb-3 flex-wrap">
                   <span className="inline-flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: 44, height: 44, backgroundColor: 'var(--selected-fill)' }}>
-                    <TrustMark kind={d.kind} size={d.kind === 'vendor' || d.kind === 'featured' ? 13 : 24} />
+                    {/* The emblem alone: the vendor and featured pills are wider than this box, and the text explains them */}
+                    <BadgeGlyph kind={d.kind} size={26} label={meta.title} />
                   </span>
                   <div>
                     <h2 className="text-lg font-bold text-gray-900 leading-snug">{meta.title}</h2>
