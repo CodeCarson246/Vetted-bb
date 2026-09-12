@@ -19,6 +19,7 @@ const ICONS = {
   invite: <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM20 8v6M23 11h-6" />,
   sent: <path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />,
   rising: <path strokeLinecap="round" strokeLinejoin="round" d="M23 6l-9.5 9.5-5-5L1 18M17 6h6v6" />,
+  badges: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" /></>,
 }
 
 const NAV = [
@@ -137,6 +138,11 @@ export default function WorkspaceSidebar({ open, onClose }) {
               but the workspace has no footer, so it needs a home here too. */}
           <Link href="/vetted-rising" onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
             <NavIcon name="rising" /> <span className="flex-1">Vetted Rising</span>
+          </Link>
+          {/* What each trust mark means. Public page with no other route in
+              from the workspace (the app has no footer). */}
+          <Link href="/badges" onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
+            <NavIcon name="badges" /> <span className="flex-1">What badges mean</span>
           </Link>
 
           {/* Legal. The installed app has no site footer, so these are the only

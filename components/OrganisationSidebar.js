@@ -11,6 +11,7 @@ import TrustMark from '@/components/TrustMark'
 // is the organisation's job: find professionals, run enquiries, track jobs,
 // manage the team.
 const ICONS = {
+  badges: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" /></>,
   dashboard: <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10" />,
   search: <><circle cx="11" cy="11" r="7" /><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.3-4.3" /></>,
   saved: <path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />,
@@ -92,6 +93,13 @@ export default function OrganisationSidebar({ open, onClose }) {
               </Link>
             )
           })}
+
+          {/* What each trust mark means: organisations are the ones reading
+              them, and the org chrome has no footer to reach the page from. */}
+          <Link href="/badges" onClick={onClose} className={linkBase} style={{ color: 'rgba(255,255,255,0.72)' }}>
+            <NavIcon name="badges" />
+            <span className="flex-1">What badges mean</span>
+          </Link>
 
           <div className="mt-auto pt-2 px-3 pb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             <Link href="/terms" onClick={onClose} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textDecoration: 'none' }}>Terms of Service</Link>
