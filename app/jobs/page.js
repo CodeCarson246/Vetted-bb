@@ -135,7 +135,7 @@ export default function JobsPage() {
               const mutual = job.completed_at && job.client_completed_at
               const initials = (f?.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)
               return (
-                <div key={job.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderLeft: `4px solid ${mutual ? '#16a34a' : '#00267F'}` }}>
+                <div key={job.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderTop: `4px solid ${mutual ? '#16a34a' : '#00267F'}` }}>
                   <div className="flex items-start gap-4">
                     <Link href={`/freelancers/${f?.id}`} className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
                       {f?.avatar_url
@@ -147,7 +147,7 @@ export default function JobsPage() {
                         <Link href={`/freelancers/${f?.id}`} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>
                           {f?.company_name?.trim().length > 3 ? f.company_name : f?.name}
                         </Link>
-                        <span className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(job.total).toFixed(2)}</span>
+                        <span className="text-sm font-bold" style={{ color: '#00267F' }}>Bds${Number(job.total).toFixed(2)}</span>
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
                         {job.invoice_number || job.quote_number} · {f?.trade}

@@ -6,6 +6,7 @@ import { formatDisplayName } from '@/lib/formatDisplayName'
 import { CATEGORIES as categories, effectiveCategories } from '@/lib/categories'
 import TrustBar from '@/components/TrustBar'
 import VerifiedBadge from '@/components/VerifiedBadge'
+import CategoryIcon from '@/components/CategoryIcon'
 
 const iconStyle = { width: '40px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }
 
@@ -254,13 +255,13 @@ export default function Home() {
         <section className="max-w-6xl mx-auto px-4 sm:px-8 pb-16" style={{ paddingTop: '80px' }}>
           <div className="mb-10">
             <p style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.75rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#d9a800', marginBottom: '8px' }}>
-              TOP RATED
+              {featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'TOP RATED' : 'NEW ON VETTED.BB'}
             </p>
             <h2 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '2.2rem', letterSpacing: '-0.8px', color: '#00267F', marginBottom: '8px', lineHeight: 1.15 }}>
-              Featured Professionals
+              {featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Featured Professionals' : 'Recently joined'}
             </h2>
             <p style={{ color: '#6B7280', fontSize: '1rem', fontFamily: "'Inter', sans-serif" }}>
-              Real people. Real reviews. Ready to hire.
+              {featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Real people. Real reviews. Ready to hire.' : 'Verified people, ready to hire.'}
             </p>
           </div>
 
@@ -365,7 +366,7 @@ export default function Home() {
                       <span style={{ fontSize: '0.82rem', color: '#6B7280' }}>({f.review_count} {f.review_count === 1 ? 'review' : 'reviews'})</span>
                     </>
                   ) : (
-                    <span style={{ fontSize: '0.82rem', color: '#6B7280' }}>No reviews yet</span>
+                    <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>New on Vetted.bb</span>
                   )}
                 </div>
 
@@ -414,7 +415,7 @@ export default function Home() {
                     </div>
                     {f.min_price != null && (
                       <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                        From ${Number.isInteger(f.min_price) ? f.min_price : parseFloat(f.min_price).toFixed(0)}
+                        From Bds${Number.isInteger(f.min_price) ? f.min_price : parseFloat(f.min_price).toFixed(0)}
                       </span>
                     )}
                   </div>
@@ -488,21 +489,11 @@ export default function Home() {
                   e.currentTarget.style.boxShadow = 'none'
                 }}
               >
-                <span className="text-4xl">{cat.icon}</span>
+                <span className="flex items-center justify-center rounded-2xl" style={{ width: 56, height: 56, backgroundColor: 'var(--selected-fill)', color: '#00267F' }}>
+                  <CategoryIcon slug={cat.slug} size={28} />
+                </span>
                 <span className="font-medium text-gray-700 text-sm text-center leading-snug">{cat.name}</span>
-                {isEmpty ? (
-                  <span style={{
-                    backgroundColor: '#FEF3C7',
-                    color: '#92400E',
-                    fontSize: '11px',
-                    padding: '2px 10px',
-                    borderRadius: '20px',
-                    fontWeight: 600,
-                    marginTop: '-4px',
-                  }}>
-                    Be the first →
-                  </span>
-                ) : count > 0 ? (
+                {count > 0 ? (
                   <span className="chip" style={{ fontSize: '11px', marginTop: '-4px' }}>
                     {count} {count === 1 ? 'pro' : 'pros'}
                   </span>

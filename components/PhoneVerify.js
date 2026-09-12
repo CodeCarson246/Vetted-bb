@@ -109,7 +109,7 @@ export default function PhoneVerify({ verified, onVerified }) {
   const accent = step === 'done' ? '#16a34a' : '#00267F'
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderLeft: `4px solid ${accent}` }}>
+    <div className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderTop: `4px solid ${accent}` }}>
       <div className="flex items-start gap-4">
         <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: step === 'done' ? 'rgba(22,163,74,0.12)' : 'rgba(0,38,127,0.08)' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2">

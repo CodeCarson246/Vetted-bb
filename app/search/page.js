@@ -156,11 +156,15 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
 
             {/* Rating row */}
             <div className="flex flex-wrap items-center gap-3 mt-2">
-              <div className="flex items-center gap-1">
-                <StarRating rating={f.rating} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1F2937', marginLeft: 2 }}>{f.rating}</span>
-                <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>({f.review_count})</span>
-              </div>
+              {(f.review_count || 0) > 0 ? (
+                <div className="flex items-center gap-1">
+                  <StarRating rating={f.rating} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1F2937', marginLeft: 2 }}>{f.rating}</span>
+                  <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>({f.review_count})</span>
+                </div>
+              ) : (
+                <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>New on Vetted.bb</span>
+              )}
               {f.client_rating > 0 && (
                 <span style={{ fontSize: '0.75rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
                   · Client rep: <span style={{ fontWeight: 600, color: '#6B7280' }}>{f.client_rating}</span>
@@ -189,7 +193,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
             {minPrice !== null && (
               <>
                 <div style={{ height: 1, background: 'rgba(0,38,127,0.08)', margin: '12px 0 8px' }} />
-                <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#00267F', margin: 0 }}>From ${minPrice}</p>
+                <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#00267F', margin: 0 }}>From Bds${minPrice}</p>
               </>
             )}
           </div>
@@ -231,7 +235,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
               <div key={svc.id} style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1.8, marginTop: i > 0 ? 4 : 0 }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#00267F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{svc.name}</span>
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F', flexShrink: 0, marginLeft: 6 }}>
-                  · ${parsePrice(svc.price)?.toFixed(0) ?? ''}{svc.price_type === 'starting_from' ? '+' : ''}
+                  · Bds${parsePrice(svc.price)?.toFixed(0) ?? ''}{svc.price_type === 'starting_from' ? '+' : ''}
                 </span>
               </div>
             ))}
@@ -244,7 +248,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
             {displayServices.map(svc => (
               <span key={svc.id} style={{ fontSize: '0.78rem' }}>
                 <span style={{ fontWeight: 500, color: '#00267F' }}>{svc.name}</span>
-                <span style={{ fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>{' · $'}{parsePrice(svc.price)?.toFixed(0) ?? ''}{svc.price_type === 'starting_from' ? '+' : ''}</span>
+                <span style={{ fontWeight: 700, color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>{' · Bds$'}{parsePrice(svc.price)?.toFixed(0) ?? ''}{svc.price_type === 'starting_from' ? '+' : ''}</span>
               </span>
             ))}
           </div>

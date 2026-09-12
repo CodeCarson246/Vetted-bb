@@ -114,7 +114,7 @@ function Section({ title, items, busyId, onCancel, muted }) {
           const d = new Date(b.date + 'T12:00:00')
           const initials = (f?.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)
           return (
-            <div key={b.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderLeft: `4px solid ${s.dot}`, opacity: muted ? 0.85 : 1 }}>
+            <div key={b.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderTop: `4px solid ${s.dot}`, opacity: muted ? 0.85 : 1 }}>
               <div className="flex items-start gap-4">
                 <Link href={`/freelancers/${f?.id}`} className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
                   {f?.avatar_url ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" /> : initials}

@@ -22,7 +22,7 @@ export default function About() {
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
 
         {/* The problem */}
-        <div className="bg-white rounded-2xl border border-gray-100 px-8 py-8" style={{ borderLeft: '4px solid #00267F' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 px-8 py-8" style={{ borderTop: '4px solid #00267F' }}>
           <h2 className="text-xl font-bold text-gray-900 mb-4">The problem we set out to solve</h2>
           <p className="text-gray-600 leading-relaxed mb-4">
             Anyone who has lived in Barbados knows the drill. You need a plumber, an electrician, a graphic designer, so you ask around. You get a WhatsApp number from a friend of a friend. You send a message and hope for the best.
@@ -41,7 +41,7 @@ export default function About() {
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-14 flex flex-col gap-12">
 
         {/* For freelancers */}
-        <div className="bg-white rounded-2xl border border-gray-100 px-8 py-8" style={{ borderLeft: '4px solid #F9C000' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 px-8 py-8" style={{ borderTop: '4px solid #F9C000' }}>
           <h2 className="text-xl font-bold text-gray-900 mb-4">For freelancers</h2>
           <p className="text-gray-600 leading-relaxed mb-4">
             If you are a skilled tradesperson, creative, or professional based in Barbados, Vetted.bb gives you a free professional profile where clients can find you, see your work, and reach out directly.
@@ -59,7 +59,7 @@ export default function About() {
         </div>
 
         {/* For clients */}
-        <div className="bg-white rounded-2xl border border-gray-100 px-8 py-8" style={{ borderLeft: '4px solid #00267F' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 px-8 py-8" style={{ borderTop: '4px solid #00267F' }}>
           <h2 className="text-xl font-bold text-gray-900 mb-4">For clients</h2>
           <p className="text-gray-600 leading-relaxed mb-4">
             Search by trade, read reviews from real clients, and contact a freelancer directly. All in one place. Whether you need someone today or are planning ahead, Vetted.bb makes it easy to find the right person with confidence.

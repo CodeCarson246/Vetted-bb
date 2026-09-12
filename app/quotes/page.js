@@ -143,7 +143,7 @@ function EarningsChart({ series }) {
   const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ')
   const area = `${line} L${x(n - 1).toFixed(1)} ${y(0).toFixed(1)} L${x(0).toFixed(1)} ${y(0).toFixed(1)} Z`
   const ticks = [0, max / 2, max]
-  const fmtTick = v => v >= 1000 ? `$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `$${Math.round(v)}`
+  const fmtTick = v => v >= 1000 ? `Bds$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `Bds$${Math.round(v)}`
   if (rawMax === 0) {
     return <div className="h-[200px] flex items-center justify-center text-sm text-gray-400">No earnings in this period.</div>
   }
@@ -638,8 +638,8 @@ export default function QuotesPage() {
         {/* Earnings summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
           {[
-            { label: 'Total earned', value: `$${totalEarned.toFixed(0)}`, accent: '#16a34a' },
-            { label: 'Pending payment', value: `$${pendingPayment.toFixed(0)}`, accent: '#F9C000' },
+            { label: 'Total earned', value: `Bds$${totalEarned.toFixed(0)}`, accent: '#16a34a' },
+            { label: 'Pending payment', value: `Bds$${pendingPayment.toFixed(0)}`, accent: '#F9C000' },
             { label: 'Awaiting reply', value: pendingCount, accent: '#00267F' },
             { label: 'Quotes sent', value: quotes.length, accent: '#00267F' },
           ].map(stat => (
@@ -721,7 +721,7 @@ export default function QuotesPage() {
                     : `${dl} day${dl === 1 ? '' : 's'} left`
                   const dueColor = overdue ? '#ef4444' : dl <= reminderThreshold(q.invoice_terms) ? '#B45309' : '#6B7280'
                   return (
-                    <div key={q.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderLeft: `4px solid ${overdue ? '#ef4444' : '#F9C000'}` }}>
+                    <div key={q.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderTop: `4px solid ${overdue ? '#ef4444' : '#F9C000'}` }}>
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -789,9 +789,9 @@ export default function QuotesPage() {
                 {/* Trend cards (real money) */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {[
-                    { label: 'This month', value: `$${thisMonthTotal.toFixed(0)}`, delta: monthDelta, sub: 'vs last month' },
-                    { label: 'This week', value: `$${thisWeekTotal.toFixed(0)}`, delta: weekDelta, sub: 'vs last week' },
-                    { label: 'Pending payment', value: `$${outstandingTotal.toFixed(0)}`, sub: `${outstanding.length} invoice${outstanding.length === 1 ? '' : 's'}` },
+                    { label: 'This month', value: `Bds$${thisMonthTotal.toFixed(0)}`, delta: monthDelta, sub: 'vs last month' },
+                    { label: 'This week', value: `Bds$${thisWeekTotal.toFixed(0)}`, delta: weekDelta, sub: 'vs last week' },
+                    { label: 'Pending payment', value: `Bds$${outstandingTotal.toFixed(0)}`, sub: `${outstanding.length} invoice${outstanding.length === 1 ? '' : 's'}` },
                     { label: 'Paid jobs', value: paidThisMonth, sub: 'this month' },
                   ].map(c => (
                     <div key={c.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
@@ -1094,7 +1094,7 @@ export default function QuotesPage() {
                               <td className="px-4 py-2.5 text-gray-700">{item.description || ''}</td>
                               <td className="px-4 py-2.5 text-center text-gray-500">{item.qty}</td>
                               <td className="px-4 py-2.5 text-right font-medium text-gray-900">
-                                {item.price ? `$${((parseFloat(item.price) || 0) * (parseInt(item.qty) || 1)).toFixed(2)}` : ''}
+                                {item.price ? `Bds$${((parseFloat(item.price) || 0) * (parseInt(item.qty) || 1)).toFixed(2)}` : ''}
                               </td>
                             </tr>
                           ))}

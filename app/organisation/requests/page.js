@@ -67,7 +67,7 @@ export default function QuoteRequests() {
               const st = STATUS[r.status] || STATUS.open
               return (
                 <li key={r.id}>
-                  <Link href={`/organisation/requests/${r.id}`} className="block bg-white rounded-2xl border border-gray-100 p-5 hover:border-gray-300 transition-colors" style={{ borderLeft: '4px solid #00267F', textDecoration: 'none' }}>
+                  <Link href={`/organisation/requests/${r.id}`} className="block bg-white rounded-2xl border border-gray-100 p-5 hover:border-gray-300 transition-colors" style={{ borderTop: '4px solid #00267F', textDecoration: 'none' }}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-semibold text-gray-900 truncate">{r.title}</p>

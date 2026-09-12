@@ -125,7 +125,7 @@ export default function SavedProfessionals() {
               const f = row.freelancers
               const initials = f.name ? f.name.split(' ').map(n => n[0]).join('').slice(0, 2) : '?'
               return (
-                <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow" style={{ borderLeft: '4px solid #00267F' }}>
+                <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow" style={{ borderTop: '4px solid #00267F' }}>
                   {/* Avatar */}
                   <Link href={`/freelancers/${f.id}`} className="flex-shrink-0">
                     <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold" style={{ background: f.avatar_url ? undefined : '#00267F' }}>
@@ -148,8 +148,12 @@ export default function SavedProfessionals() {
                       {f.trade}{f.location ? ` · ${formatParish(f.location)}` : ''}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <StarRating rating={f.rating || 0} />
-                      <span className="text-xs text-gray-400">({f.review_count || 0})</span>
+                      {(f.review_count || 0) > 0 ? (
+                        <>
+                          <StarRating rating={f.rating || 0} />
+                          <span className="text-xs text-gray-400">({f.review_count || 0})</span>
+                        </>
+                      ) : <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>New on Vetted.bb</span>}
                     </div>
                   </Link>
 

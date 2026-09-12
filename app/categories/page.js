@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CATEGORIES } from '@/lib/categories'
 import { SITE_URL } from '@/lib/siteUrl'
+import CategoryIcon from '@/components/CategoryIcon'
 
 export const metadata = {
   title: 'Browse All Categories | Trusted Professionals in Barbados',
@@ -31,7 +32,9 @@ export default function CategoriesIndex() {
               className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-md transition-all"
               style={{ borderTop: '3px solid #00267F', textDecoration: 'none' }}
             >
-              <span className="text-3xl block mb-3">{cat.icon}</span>
+              <span className="flex items-center justify-center rounded-2xl mb-3" style={{ width: 48, height: 48, backgroundColor: 'var(--selected-fill)', color: '#00267F' }}>
+                <CategoryIcon slug={cat.slug} size={24} />
+              </span>
               <p className="font-semibold mb-1" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{cat.name}</p>
               <p className="text-xs text-gray-500 leading-relaxed">{cat.description}</p>
             </Link>

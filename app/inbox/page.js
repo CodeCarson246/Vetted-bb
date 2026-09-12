@@ -445,11 +445,11 @@ export default function Inbox() {
         <table width="100%">
           <tr>
             <td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#6b7280">Subtotal</td>
-            <td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#111827;text-align:right">$${subtotal.toFixed(2)}</td>
+            <td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#111827;text-align:right">Bds$${subtotal.toFixed(2)}</td>
           </tr>
           <tr>
             <td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#111827">Total</td>
-            <td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#00267F;text-align:right">$${subtotal.toFixed(2)}</td>
+            <td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#00267F;text-align:right">Bds$${subtotal.toFixed(2)}</td>
           </tr>
         </table>
       </td>
@@ -1516,9 +1516,9 @@ export default function Inbox() {
                     <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
                       <td className="px-3 py-2 text-gray-700">{item.description || ''}</td>
                       <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                      <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : ''}</td>
+                      <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `Bds$${parseFloat(item.price).toFixed(2)}` : ''}</td>
                       <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                        {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
+                        {item.price ? `Bds$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
                       </td>
                     </tr>
                   ))}
@@ -1660,9 +1660,9 @@ export default function Inbox() {
                   <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
                     <td className="px-3 py-2 text-gray-700">{item.description || ''}</td>
                     <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : ''}</td>
+                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `Bds$${parseFloat(item.price).toFixed(2)}` : ''}</td>
                     <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
+                      {item.price ? `Bds$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
                     </td>
                   </tr>
                 ))}

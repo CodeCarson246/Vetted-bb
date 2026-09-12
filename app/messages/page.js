@@ -769,9 +769,9 @@ export default function ClientMessages() {
                   <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
                     <td className="px-3 py-2 text-gray-700">{item.description || ''}</td>
                     <td className="px-3 py-2 text-gray-700 text-center">{item.qty}</td>
-                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `$${parseFloat(item.price).toFixed(2)}` : ''}</td>
+                    <td className="px-3 py-2 text-gray-700 text-right">{item.price ? `Bds$${parseFloat(item.price).toFixed(2)}` : ''}</td>
                     <td className="px-3 py-2 font-medium text-gray-900 text-right">
-                      {item.price ? `$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
+                      {item.price ? `Bds$${((parseFloat(item.price)||0) * (parseInt(item.qty)||1)).toFixed(2)}` : ''}
                     </td>
                   </tr>
                 ))}

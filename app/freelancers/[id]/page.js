@@ -753,11 +753,15 @@ export default function FreelancerProfile() {
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 mt-3">
                     <div>
                       <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Freelancer rating</p>
-                      <div className="flex items-center gap-1.5">
-                        <StarRating rating={freelancer.rating} light />
-                        <span className="text-white text-sm font-semibold">{freelancer.rating}</span>
-                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>({freelancer.review_count})</span>
-                      </div>
+                      {(freelancer.review_count || 0) > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          <StarRating rating={freelancer.rating} light />
+                          <span className="text-white text-sm font-semibold">{freelancer.rating}</span>
+                          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>({freelancer.review_count})</span>
+                        </div>
+                      ) : (
+                        <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#F9C000', border: '1px solid rgba(249,192,0,0.4)' }}>New on Vetted.bb</span>
+                      )}
                     </div>
                     {freelancer.client_rating > 0 && (
                       <div>
@@ -790,7 +794,7 @@ export default function FreelancerProfile() {
                     if (!minSvc) return null
                     const n = parsePrice(minSvc.price)
                     if (n === null) return null
-                    const fmt = `$${Number.isInteger(n) ? n : n.toFixed(0)}`
+                    const fmt = `Bds$${Number.isInteger(n) ? n : n.toFixed(0)}`
                     const isStarting = minSvc.price_type === 'starting_from'
                     return (
                       <span
@@ -913,7 +917,7 @@ export default function FreelancerProfile() {
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-6">
 
         {/* About */}
-        <div className="bg-white rounded-2xl overflow-hidden" style={{ borderLeft: '4px solid #00267F', borderTop: '4px solid #00267F', borderRight: '1px solid rgba(0,38,127,0.15)', borderBottom: '1px solid rgba(0,38,127,0.15)', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+        <div className="bg-white rounded-2xl overflow-hidden" style={{ borderTop: '4px solid #00267F', borderLeft: '1px solid rgba(0,38,127,0.15)', borderRight: '1px solid rgba(0,38,127,0.15)', borderBottom: '1px solid rgba(0,38,127,0.15)', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
           <div className="px-7 py-6">
             <h2 className="text-base font-bold text-gray-900 mb-3">About</h2>
             <p className="text-gray-600 leading-relaxed text-sm">{freelancer.bio}</p>
@@ -932,7 +936,7 @@ export default function FreelancerProfile() {
 
         {/* Qualifications */}
         {freelancer.qualifications && freelancer.qualifications.trim() && (
-          <div className="bg-white rounded-2xl overflow-hidden" style={{ borderLeft: '4px solid #00267F', borderTop: '4px solid #00267F', borderRight: '1px solid rgba(0,38,127,0.15)', borderBottom: '1px solid rgba(0,38,127,0.15)', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+          <div className="bg-white rounded-2xl overflow-hidden" style={{ borderTop: '4px solid #00267F', borderLeft: '1px solid rgba(0,38,127,0.15)', borderRight: '1px solid rgba(0,38,127,0.15)', borderBottom: '1px solid rgba(0,38,127,0.15)', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
             <div className="px-7 py-6">
               <h2 className="text-base font-bold text-gray-900 mb-3">Qualifications</h2>
               <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-wrap">{freelancer.qualifications}</p>
@@ -1031,7 +1035,7 @@ export default function FreelancerProfile() {
                     <div className="flex items-center justify-between mt-auto pt-3">
                       {(() => {
                         const n = parseFloat(String(s.price).replace(/[^0-9.]/g, ''))
-                        const fmt = isNaN(n) ? s.price : `$${Number.isInteger(n) ? n : n.toFixed(2)}`
+                        const fmt = isNaN(n) ? s.price : `Bds$${Number.isInteger(n) ? n : n.toFixed(2)}`
                         if (s.price_type === 'starting_from') {
                           return (
                             <span
@@ -1430,7 +1434,7 @@ export default function FreelancerProfile() {
                   >
                     <option value="">Select the service you used</option>
                     {services.map(s => (
-                      <option key={s.id} value={s.name}>{s.name} ({(() => { const n = parseFloat(String(s.price).replace(/[^0-9.]/g, '')); const fmt = isNaN(n) ? s.price : `$${Number.isInteger(n) ? n : n.toFixed(2)}`; return s.price_type === 'starting_from' ? `${fmt}+` : fmt })()})</option>
+                      <option key={s.id} value={s.name}>{s.name} ({(() => { const n = parseFloat(String(s.price).replace(/[^0-9.]/g, '')); const fmt = isNaN(n) ? s.price : `Bds$${Number.isInteger(n) ? n : n.toFixed(2)}`; return s.price_type === 'starting_from' ? `${fmt}+` : fmt })()})</option>
                     ))}
                   </select>
                 </div>
@@ -1551,7 +1555,7 @@ export default function FreelancerProfile() {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-sm font-bold" style={{ color: item.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>
-                        {(() => { const n = parseFloat(String(item.price).replace(/[^0-9.]/g, '')); const fmt = isNaN(n) ? item.price : `$${Number.isInteger(n) ? n : n.toFixed(2)}`; return item.price_type === 'starting_from' ? `${fmt}+` : fmt })()}
+                        {(() => { const n = parseFloat(String(item.price).replace(/[^0-9.]/g, '')); const fmt = isNaN(n) ? item.price : `Bds$${Number.isInteger(n) ? n : n.toFixed(2)}`; return item.price_type === 'starting_from' ? `${fmt}+` : fmt })()}
                       </span>
                       <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-red-400 text-base leading-none transition-colors">×</button>
                     </div>
@@ -1571,7 +1575,7 @@ export default function FreelancerProfile() {
                   onClick={() => {
                     const serviceList = cart.map(i => {
                       const n = parsePrice(i.price)
-                      const priceText = n !== null ? `$${Number.isInteger(n) ? n : n.toFixed(2)}` : i.price
+                      const priceText = n !== null ? `Bds$${Number.isInteger(n) ? n : n.toFixed(2)}` : i.price
                       return `• ${i.name}: ${priceText}`
                     }).join('\n')
                     const total = cartTotal() > 0 ? `\n\nEstimated total: $${cartTotal().toFixed(0)}` : ''

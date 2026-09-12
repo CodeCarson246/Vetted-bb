@@ -6,6 +6,7 @@ import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
 import { SITE_URL } from '@/lib/siteUrl'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
+import CategoryIcon from '@/components/CategoryIcon'
 
 // Server-rendered + ISR: Google gets full HTML, revalidated hourly.
 export const revalidate = 3600
@@ -91,7 +92,9 @@ export default async function CategoryPage({ params }) {
       {/* Hero */}
       <section style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }} className="px-4 sm:px-8 py-14 text-center">
         <div className="max-w-2xl mx-auto">
-          <span className="text-4xl block mb-4">{cat.icon}</span>
+          <span className="inline-flex items-center justify-center rounded-2xl mb-4" style={{ width: 64, height: 64, backgroundColor: 'rgba(255,255,255,0.12)' }}>
+            <CategoryIcon slug={cat.slug} size={34} color="#F9C000" />
+          </span>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ fontFamily: "'Sora', sans-serif" }}>
             {cat.name} in Barbados
           </h1>
@@ -128,7 +131,7 @@ export default async function CategoryPage({ params }) {
                   key={f.id}
                   href={`/freelancers/${f.id}`}
                   className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow"
-                  style={{ borderLeft: '4px solid #00267F', textDecoration: 'none' }}
+                  style={{ borderTop: '4px solid #00267F', textDecoration: 'none' }}
                 >
                   <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
                     {f.avatar_url
@@ -148,10 +151,14 @@ export default async function CategoryPage({ params }) {
                       {f.trade}{f.location ? ` · ${formatParish(f.location)}` : ''}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <StarRow rating={f.rating} />
-                      <span className="text-xs text-gray-400">({f.review_count || 0})</span>
+                      {(f.review_count || 0) > 0 ? (
+                        <>
+                          <StarRow rating={f.rating} />
+                          <span className="text-xs text-gray-400">({f.review_count || 0})</span>
+                        </>
+                      ) : <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>New on Vetted.bb</span>}
                       {minPrice !== null && (
-                        <span className="text-xs text-gray-400">· from ${minPrice.toFixed(0)}</span>
+                        <span className="text-xs text-gray-400">· from Bds${minPrice.toFixed(0)}</span>
                       )}
                     </div>
                   </div>
@@ -188,7 +195,7 @@ export default async function CategoryPage({ params }) {
                 className="text-xs font-medium px-3.5 py-2 rounded-full bg-white border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors"
                 style={{ textDecoration: 'none' }}
               >
-                {c.icon} {c.name}
+                <CategoryIcon slug={c.slug} size={13} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 5 }} />{c.name}
               </Link>
             ))}
           </div>
