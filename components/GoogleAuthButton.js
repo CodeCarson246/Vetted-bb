@@ -6,12 +6,19 @@ import { supabase } from '@/lib/supabase'
 // localStorage so /auth/callback can write it into user metadata after
 // Google redirects back; on the login page no role is passed and existing
 // users keep whatever role they signed up with.
-export default function GoogleAuthButton({ role, label = 'Continue with Google', disabled = false }) {
+export default function GoogleAuthButton({ role, organisationName = '', organisationKind = 'business', label = 'Continue with Google', disabled = false }) {
   async function signIn() {
     if (disabled) return
     try {
       if (role) localStorage.setItem('vetted_oauth_role', role)
       else localStorage.removeItem('vetted_oauth_role')
+      // Organisation sign-ups also carry the organisation's name across the
+      // redirect, so the callback can create it without asking again.
+      if (role === 'organisation' && organisationName.trim()) {
+        localStorage.setItem('vetted_oauth_org', JSON.stringify({ name: organisationName.trim(), kind: organisationKind }))
+      } else {
+        localStorage.removeItem('vetted_oauth_org')
+      }
     } catch { /* ignore */ }
     await supabase.auth.signInWithOAuth({
       provider: 'google',

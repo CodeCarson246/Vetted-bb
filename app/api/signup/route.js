@@ -18,10 +18,19 @@ export async function POST(request) {
     const email = String(body.email || '').trim()
     const password = String(body.password || '')
     const fullName = String(body.fullName || '').trim()
-    const role = body.role === 'freelancer' ? 'freelancer' : 'client'
+    const role = ['freelancer', 'organisation'].includes(body.role) ? body.role : 'client'
+    // Organisation sign-ups capture the organisation's name up front. It is
+    // stashed in metadata so the organisation can be created the first time
+    // they land signed in (after email confirmation), via create_organisation().
+    const organisationName = role === 'organisation' ? String(body.organisationName || '').trim().slice(0, 160) : ''
+    const organisationKind = role === 'organisation' && ['government', 'business', 'nonprofit', 'other'].includes(body.organisationKind)
+      ? body.organisationKind : 'business'
 
     if (!email || !password) {
       return Response.json({ error: 'Email and password are required.' }, { status: 400 })
+    }
+    if (role === 'organisation' && organisationName.length < 2) {
+      return Response.json({ error: 'Please enter your organisation’s name.' }, { status: 400 })
     }
 
     // Terms acceptance is enforced in the form, and again here so it can't be
@@ -44,7 +53,15 @@ export async function POST(request) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role, terms_accepted_at: new Date().toISOString(), terms_accepted_version: TERMS_VERSION } },
+      options: {
+        data: {
+          full_name: fullName,
+          role,
+          terms_accepted_at: new Date().toISOString(),
+          terms_accepted_version: TERMS_VERSION,
+          ...(role === 'organisation' ? { organisation_name: organisationName, organisation_kind: organisationKind } : {}),
+        },
+      },
     })
 
     if (error) {
@@ -58,8 +75,10 @@ export async function POST(request) {
         title: 'Welcome to Vetted.bb 👋',
         body: role === 'freelancer'
           ? 'Set up your profile, add your services, and start getting hired.'
-          : 'Find and hire verified professionals across Barbados.',
-        link: '/dashboard',
+          : role === 'organisation'
+            ? 'Search the pool, enquire with professionals, and keep every quote in one place for your team.'
+            : 'Find and hire verified professionals across Barbados.',
+        link: role === 'organisation' ? '/organisation' : '/dashboard',
         dedupeKey: `welcome:${data.user.id}`,
       })
     }

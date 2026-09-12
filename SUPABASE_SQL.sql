@@ -862,3 +862,259 @@ UPDATE quotes q
             ) AS item
       WHERE split_part(item->>'description', ' - ', 1) = s.name
    );
+
+-- ============================================================
+-- SECTION 27 — ORGANISATIONS, VENDOR DETAILS, BILLING SNAPSHOTS (2026-09-12)
+-- A third account type. An organisation (a ministry, a hotel, an NGO) is a
+-- legal entity that several staff act for: they search the portal, enquire
+-- with freelancers, receive quotes and decide. Each freelancer invoices the
+-- organisation directly. Vetted issues nothing and never handles money.
+--
+-- Nothing changes for individual clients: organisation_id is NULL on every
+-- existing message and quote, and the email-based policies still apply.
+-- ============================================================
+
+-- 27.1 Organisations
+CREATE TABLE IF NOT EXISTS organisations (
+  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name                  text NOT NULL,
+  division              text,                         -- printed under the name on documents
+  kind                  text NOT NULL DEFAULT 'business'
+                        CHECK (kind IN ('government','business','nonprofit','other')),
+  address_line1         text,
+  address_line2         text,
+  city_town             text,
+  parish                text,
+  country               text NOT NULL DEFAULT 'Barbados',
+  email                 text,                         -- accounts / general contact
+  phone                 text,
+  default_payment_terms text NOT NULL DEFAULT 'net30'
+                        CHECK (default_payment_terms IN ('due_receipt','net7','net14','net30','net60')),
+  -- Set by an admin after checking the organisation is who it says it is.
+  -- Shown to freelancers so an enquiry from "Ministry of X" can be trusted.
+  verified              boolean NOT NULL DEFAULT false,
+  created_by            uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at            timestamptz DEFAULT now(),
+  updated_at            timestamptz DEFAULT now()
+);
+
+-- 27.2 Membership. Every staff member signs in as themselves and acts for
+-- the organisation, so the record shows who did what. Two roles only.
+CREATE TABLE IF NOT EXISTS organisation_members (
+  organisation_id uuid REFERENCES organisations(id) ON DELETE CASCADE,
+  user_id         uuid REFERENCES auth.users(id)    ON DELETE CASCADE,
+  role            text NOT NULL DEFAULT 'member' CHECK (role IN ('owner','member')),
+  -- Copied from the login at join time so the Team page can show who is
+  -- who without reading auth.users, which clients cannot.
+  email           text,
+  full_name       text,
+  created_at      timestamptz DEFAULT now(),
+  PRIMARY KEY (organisation_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS organisation_members_user_idx ON organisation_members (user_id);
+
+-- 27.3 Invitations. An owner invites a colleague by email; the link carries
+-- the token, and accepting it (below) attaches the new account to the org.
+CREATE TABLE IF NOT EXISTS organisation_invites (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+  email           text NOT NULL,
+  role            text NOT NULL DEFAULT 'member' CHECK (role IN ('owner','member')),
+  token           text NOT NULL UNIQUE,
+  invited_by      uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  expires_at      timestamptz NOT NULL DEFAULT (now() + interval '14 days'),
+  accepted_at     timestamptz,
+  created_at      timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS organisation_invites_org_idx ON organisation_invites (organisation_id);
+
+-- Which organisations does the caller belong to. SECURITY DEFINER so the
+-- policies on organisation_members can use it without recursing.
+CREATE OR REPLACE FUNCTION public.my_organisation_ids()
+RETURNS SETOF uuid
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT organisation_id FROM organisation_members WHERE user_id = auth.uid()
+$$;
+GRANT EXECUTE ON FUNCTION public.my_organisation_ids() TO authenticated;
+
+-- Create an organisation and make the caller its owner in one step, so an
+-- organisation can never exist without an owner.
+CREATE OR REPLACE FUNCTION public.create_organisation(p_name text, p_kind text DEFAULT 'business')
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE new_id uuid;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+  IF length(trim(p_name)) < 2 THEN RAISE EXCEPTION 'Organisation name is required'; END IF;
+  INSERT INTO organisations (name, kind, created_by)
+       VALUES (trim(p_name), COALESCE(p_kind, 'business'), auth.uid())
+    RETURNING id INTO new_id;
+  INSERT INTO organisation_members (organisation_id, user_id, role, email, full_name)
+       VALUES (new_id, auth.uid(), 'owner',
+               auth.jwt()->>'email', auth.jwt()->'user_metadata'->>'full_name');
+  RETURN new_id;
+END $$;
+GRANT EXECUTE ON FUNCTION public.create_organisation(text, text) TO authenticated;
+
+-- Accept an invitation. The caller's login email must match the invited
+-- address, the invite must be unexpired and unused. Returns the org id.
+CREATE OR REPLACE FUNCTION public.accept_organisation_invite(p_token text)
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE inv organisation_invites%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+  SELECT * INTO inv FROM organisation_invites WHERE token = p_token;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Invitation not found'; END IF;
+  IF inv.accepted_at IS NOT NULL THEN RAISE EXCEPTION 'Invitation already used'; END IF;
+  IF inv.expires_at < now() THEN RAISE EXCEPTION 'Invitation has expired'; END IF;
+  IF lower(inv.email) <> lower(COALESCE(auth.jwt()->>'email', '')) THEN
+    RAISE EXCEPTION 'This invitation was sent to a different email address';
+  END IF;
+  INSERT INTO organisation_members (organisation_id, user_id, role, email, full_name)
+       VALUES (inv.organisation_id, auth.uid(), inv.role,
+               auth.jwt()->>'email', auth.jwt()->'user_metadata'->>'full_name')
+  ON CONFLICT (organisation_id, user_id) DO NOTHING;
+  UPDATE organisation_invites SET accepted_at = now() WHERE id = inv.id;
+  RETURN inv.organisation_id;
+END $$;
+GRANT EXECUTE ON FUNCTION public.accept_organisation_invite(text) TO authenticated;
+
+-- 27.4 Freelancer billing and vendor details. A separate table because the
+-- freelancers row is publicly readable and RLS is row-level: a TAMIS number
+-- or home address on that row would be visible to everyone.
+-- NO banking fields, by design: those go to Treasury on the vendor form and
+-- are never stored here.
+CREATE TABLE IF NOT EXISTS freelancer_billing (
+  freelancer_id                     uuid PRIMARY KEY REFERENCES freelancers(id) ON DELETE CASCADE,
+  address_line1                     text,
+  address_line2                     text,
+  city_town                         text,
+  parish                            text,
+  country                           text NOT NULL DEFAULT 'Barbados',
+  vendor_classification             text CHECK (vendor_classification IN
+                                      ('employee','small_business','other_business',
+                                       'medium_business','large_business')),
+  tamis_number                      text,
+  company_registration_number       text,
+  small_business_association_number text,
+  updated_at                        timestamptz DEFAULT now()
+);
+
+-- The one vendor fact that IS public: a badge organisations can filter on.
+ALTER TABLE freelancers
+  ADD COLUMN IF NOT EXISTS govt_vendor_status text NOT NULL DEFAULT 'not_registered';
+ALTER TABLE freelancers DROP CONSTRAINT IF EXISTS freelancers_govt_vendor_status_check;
+ALTER TABLE freelancers ADD CONSTRAINT freelancers_govt_vendor_status_check
+  CHECK (govt_vendor_status IN ('not_registered','applying','registered'));
+
+-- 27.5 Attribute threads and quotes to an organisation.
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS organisation_id uuid REFERENCES organisations(id) ON DELETE SET NULL;
+ALTER TABLE quotes   ADD COLUMN IF NOT EXISTS organisation_id uuid REFERENCES organisations(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS messages_organisation_idx ON messages (organisation_id);
+CREATE INDEX IF NOT EXISTS quotes_organisation_idx   ON quotes   (organisation_id);
+
+-- 27.6 What the document said when it was issued. Snapshotted so an old
+-- invoice does not change when the freelancer moves or the org renames.
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS currency         text NOT NULL DEFAULT 'BBD';
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS from_address     text;   -- freelancer address block
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS bill_to_division text;   -- e.g. "Division of Youth"
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS bill_to_address  text;   -- organisation address block
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reference        text;   -- optional PO / requisition no.
+
+-- 27.7 Row level security
+
+ALTER TABLE organisations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Members read their organisations" ON organisations;
+CREATE POLICY "Members read their organisations"
+  ON organisations FOR SELECT
+  USING (id IN (SELECT my_organisation_ids()));
+-- A freelancer may read the name/verified flag of an organisation that has
+-- contacted them, so the thread can show who it is and whether it's verified.
+DROP POLICY IF EXISTS "Freelancers read organisations that contacted them" ON organisations;
+CREATE POLICY "Freelancers read organisations that contacted them"
+  ON organisations FOR SELECT
+  USING (id IN (
+    SELECT m.organisation_id FROM messages m
+     WHERE m.organisation_id IS NOT NULL
+       AND m.freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
+  ));
+DROP POLICY IF EXISTS "Owners update their organisations" ON organisations;
+CREATE POLICY "Owners update their organisations"
+  ON organisations FOR UPDATE
+  USING (id IN (SELECT organisation_id FROM organisation_members
+                 WHERE user_id = auth.uid() AND role = 'owner'));
+-- No INSERT policy on purpose: creation goes through create_organisation().
+
+ALTER TABLE organisation_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Members read roster" ON organisation_members;
+CREATE POLICY "Members read roster"
+  ON organisation_members FOR SELECT
+  USING (organisation_id IN (SELECT my_organisation_ids()));
+DROP POLICY IF EXISTS "Owners remove members" ON organisation_members;
+CREATE POLICY "Owners remove members"
+  ON organisation_members FOR DELETE
+  USING (organisation_id IN (SELECT organisation_id FROM organisation_members
+                              WHERE user_id = auth.uid() AND role = 'owner'));
+-- Inserts happen only via create_organisation() and accept_organisation_invite().
+
+ALTER TABLE organisation_invites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owners manage invites" ON organisation_invites;
+CREATE POLICY "Owners manage invites"
+  ON organisation_invites FOR ALL
+  USING (organisation_id IN (SELECT organisation_id FROM organisation_members
+                              WHERE user_id = auth.uid() AND role = 'owner'))
+  WITH CHECK (organisation_id IN (SELECT organisation_id FROM organisation_members
+                                   WHERE user_id = auth.uid() AND role = 'owner'));
+
+ALTER TABLE freelancer_billing ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Freelancer manages own billing" ON freelancer_billing;
+CREATE POLICY "Freelancer manages own billing"
+  ON freelancer_billing FOR ALL
+  USING (freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid()))
+  WITH CHECK (freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid()));
+
+-- Extend the participant policies so every member of an organisation sees
+-- the organisation's threads and quotes, not only the mailbox that sent them.
+DROP POLICY IF EXISTS "Participants can read messages" ON messages;
+CREATE POLICY "Participants can read messages"
+  ON messages FOR SELECT
+  USING (
+    freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
+    OR sender_user_id = auth.uid()
+    OR (sender_email IS NOT NULL AND sender_email = auth.jwt()->>'email')
+    OR (organisation_id IS NOT NULL AND organisation_id IN (SELECT my_organisation_ids()))
+  );
+
+DROP POLICY IF EXISTS "Participants can update messages" ON messages;
+CREATE POLICY "Participants can update messages"
+  ON messages FOR UPDATE
+  USING (
+    freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
+    OR sender_user_id = auth.uid()
+    OR (sender_email IS NOT NULL AND sender_email = auth.jwt()->>'email')
+    OR (organisation_id IS NOT NULL AND organisation_id IN (SELECT my_organisation_ids()))
+  );
+
+DROP POLICY IF EXISTS "Participants can read quotes" ON quotes;
+CREATE POLICY "Participants can read quotes"
+  ON quotes FOR SELECT
+  USING (
+    freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
+    OR (client_email IS NOT NULL AND client_email = auth.jwt()->>'email')
+    OR (organisation_id IS NOT NULL AND organisation_id IN (SELECT my_organisation_ids()))
+  );
+
+DROP POLICY IF EXISTS "Clients can respond to quotes" ON quotes;
+CREATE POLICY "Clients can respond to quotes"
+  ON quotes FOR UPDATE
+  USING (
+    (client_email IS NOT NULL AND client_email = auth.jwt()->>'email')
+    OR (organisation_id IS NOT NULL AND organisation_id IN (SELECT my_organisation_ids()))
+  );

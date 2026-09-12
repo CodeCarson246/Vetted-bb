@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { passwordChecks, validatePassword, POLICY_KEYS, POLICY_LABELS } from '@/lib/passwordPolicy'
 import GoogleAuthButton from '@/components/GoogleAuthButton'
+import { ORG_KINDS, ensureOrganisation, readPendingInvite } from '@/lib/organisations'
 
 const trustPoints = [
   'Verified freelancers you can trust',
@@ -17,6 +18,13 @@ const freelancerTrustPoints = [
   'Free to join, no commission on your jobs',
   'Run several businesses? List them all on one profile',
   'Build your reputation with verified reviews',
+]
+
+// Organisations get the pitch for a team that hires, not an individual.
+const organisationTrustPoints = [
+  'One account for your whole team, one record of every quote',
+  'Search a pool of verified local professionals',
+  'Professionals invoice you directly. No fees, no middleman',
 ]
 
 export default function SignupPage() {
@@ -38,15 +46,20 @@ function SignupContent() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [organisationName, setOrganisationName] = useState('')
+  const [organisationKind, setOrganisationKind] = useState('business')
+  // Arrived via an organisation invite link: they are joining an existing
+  // organisation, so we do not ask them to name a new one.
+  const [invitePending] = useState(() => typeof window !== 'undefined' && !!readPendingInvite())
 
   useEffect(() => {
     const param = searchParams.get('role')
-    if (param === 'freelancer' || param === 'client') {
+    if (param === 'freelancer' || param === 'client' || param === 'organisation') {
       setRole(param)
     }
   }, [searchParams])
 
-  const points = role === 'freelancer' ? freelancerTrustPoints : trustPoints
+  const points = role === 'freelancer' ? freelancerTrustPoints : role === 'organisation' ? organisationTrustPoints : trustPoints
   const checks = passwordChecks(password, { name: fullName, email })
   const pwValid = POLICY_KEYS.every(k => checks[k])
 
@@ -56,6 +69,11 @@ function SignupContent() {
 
     if (!agreedToTerms) {
       setError('Please accept the Terms of Service and Privacy Policy to continue.')
+      return
+    }
+
+    if (role === 'organisation' && !invitePending && organisationName.trim().length < 2) {
+      setError('Please enter your organisation\u2019s name.')
       return
     }
 
@@ -72,7 +90,7 @@ function SignupContent() {
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, fullName, role, agreedToTerms }),
+        body: JSON.stringify({ email, password, fullName, role, agreedToTerms, organisationName: invitePending ? '' : organisationName, organisationKind }),
       })
       result = await res.json()
       if (!res.ok) {
@@ -89,7 +107,15 @@ function SignupContent() {
     if (result.session) {
       // Auto-confirm projects: adopt the session in the browser, then go.
       await supabase.auth.setSession(result.session)
-      router.push(role === 'freelancer' ? '/dashboard?welcome=true' : '/dashboard')
+      if (role === 'organisation') {
+        // Create the organisation now (name is in metadata); an invite is
+        // redeemed on the organisation dashboard instead.
+        const { data: { user: u } } = await supabase.auth.getUser()
+        if (!invitePending) await ensureOrganisation(u)
+        router.push('/organisation')
+      } else {
+        router.push(role === 'freelancer' ? '/dashboard?welcome=true' : '/dashboard')
+      }
     } else {
       // Email confirmation required
       setSuccess(true)
@@ -178,27 +204,58 @@ function SignupContent() {
                 {/* Role first — it applies to Google sign-ups too */}
                 <div className="mb-5">
                   <label className="block text-sm font-medium text-gray-700 mb-2">I am signing up as a...</label>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setRole('client')}
-                      className={`flex-1 py-3 px-3 rounded-lg border text-left transition-colors ${role === 'client' ? '' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
-                      style={role === 'client' ? { backgroundColor: '#00267F', borderColor: '#00267F' } : {}}
-                    >
-                      <span className={`block text-sm font-semibold ${role === 'client' ? 'text-white' : 'text-gray-700'}`}>Client</span>
-                      <span className="block text-xs mt-0.5" style={{ color: role === 'client' ? '#93b8ff' : '#9ca3af' }}>Find &amp; hire trusted pros</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRole('freelancer')}
-                      className={`flex-1 py-3 px-3 rounded-lg border text-left transition-colors ${role === 'freelancer' ? '' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
-                      style={role === 'freelancer' ? { backgroundColor: '#00267F', borderColor: '#00267F' } : {}}
-                    >
-                      <span className={`block text-sm font-semibold ${role === 'freelancer' ? 'text-white' : 'text-gray-700'}`}>Freelancer</span>
-                      <span className="block text-xs mt-0.5" style={{ color: role === 'freelancer' ? '#93b8ff' : '#9ca3af' }}>Offer services &amp; get hired</span>
-                    </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {[
+                      ['client', 'Client', 'Find & hire trusted pros'],
+                      ['freelancer', 'Freelancer', 'Offer services & get hired'],
+                      ['organisation', 'Organisation', 'Hire for a team or agency'],
+                    ].map(([val, title, sub]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setRole(val)}
+                        className={`py-3 px-3 rounded-lg border text-left transition-colors ${role === val ? '' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
+                        style={role === val ? { backgroundColor: '#00267F', borderColor: '#00267F' } : {}}
+                      >
+                        <span className={`block text-sm font-semibold ${role === val ? 'text-white' : 'text-gray-700'}`}>{title}</span>
+                        <span className="block text-xs mt-0.5" style={{ color: role === val ? '#93b8ff' : '#9ca3af' }}>{sub}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
+
+                {/* Organisation details sit above both sign-up paths so the
+                    Google flow can carry them across the redirect too. */}
+                {role === 'organisation' && !invitePending && (
+                  <div className="mb-5 rounded-xl p-4 flex flex-col gap-3" style={{ backgroundColor: 'rgba(0,38,127,0.03)', border: '1px solid var(--border-card)' }}>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Organisation name</label>
+                      <input
+                        type="text"
+                        value={organisationName}
+                        onChange={e => setOrganisationName(e.target.value)}
+                        placeholder="e.g. Sunrise Events Ltd"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-800 bg-white transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Type of organisation</label>
+                      <select
+                        value={organisationKind}
+                        onChange={e => setOrganisationKind(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-800 bg-white"
+                      >
+                        {ORG_KINDS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+                      </select>
+                    </div>
+                    <p className="text-xs text-gray-400">You become the owner and can invite colleagues once you&apos;re in.</p>
+                  </div>
+                )}
+                {role === 'organisation' && invitePending && (
+                  <p className="mb-5 text-sm rounded-xl px-4 py-3" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
+                    You&apos;re joining an organisation by invitation. Create your account and you&apos;ll be added to it automatically.
+                  </p>
+                )}
 
                 {/* Terms acceptance gates BOTH the Google and email sign-up */}
                 <label className="flex items-start gap-2.5 mb-5 cursor-pointer">
@@ -216,7 +273,13 @@ function SignupContent() {
                   </span>
                 </label>
 
-                <GoogleAuthButton role={role} label={`Sign up with Google as a ${role}`} disabled={!agreedToTerms} />
+                <GoogleAuthButton
+                  role={role}
+                  organisationName={invitePending ? '' : organisationName}
+                  organisationKind={organisationKind}
+                  label={role === 'organisation' ? 'Sign up with Google for an organisation' : `Sign up with Google as a ${role}`}
+                  disabled={!agreedToTerms || (role === 'organisation' && !invitePending && organisationName.trim().length < 2)}
+                />
 
                 <div className="flex items-center gap-3 my-5">
                   <div className="flex-1 h-px bg-gray-200" />

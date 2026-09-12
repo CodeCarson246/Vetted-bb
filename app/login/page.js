@@ -36,6 +36,20 @@ export default function Login() {
       setError(error.message)
       setLoading(false)
     } else {
+      // Someone who opened an organisation invite link before logging in:
+      // send them back to redeem it, whatever account type they hold.
+      let pendingInvite = null
+      try { pendingInvite = localStorage.getItem('vetted_invite_token') } catch { /* ignore */ }
+      if (pendingInvite) {
+        router.push(`/organisation/accept?token=${encodeURIComponent(pendingInvite)}`)
+        return
+      }
+      // Organisation accounts have their own workspace; the role is in
+      // metadata so this needs no extra query.
+      if (data.user.user_metadata?.role === 'organisation') {
+        router.push('/organisation')
+        return
+      }
       const { data: freelancer } = await supabase
         .from('freelancers')
         .select('id')

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { TERMS_VERSION } from '@/lib/terms'
+import { consumePendingInvite, fetchMyOrganisation } from '@/lib/organisations'
 
 // Lands here after Google redirects back. supabase-js picks the session out
 // of the URL automatically; this page just waits for it, makes sure the user
@@ -20,7 +21,13 @@ export default function AuthCallback() {
   const finish = useCallback(async (user, role) => {
     if (finishing.current) return
     finishing.current = true
-    try { localStorage.removeItem('vetted_oauth_role') } catch { /* ignore */ }
+    let stashedOrg = null
+    try {
+      localStorage.removeItem('vetted_oauth_role')
+      const raw = localStorage.getItem('vetted_oauth_org')
+      if (raw) stashedOrg = JSON.parse(raw)
+      localStorage.removeItem('vetted_oauth_org')
+    } catch { /* ignore */ }
 
     // First time we set a role = the account is being established, so record
     // Terms acceptance now too (they agreed on the signup page, or on the
@@ -31,7 +38,30 @@ export default function AuthCallback() {
         patch.terms_accepted_at = new Date().toISOString()
         patch.terms_accepted_version = TERMS_VERSION
       }
+      if (role === 'organisation' && stashedOrg?.name) {
+        patch.organisation_name = stashedOrg.name
+        patch.organisation_kind = stashedOrg.kind || 'business'
+      }
       await supabase.auth.updateUser({ data: patch })
+    }
+
+    if (role === 'organisation') {
+      // An invite redeemed first wins: they join that organisation rather
+      // than creating a new one.
+      const joined = await consumePendingInvite()
+      try { localStorage.setItem('vetted_is_org', '1') } catch { /* ignore */ }
+      if (joined) { router.replace('/organisation'); return }
+      let entry = await fetchMyOrganisation()
+      const name = stashedOrg?.name || user.user_metadata?.organisation_name
+      if (!entry && name) {
+        await supabase.rpc('create_organisation', {
+          p_name: name,
+          p_kind: stashedOrg?.kind || user.user_metadata?.organisation_kind || 'business',
+        })
+        entry = await fetchMyOrganisation()
+      }
+      router.replace(entry ? '/organisation' : '/organisation/setup')
+      return
     }
 
     if (role === 'freelancer') {
@@ -75,9 +105,9 @@ export default function AuthCallback() {
       let stashed = null
       try { stashed = localStorage.getItem('vetted_oauth_role') } catch { /* ignore */ }
 
-      if (existingRole === 'client' || existingRole === 'freelancer') {
+      if (existingRole === 'client' || existingRole === 'freelancer' || existingRole === 'organisation') {
         finish(user, existingRole)
-      } else if (stashed === 'client' || stashed === 'freelancer') {
+      } else if (stashed === 'client' || stashed === 'freelancer' || stashed === 'organisation') {
         finish(user, stashed)
       } else {
         // First Google sign-in via the login page — we don't know their role
@@ -166,6 +196,15 @@ export default function AuthCallback() {
               <span className="block text-2xl mb-2" aria-hidden="true">🛠️</span>
               <span className="block font-bold text-gray-900">I&apos;m a freelancer</span>
               <span className="block text-xs text-gray-500 mt-1">I want to offer my services and get hired.</span>
+            </button>
+            <button
+              onClick={() => pickRole('organisation')}
+              disabled={!agreedToTerms}
+              className="flex-1 rounded-xl border-2 border-gray-200 bg-white p-5 text-left hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200"
+            >
+              <span className="block text-2xl mb-2" aria-hidden="true">🏢</span>
+              <span className="block font-bold text-gray-900">An organisation</span>
+              <span className="block text-xs text-gray-500 mt-1">I hire on behalf of a team, company or agency.</span>
             </button>
           </div>
         </div>
