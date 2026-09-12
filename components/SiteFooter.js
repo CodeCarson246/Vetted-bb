@@ -49,6 +49,7 @@ export default function SiteFooter() {
       links: [
         { label: 'About', href: '/about' },
         { label: 'For organisations', href: '/for-organisations' },
+        { label: 'What our badges mean', href: '/badges' },
         { label: 'Vetted Rising', href: '/vetted-rising' },
         { label: 'Roadmap', href: '/roadmap' },
         { label: 'FAQ', href: '/faq' },

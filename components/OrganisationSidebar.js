@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { fetchMyOrganisation, readCachedOrganisation } from '@/lib/organisations'
+import TrustMark from '@/components/TrustMark'
 
 // Workspace sidebar for organisation accounts. Mirrors the freelancer
 // sidebar's look so the two workspaces feel like one product, but the nav
@@ -107,11 +108,7 @@ export default function OrganisationSidebar({ open, onClose }) {
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate flex items-center gap-1.5" style={{ color: '#fff' }}>
               <span className="truncate">{org?.name || 'Your organisation'}</span>
-              {org?.verified && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="#F9C000" aria-label="Verified organisation" style={{ flexShrink: 0 }}>
-                  <path d="M12 2l2.4 2.1 3.1-.5 1 3 2.9 1.3-.6 3.1 2 2.4-2 2.4.6 3.1-2.9 1.3-1 3-3.1-.5L12 22l-2.4-2.1-3.1.5-1-3-2.9-1.3.6-3.1L1.2 12l2-2.4-.6-3.1 2.9-1.3 1-3 3.1.5L12 2zm-1.2 13.4l5.5-5.5-1.4-1.4-4.1 4.1-2-2-1.4 1.4 3.4 3.4z" />
-                </svg>
-              )}
+              {org?.verified && <TrustMark kind="organisation" size={14} />}
             </p>
             <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>{org?.role === 'owner' ? 'Owner' : 'Member'}</p>
           </div>

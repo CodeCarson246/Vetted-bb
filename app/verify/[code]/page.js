@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { formatVerifyCode, normaliseVerifyCode } from '@/lib/verifyCode'
 import { currencySymbol } from '@/lib/organisations'
+import TrustMark from '@/components/TrustMark'
 
 // Public document check. Anyone holding a printed quote, invoice or receipt
 // can confirm it is genuine and see where it stands. The lookup is a
@@ -79,7 +80,7 @@ export default async function VerifyDocument({ params }) {
                   <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Billed to</dt>
                   <dd className="font-semibold text-gray-900 mt-0.5">
                     {doc.billed_to || 'Client'}
-                    {doc.organisation_verified && <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>✓ Verified organisation</span>}
+                    {doc.organisation_verified && <span className="ml-1.5"><TrustMark kind="organisation" size={14} withLabel /></span>}
                   </dd>
                 </div>
                 <div><dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quote number</dt><dd className="font-mono text-gray-900 mt-0.5">{doc.quote_number}</dd></div>

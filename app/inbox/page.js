@@ -18,6 +18,7 @@ import ReceiptLineCard from '@/components/ReceiptLineCard'
 import { formatAddressBlock } from '@/lib/organisations'
 import { generateVerifyCode, formatVerifyCode } from '@/lib/verifyCode'
 import { SITE_HOST } from '@/lib/siteUrl'
+import TrustMark from '@/components/TrustMark'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -1203,7 +1204,7 @@ export default function Inbox() {
                             title={msg.organisations.verified ? 'Verified organisation' : 'Organisation (not yet verified)'}
                             style={msg.organisations.verified ? { backgroundColor: '#F9C000', color: '#00267F' } : { backgroundColor: '#EEF2FF', color: '#00267F' }}
                           >
-                            {msg.organisations.verified ? '✓ ' : ''}{msg.organisations.name}
+                            {msg.organisations.verified && <TrustMark kind="organisation" size={11} />}{msg.organisations.name}
                           </span>
                         )}
                       </span>

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrganisation } from '@/lib/useOrganisation'
 import { ORG_KINDS, consumePendingInvite } from '@/lib/organisations'
 import { termLabel } from '@/lib/paymentTerms'
+import TrustMark from '@/components/TrustMark'
 
 const STATUS_LABELS = {
   sent: 'Awaiting your decision', accepted: 'Accepted', declined: 'Declined',
@@ -85,10 +86,7 @@ export default function OrganisationDashboard() {
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold text-gray-900">{org.name}</h1>
               {org.verified ? (
-                <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
-                  Verified organisation
-                </span>
+                <TrustMark kind="organisation" size={18} withLabel />
               ) : (
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Not yet verified</span>
               )}

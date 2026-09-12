@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useOrganisation } from '@/lib/useOrganisation'
 import { formatParish } from '@/lib/formatParish'
 import { isVerified } from '@/components/VerifiedBadge'
+import TrustMark from '@/components/TrustMark'
 
 // The notify-message route allows 5 sends per 10 minutes per address, and
 // procurement rarely wants more than three quotes anyway.
@@ -146,8 +147,8 @@ export default function NewQuoteRequest() {
                         <span className="flex-1 min-w-0">
                           <span className="block text-sm font-semibold text-gray-900 truncate capitalize">
                             {f.name}
-                            {isVerified(f) && <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>✓</span>}
-                            {f.govt_vendor_status === 'registered' && <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>Govt vendor</span>}
+                            {isVerified(f) && <span className="ml-1.5"><TrustMark kind="verified" size={14} /></span>}
+                            {f.govt_vendor_status === 'registered' && <span className="ml-1.5"><TrustMark kind="vendor" size={12} /></span>}
                           </span>
                           <span className="block text-xs text-gray-500 capitalize">{f.trade}{f.location ? ` · ${formatParish(f.location)}` : ''}</span>
                         </span>

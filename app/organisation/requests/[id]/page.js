@@ -9,6 +9,7 @@ import { termLabel } from '@/lib/paymentTerms'
 import { printSavedQuote } from '@/lib/printQuote'
 import { currencySymbol } from '@/lib/organisations'
 import { isVerified } from '@/components/VerifiedBadge'
+import TrustMark from '@/components/TrustMark'
 
 const STATUS_LABELS = {
   sent: 'Awaiting decision', accepted: 'Accepted', declined: 'Declined',
@@ -135,9 +136,9 @@ export default function QuoteRequestDetail() {
                   <div className="min-w-0">
                     <Link href={`/freelancers/${f.id}`} className="block text-sm font-semibold text-gray-900 truncate capitalize" style={{ textDecoration: 'none' }}>
                       {f.name}
-                      {isVerified(f) && <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>✓</span>}
+                      {isVerified(f) && <span className="ml-1.5"><TrustMark kind="verified" size={14} /></span>}
                     </Link>
-                    <p className="text-xs text-gray-500 capitalize truncate">{f.trade}{f.location ? ` · ${formatParish(f.location)}` : ''}{f.govt_vendor_status === 'registered' ? ' · Govt vendor' : ''}</p>
+                    <p className="text-xs text-gray-500 capitalize truncate flex items-center gap-1.5">{f.trade}{f.location ? ` · ${formatParish(f.location)}` : ''}{f.govt_vendor_status === 'registered' && <TrustMark kind="vendor" size={11} />}</p>
                   </div>
                 </div>
 

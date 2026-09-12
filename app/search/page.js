@@ -11,6 +11,7 @@ import Tooltip from '@/components/Tooltip'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
 import { effectiveCategories } from '@/lib/categories'
+import TrustMark from '@/components/TrustMark'
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #00267F, #1a3f9e)',
@@ -123,9 +124,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
               {/* Verified badge */}
               {isVerified(f) && <VerifiedBadge size={16} />}
               {/* Registered government vendor */}
-              {f.govt_vendor_status === 'registered' && (
-                <span title="Registered government vendor" style={{ background: '#EEF2FF', color: '#00267F', fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 999, lineHeight: 1.6, whiteSpace: 'nowrap' }}>Govt vendor</span>
-              )}
+              {f.govt_vendor_status === 'registered' && <TrustMark kind="vendor" size={14} />}
               {/* Availability dot */}
               <span className="flex items-center gap-1">
                 <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${f.available ? 'bg-green-400' : 'bg-gray-300'}`} />
