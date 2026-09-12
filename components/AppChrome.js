@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { isOrganisationUser } from '@/lib/organisations'
@@ -19,17 +19,27 @@ import TermsUpdateNotice from '@/components/TermsUpdateNotice'
 // chrome immediately instead of flashing the top nav first.
 export default function AppChrome({ children }) {
   const { user, loading } = useAuth()
-  const [isFreelancer, setIsFreelancer] = useState(() => {
-    if (typeof window === 'undefined') return null
-    const c = localStorage.getItem('vetted_is_freelancer')
-    return c === '1' ? true : c === '0' ? false : null
-  })
-  const [isOrg, setIsOrg] = useState(() => {
-    if (typeof window === 'undefined') return null
-    const c = localStorage.getItem('vetted_is_org')
-    return c === '1' ? true : c === '0' ? false : null
-  })
+  // Both flags start null on the server AND on the first client render, so
+  // the hydrated tree matches the server's. The cached values are applied in
+  // a layout effect, which runs after hydration but before the browser
+  // paints, so a returning freelancer still never sees the wrong nav flash.
+  // (Reading localStorage inside the initializer used to make the client
+  // render a different tree from the server, which failed hydration and
+  // forced React to rebuild the whole page.)
+  const [isFreelancer, setIsFreelancer] = useState(null)
+  const [isOrg, setIsOrg] = useState(null)
   const [open, setOpen] = useState(false)
+
+  useLayoutEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- applies the cached chrome choice before first paint; there is no external event to subscribe to */
+    try {
+      const f = localStorage.getItem('vetted_is_freelancer')
+      const g = localStorage.getItem('vetted_is_org')
+      if (g === '1') setIsOrg(true)
+      else if (f === '1') setIsFreelancer(true)
+    } catch { /* ignore */ }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [])
 
   useEffect(() => {
     if (loading) return

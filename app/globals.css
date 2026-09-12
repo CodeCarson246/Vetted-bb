@@ -290,3 +290,10 @@ h1, h2, h3, h4 {
   width: 0;
   height: 0;
 }
+
+/* Homepage hero. Its gradient runs down to #001240, which is almost the dark
+   page background (#0B1220), so in dark mode the band dissolved into the page.
+   Lift the gradient in dark only, so the hero still reads as a hero. */
+[data-theme="dark"] .home-hero {
+  background: linear-gradient(135deg, #0B3BB0 0%, #00267F 55%, #001a5c 100%) !important;
+}

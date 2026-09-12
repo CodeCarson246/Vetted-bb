@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { CATEGORIES } from '@/lib/categories'
 import { SITE_URL } from '@/lib/siteUrl'
 import CategoryIcon from '@/components/CategoryIcon'
+import SectionHeading from '@/components/SectionHeading'
 
 export const metadata = {
   title: 'Browse All Categories | Trusted Professionals in Barbados',
@@ -14,12 +15,7 @@ export default function CategoriesIndex() {
     <main className="min-h-screen page-bg">
       <section style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }} className="px-4 sm:px-8 py-14 text-center">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ fontFamily: "'Sora', sans-serif" }}>
-            All categories
-          </h1>
-          <p className="text-base" style={{ color: 'rgba(255,255,255,0.75)' }}>
-            Every kind of professional on Vetted.bb. Pick a category to see who&apos;s available.
-          </p>
+          <SectionHeading as="h1" tone="dark" align="center" eyebrow="Categories" title="All categories" sub="Every kind of professional on Vetted.bb. Pick a category to see who's available." className="mb-0" />
         </div>
       </section>
 

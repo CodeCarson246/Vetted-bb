@@ -70,6 +70,32 @@ const SECTIONS = [
           'Switch the chart between the last 30 days and the last 12 months to spot trends, and use "Export CSV" to download your records for bookkeeping or taxes.',
         ],
       },
+      {
+        title: "What prints on your documents",
+        steps: [
+          "Prices print as Bds$ on quotes, invoices and receipts, and each one carries the Vetted.bb wordmark at the top.",
+          "Your billing address prints in the From block. Set it under Billing & vendor details on your dashboard. Organisations need a proper address on the document.",
+          "A quote to an organisation prints its name, division and address in the Bill to block, exactly as they set it, so the document goes through their accounts without a query.",
+          "If they gave you a purchase order or requisition number, put it in the \"Their reference\" box when you build the quote and it prints on the document.",
+        ],
+      },
+      {
+        title: "Verification codes on every document",
+        steps: [
+          "Every quote you open gets a 10-character code. It prints at the bottom of the quote, the invoice and the receipt.",
+          "Anyone holding the document can go to vetted.bb/verify, enter the code, and confirm it is genuine and see whether it has been accepted, invoiced or paid. They see who issued it, who it was billed to and the total. Nothing else.",
+          "Quotes you sent before this existed have codes too, so old documents can be checked the same way.",
+        ],
+        tip: "Organisations and government departments can use this to check an invoice before paying it. It costs you nothing and makes your paperwork very hard to question.",
+      },
+      {
+        title: "Purchase orders and attachments",
+        steps: [
+          "Once a quote is accepted, the client or organisation can attach their purchase order or requisition to it. You will find it on Quotes & earnings, under that job, above the completion tick boxes.",
+          "You can attach a file too (PDF or image, up to 10MB). Only the two parties to the quote can open it.",
+          "Anyone can remove a file they added themselves; nobody can remove yours.",
+        ],
+      },
     ],
   },
   {
@@ -119,6 +145,40 @@ const SECTIONS = [
           'Use the search box and tabs to find repeat clients or check what you last did for someone before they call back.',
         ],
         tip: 'Before replying to a returning client, glance at their card. Quoting consistently with what you charged them last time builds trust.',
+      },
+    ],
+  },
+  {
+    id: 'organisations',
+    icon: '🏢',
+    title: 'Organisations & government work',
+    intro: 'Companies, agencies and government departments can hire on Vetted.bb through an organisation account. Here is what that looks like from your side.',
+    topics: [
+      {
+        title: "Enquiries from an organisation",
+        steps: [
+          "An enquiry from an organisation shows the organisation's name on the thread in your Inbox, with a gold tick if we have verified it. Tap the name to open its public page: what it is, where it is, and how many jobs it has completed here.",
+          "Everyone on their team can see the conversation and your quote, so you may hear back from a different person than the one who wrote first. That is normal.",
+          "Your quote is billed to the organisation, not to the individual, and it starts from the payment terms the organisation has set. You can still adjust them on the quote.",
+        ],
+        tip: "No verified mark on an organisation is not necessarily a problem, but it is fair to confirm a large job by other means before committing.",
+      },
+      {
+        title: "Quote requests: when several of you are asked",
+        steps: [
+          "An organisation can send one job brief to up to five professionals at once. It arrives as an ordinary enquiry with a subject starting \"Quote request:\".",
+          "Quote it exactly as you normally would. The organisation compares the quotes side by side and accepts one, and you are told either way.",
+        ],
+        tip: "Clear line items matter even more here, because your quote sits next to others.",
+      },
+      {
+        title: "Getting paid by government",
+        steps: [
+          "To be paid by a ministry or government department you need to be registered as a vendor with the Treasury. It is a one-off registration and it covers all of government, not one department.",
+          "The department engaging you gives you the registration form and submits it for you. Your job is having the details ready: see Billing & vendor details on your dashboard.",
+          "Government usually pays on longer terms. The Pending payment tab on Quotes & earnings shows what is outstanding and lets you send a polite reminder when an invoice is overdue.",
+          "Once you are registered, set your vendor status so organisations filtering for registered vendors can find you.",
+        ],
       },
     ],
   },
@@ -178,11 +238,23 @@ const SECTIONS = [
         tip: 'Removing a business from the list never deletes its services. They simply move back under the General tab, so it is safe to rename or tidy up later.',
       },
       {
-        title: 'The verified badge',
+        title: "The badges, and what each one means",
         steps: [
-          'The ✓ Vetted badge is granted after our team verifies your identity and work. Head to your dashboard and follow the "Get verified" steps. It typically involves confirming your phone number.',
-          'Verified profiles stand out in search results and win more client trust.',
+          "Verified professional (blue tick): granted once we confirm you are who you say you are, usually by confirming your phone number, or after a manual check. Dashboard, then follow the Get verified steps. Verified profiles stand out in search and win more trust.",
+          "Verified organisation (gold tick): shown on an enquiry from an organisation we have checked is genuine, so you know a message from a ministry, a company or a charity is real.",
+          "Registered government vendor (navy Govt vendor pill): you set this yourself once you are registered as a vendor with the Treasury. Organisations hiring for government work can filter search to registered vendors.",
+          "Featured (gold star): chosen by Vetted.bb for the homepage. It is not paid for and cannot be bought.",
         ],
+        tip: "The full explanation lives at vetted.bb/badges. Send that link to any client who asks what a badge means.",
+      },
+      {
+        title: "Billing address and vendor details",
+        steps: [
+          "Dashboard, then Billing & vendor details. Add your billing address first: it prints in the From block of every quote and invoice, and organisations need a real address on the document.",
+          "Under Billing details, the Vendor details section holds what institutions ask for when they set you up as a supplier: classification, TAMIS number and registration numbers. None of it appears on your public profile, and we never ask for bank details.",
+          "The Vendor registration tab explains how getting paid by government works and lists what the Treasury form asks for, with your saved details beside each item so you can copy them across. Set your vendor status there once you are registered.",
+        ],
+        tip: "We do not supply or fill in the government form. The department engaging you gives it to you and submits it on your behalf. Your part is having the details ready.",
       },
       {
         title: 'Deactivating your account',

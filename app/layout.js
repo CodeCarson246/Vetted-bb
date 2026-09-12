@@ -2,6 +2,7 @@ import "./globals.css";
 import AppChrome from '@/components/AppChrome'
 import InstallPrompt from '@/components/InstallPrompt'
 import { AuthProvider } from '@/lib/auth-context'
+import Script from 'next/script'
 import { SITE_URL } from '@/lib/siteUrl'
 
 export const metadata = {
@@ -71,7 +72,13 @@ export default function RootLayout({ children }) {
             drop one but keep the other, so we read whichever survived and
             heal the other. Only an explicit choice is persisted; a first-time
             visitor still follows their OS preference until they use the toggle. */}
-        <script
+        {/* next/script with beforeInteractive is the sanctioned way to run a
+            pre-hydration script: it is emitted in the initial HTML head, so it
+            still runs before first paint, and React never tries to client-render
+            a raw <script> element (which it warns about and cannot execute). */}
+        <Script
+          id="vetted-theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `try{var c=document.cookie.match(/(?:^|; )vetted_theme=(dark|light)/);var t=(c&&c[1])||localStorage.getItem('vetted_theme');if(t==='dark'||t==='light'){try{localStorage.setItem('vetted_theme',t)}catch(e){}document.cookie='vetted_theme='+t+';path=/;max-age=31536000;samesite=lax'}else{t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}`,
           }}

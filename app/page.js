@@ -7,6 +7,7 @@ import { CATEGORIES as categories, effectiveCategories } from '@/lib/categories'
 import TrustBar from '@/components/TrustBar'
 import VerifiedBadge from '@/components/VerifiedBadge'
 import CategoryIcon from '@/components/CategoryIcon'
+import SectionHeading from '@/components/SectionHeading'
 
 const iconStyle = { width: '40px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }
 
@@ -121,7 +122,7 @@ export default function Home() {
     <main className="min-h-screen bg-gray-50">
 
       {/* Hero */}
-      <section className="px-4 sm:px-8 pt-20 sm:pt-32 text-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 60%, #001240 100%)', paddingBottom: '120px' }}>
+      <section className="home-hero px-4 sm:px-8 pt-20 sm:pt-32 text-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 60%, #001240 100%)', paddingBottom: '120px' }}>
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #F9C000 0%, transparent 50%), radial-gradient(circle at 80% 20%, #ffffff 0%, transparent 40%)' }} />
         <div className="max-w-3xl mx-auto relative animate-rise">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#F9C000', border: '1px solid rgba(249,192,0,0.3)' }}>
@@ -189,7 +190,8 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Wave divider — fill matches TrustBar navy (#00267F) */}
+        {/* Wave divider: blends the hero into the light strip below it, so the
+            hero is the only navy band at the top of the page. */}
         <div style={{ position: 'absolute', bottom: '-1px', left: 0, width: '100%', lineHeight: 0, overflow: 'hidden' }}>
           <svg
             viewBox="0 0 1440 60"
@@ -197,13 +199,14 @@ export default function Home() {
             preserveAspectRatio="none"
             style={{ display: 'block', width: '100%', height: '60px' }}
           >
-            <path d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" fill="#00267F" />
+            <path d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" style={{ fill: 'var(--surface-card)' }} />
           </svg>
         </div>
       </section>
 
-      {/* Stats bar */}
-      <section className="px-4 sm:px-8 py-10" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
+      {/* Stats bar: only when the numbers are switched on */}
+      {SHOW_STATS_NUMBERS && (
+      <section className="px-4 sm:px-8 pb-10" style={{ backgroundColor: 'var(--surface-card)' }}>
         <div className="max-w-2xl mx-auto">
           <div style={{
             backgroundColor: 'var(--surface-card)',
@@ -211,6 +214,8 @@ export default function Home() {
             borderRadius: '16px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
             padding: '32px 24px',
+            marginTop: '-40px',
+            position: 'relative',
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: '16px',
@@ -246,6 +251,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Trust bar */}
       <TrustBar />
@@ -253,17 +259,11 @@ export default function Home() {
       {/* Featured Professionals */}
       {featuredFreelancers.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 sm:px-8 pb-16" style={{ paddingTop: '80px' }}>
-          <div className="mb-10">
-            <p style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.75rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#d9a800', marginBottom: '8px' }}>
-              {featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'TOP RATED' : 'NEW ON VETTED.BB'}
-            </p>
-            <h2 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '2.2rem', letterSpacing: '-0.8px', color: '#00267F', marginBottom: '8px', lineHeight: 1.15 }}>
-              {featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Featured Professionals' : 'Recently joined'}
-            </h2>
-            <p style={{ color: '#6B7280', fontSize: '1rem', fontFamily: "'Inter', sans-serif" }}>
-              {featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Real people. Real reviews. Ready to hire.' : 'Verified people, ready to hire.'}
-            </p>
-          </div>
+          <SectionHeading
+            eyebrow={featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Top rated' : 'New on Vetted.bb'}
+            title={featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Featured Professionals' : 'Recently joined'}
+            sub={featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Real people. Real reviews. Ready to hire.' : 'Verified people, ready to hire.'}
+          />
 
           {/* Desktop: 3-column grid | Mobile: horizontal scroll carousel */}
           <div
@@ -467,7 +467,7 @@ export default function Home() {
 
       {/* Browse by category */}
       <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Browse by category</h2>
+        <SectionHeading align="center" eyebrow="Categories" title="Browse by category" sub="Every kind of professional on the island, from trades to tutoring." />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 category-grid">
           {categories.map((cat) => {
             const count = categoryCounts[cat.name]
@@ -508,17 +508,7 @@ export default function Home() {
       <section id="how-it-works" style={{ backgroundColor: '#00267F' }} className="py-16 px-4 sm:px-8">
         <div className="max-w-5xl mx-auto">
           {/* Section header */}
-          <div className="mb-14">
-            <p style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.75rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#F9C000', marginBottom: '10px' }}>
-              SIMPLE PROCESS
-            </p>
-            <h2 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '2.2rem', color: 'white', marginBottom: '12px', lineHeight: 1.15 }}>
-              Get it done in three steps
-            </h2>
-            <p style={{ color: '#93b8ff', fontSize: '1rem', fontFamily: "'Inter', sans-serif" }}>
-              From search to quote in minutes. No back-and-forth, no hassle.
-            </p>
-          </div>
+          <SectionHeading tone="dark" eyebrow="Simple process" title="Get it done in three steps" sub="From search to quote in minutes. No back-and-forth, no hassle." className="mb-14" />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             {steps.map(step => (

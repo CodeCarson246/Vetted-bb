@@ -12,6 +12,7 @@ import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
 import { effectiveCategories } from '@/lib/categories'
 import TrustMark from '@/components/TrustMark'
+import SectionHeading from '@/components/SectionHeading'
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #00267F, #1a3f9e)',
@@ -414,8 +415,7 @@ function SearchPage() {
       {/* Page header */}
       <div className="w-full py-8 px-4 sm:px-8" style={{ backgroundColor: '#00267F' }}>
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-2xl font-bold text-white">Find a freelancer</h1>
-          <p className="text-sm mt-1" style={{ color: '#93b8ff' }}>Browse trusted professionals across Barbados</p>
+          <SectionHeading as="h1" tone="dark" eyebrow="Marketplace" title="Find a professional" sub="Browse trusted professionals across Barbados" className="mb-0" />
         </div>
       </div>
 
