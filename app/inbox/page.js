@@ -16,6 +16,8 @@ import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
 import { formatAddressBlock } from '@/lib/organisations'
+import { generateVerifyCode, formatVerifyCode } from '@/lib/verifyCode'
+import { SITE_HOST } from '@/lib/siteUrl'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -56,6 +58,8 @@ export default function Inbox() {
   const [quoteVenture, setQuoteVenture] = useState('')
   // Optional purchase-order / requisition reference the organisation gave.
   const [quoteReference, setQuoteReference] = useState('')
+  // Printed on the document; anyone can check it at /verify/<code>.
+  const [quoteVerifyCode, setQuoteVerifyCode] = useState('')
   const [quoteClientName, setQuoteClientName] = useState('')
   const [quoteClientEmail, setQuoteClientEmail] = useState('')
   const [quoteToast, setQuoteToast] = useState(null)
@@ -258,6 +262,7 @@ export default function Inbox() {
     setQuoteClientName(msg.organisations?.name || msg.sender_name || '')
     setQuoteClientEmail(msg.sender_email || '')
     setQuoteReference('')
+    setQuoteVerifyCode(generateVerifyCode())
     setQuoteItems(prefillItems?.length > 0 ? prefillItems : [{ description: '', qty: 1, price: '' }])
     const now = new Date()
     const ast = new Date(now.getTime() - (4 * 60 * 60 * 1000))
@@ -474,6 +479,7 @@ export default function Inbox() {
   <table width="100%">
     <tr><td style="border-top:1px solid #e5e7eb;padding-top:16px;text-align:center">
       <div style="font-size:11px;color:#9ca3af">Generated via <span style="color:#00267F;font-weight:600">Vetted.bb</span> &middot; Connecting Barbados</div>
+      ${quoteVerifyCode?`<div style="font-size:11px;color:#6b7280;margin-top:6px">Verify this document at <span style="color:#00267F;font-weight:600">${SITE_HOST}/verify</span> with code <span style="font-family:monospace;font-weight:700;color:#111827;letter-spacing:1px">${formatVerifyCode(quoteVerifyCode)}</span></div>`:''}
     </td></tr>
   </table>
 
@@ -523,6 +529,8 @@ export default function Inbox() {
         notes: quoteNotes,
         business_group: quoteVenture || null,
         organisation_id: quoteMsg.organisation_id ?? null,
+        quote_request_id: quoteMsg.quote_request_id ?? null,
+        verify_code: quoteVerifyCode || generateVerifyCode(),
         currency: 'BBD',
         reference: quoteReference.trim() || null,
         // Snapshots: what the document said when issued, so it never changes
@@ -1548,6 +1556,9 @@ export default function Inbox() {
               {/* Footer */}
               <div className="border-t border-gray-100 mt-6 pt-4 text-center">
                 <p className="text-xs text-gray-400">Generated via <span className="font-semibold" style={{ color: '#00267F' }}>Vetted.bb</span> · Connecting Barbados</p>
+                {quoteVerifyCode && (
+                  <p className="text-xs text-gray-500 mt-1">Verify at <span className="font-semibold" style={{ color: '#00267F' }}>{SITE_HOST}/verify</span> · code <span className="font-mono font-bold text-gray-800">{formatVerifyCode(quoteVerifyCode)}</span></p>
+                )}
               </div>
 
             </div>
@@ -1682,6 +1693,9 @@ export default function Inbox() {
 
             <div className="border-t border-gray-100 pt-4 text-center mb-6">
               <p className="text-xs text-gray-400">Generated via <span className="font-semibold" style={{ color: '#00267F' }}>Vetted.bb</span> · Connecting Barbados</p>
+              {viewingQuote.verify_code && (
+                <p className="text-xs text-gray-500 mt-1">Verify at <span className="font-semibold" style={{ color: '#00267F' }}>{SITE_HOST}/verify</span> · code <span className="font-mono font-bold text-gray-800">{formatVerifyCode(viewingQuote.verify_code)}</span></p>
+              )}
             </div>
 
             <div className="flex gap-3 no-print">

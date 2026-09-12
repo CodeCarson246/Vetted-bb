@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
+import { isOrganisationUser } from '@/lib/organisations'
 
 function StarRating({ rating }) {
   return (
@@ -93,7 +94,14 @@ export default function SavedProfessionals() {
             <h1 className="text-2xl font-bold text-gray-900">Saved professionals</h1>
             <p className="text-sm text-gray-500 mt-1">Your shortlist. Compare and reach out when you&apos;re ready.</p>
           </div>
-          <span className="text-sm text-gray-500 flex-shrink-0">{saved.length} saved</span>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-sm text-gray-500">{saved.length} saved</span>
+            {isOrganisationUser(authUser) && saved.length > 0 && (
+              <Link href="/organisation/requests/new" className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
+                Request quotes
+              </Link>
+            )}
+          </div>
         </div>
 
         {saved.length === 0 ? (

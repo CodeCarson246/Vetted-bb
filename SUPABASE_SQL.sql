@@ -1118,3 +1118,96 @@ CREATE POLICY "Clients can respond to quotes"
     (client_email IS NOT NULL AND client_email = auth.jwt()->>'email')
     OR (organisation_id IS NOT NULL AND organisation_id IN (SELECT my_organisation_ids()))
   );
+
+-- ============================================================
+-- SECTION 28 — DOCUMENT VERIFICATION (2026-09-12)
+-- Every quote carries a short code printed on the quote, invoice and
+-- receipt. Anyone holding the document (an accounts department, say) can
+-- open vetted.bb/verify/<code> and see that it is genuine and where it
+-- stands: issued, accepted, invoiced, completed, paid, with dates. The
+-- lookup exposes no email, address or line items.
+-- ============================================================
+
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS verify_code text;
+CREATE UNIQUE INDEX IF NOT EXISTS quotes_verify_code_idx ON quotes (verify_code) WHERE verify_code IS NOT NULL;
+
+-- 10 characters from an alphabet with no look-alikes (no 0/O, 1/I/L).
+CREATE OR REPLACE FUNCTION public.gen_verify_code()
+RETURNS text
+LANGUAGE sql VOLATILE
+AS $$
+  SELECT string_agg(substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31) + 1)::int, 1), '')
+    FROM generate_series(1, 10)
+$$;
+
+-- One-time backfill so documents already issued can be verified too.
+-- Only fills NULLs, so it is safe to re-run.
+UPDATE quotes SET verify_code = gen_verify_code() WHERE verify_code IS NULL;
+
+-- Public lookup. SECURITY DEFINER because the caller is usually not logged
+-- in; the column list is the whole point, so keep it minimal.
+CREATE OR REPLACE FUNCTION public.verify_document(p_code text)
+RETURNS TABLE (
+  quote_number          text,
+  invoice_number        text,
+  status                text,
+  total                 numeric,
+  currency              text,
+  quote_date            text,
+  invoiced_at           timestamptz,
+  completed_at          timestamptz,
+  paid_at               timestamptz,
+  issuer_name           text,
+  billed_to             text,
+  organisation_verified boolean
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT q.quote_number, q.invoice_number, q.status, q.total::numeric, COALESCE(q.currency, 'BBD'),
+         q.quote_date::text, q.invoiced_at, q.completed_at, q.paid_at,
+         COALESCE(NULLIF(trim(f.company_name), ''), f.name) AS issuer_name,
+         q.client_name AS billed_to,
+         COALESCE(o.verified, false) AS organisation_verified
+    FROM quotes q
+    JOIN freelancers f ON f.id = q.freelancer_id
+    LEFT JOIN organisations o ON o.id = q.organisation_id
+   WHERE q.verify_code = upper(trim(p_code))
+   LIMIT 1
+$$;
+GRANT EXECUTE ON FUNCTION public.verify_document(text) TO anon, authenticated;
+
+-- ============================================================
+-- SECTION 29 — QUOTE REQUESTS (2026-09-12)
+-- An organisation describes a job once and sends it to several shortlisted
+-- professionals at the same time. Each one lands as an ordinary enquiry
+-- thread; the quotes that come back are tied to the request so the
+-- organisation can compare them side by side and accept one.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS quote_requests (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_id uuid NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+  created_by      uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  title           text NOT NULL,
+  details         text,
+  status          text NOT NULL DEFAULT 'open' CHECK (status IN ('open','awarded','closed')),
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS quote_requests_org_idx ON quote_requests (organisation_id, created_at DESC);
+
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS quote_request_id uuid REFERENCES quote_requests(id) ON DELETE SET NULL;
+ALTER TABLE quotes   ADD COLUMN IF NOT EXISTS quote_request_id uuid REFERENCES quote_requests(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS messages_quote_request_idx ON messages (quote_request_id);
+CREATE INDEX IF NOT EXISTS quotes_quote_request_idx   ON quotes   (quote_request_id);
+
+ALTER TABLE quote_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Members manage their organisation's requests" ON quote_requests;
+CREATE POLICY "Members manage their organisation's requests"
+  ON quote_requests FOR ALL
+  USING (organisation_id IN (SELECT my_organisation_ids()))
+  WITH CHECK (organisation_id IN (SELECT my_organisation_ids()));
+-- The invited freelancer reads the request through its message thread, which
+-- the existing "Participants can read messages" policy already allows; the
+-- request row itself stays with the organisation.

@@ -97,9 +97,14 @@ export default function OrganisationDashboard() {
               {org.division ? `${org.division} · ` : ''}{kindLabel} · Payment terms: {termLabel(org.default_payment_terms)}
             </p>
           </div>
-          <Link href="/search" className="inline-flex items-center justify-center text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
-            Find professionals
-          </Link>
+          <div className="flex gap-2 flex-shrink-0">
+            <Link href="/organisation/requests/new" className="inline-flex items-center justify-center text-sm font-semibold px-5 py-2.5 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F', textDecoration: 'none' }}>
+              Request quotes
+            </Link>
+            <Link href="/search" className="inline-flex items-center justify-center text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
+              Find professionals
+            </Link>
+          </div>
         </div>
 
         {/* Nudges */}
