@@ -138,7 +138,7 @@ export default function OrganisationDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Recent quotes */}
           <div className="lg:col-span-2">
-            <Card title="Recent quotes" desc="Every quote sent to your organisation, whoever on the team asked for it." action={<Link href="/jobs" className="text-sm font-semibold" style={{ color: '#00267F' }}>View all</Link>}>
+            <Card title="Recent quotes" desc="Every quote sent to your organisation, whoever on the team asked for it." action={<span className="flex items-center gap-3"><Link href="/organisation/records" className="text-sm font-semibold" style={{ color: '#00267F' }}>Records</Link><Link href="/jobs" className="text-sm font-semibold" style={{ color: '#00267F' }}>View all</Link></span>}>
               {!ready ? (
                 <p className="text-sm text-gray-400 py-4">Loading…</p>
               ) : recent.length === 0 ? (
