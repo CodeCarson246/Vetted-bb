@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { printSavedQuote } from '@/lib/printQuote'
 import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
+import QuoteAttachments from '@/components/QuoteAttachments'
 
 function fmtDate(str) {
   if (!str) return ''
@@ -183,6 +184,9 @@ export default function JobsPage() {
                           </span>
                         </button>
                       </div>
+
+                      {/* Purchase order / supporting documents, visible to both parties */}
+                      <QuoteAttachments quoteId={job.id} canUpload label="Attach purchase order" />
 
                       {/* Actions */}
                       <div className="flex flex-wrap items-center gap-2 mt-3">

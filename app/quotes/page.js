@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { printSavedQuote } from '@/lib/printQuote'
+import QuoteAttachments from '@/components/QuoteAttachments'
 import { formatDocDate } from '@/lib/formatDate'
 import { PAYMENT_TERMS, reminderThreshold, daysUntil, termLabel } from '@/lib/paymentTerms'
 
@@ -1118,6 +1119,11 @@ export default function QuotesPage() {
                         {q.paid_at && <span className="text-xs font-semibold" style={{ color: '#166534' }}>Paid {fmtDate(q.paid_at)}</span>}
                         {q.receipt_sent_at && <span className="text-xs font-semibold" style={{ color: '#166534' }}>Receipt sent {fmtDate(q.receipt_sent_at)}</span>}
                       </div>
+                    )}
+
+                    {/* Purchase orders the client attached, plus anything the pro adds */}
+                    {['accepted', 'invoiced', 'completed', 'paid'].includes(q.status) && (
+                      <QuoteAttachments quoteId={q.id} canUpload label="Attach a file" kind="other" />
                     )}
 
                     {/* Lifecycle tick boxes — confirmed via popup, untick to undo */}

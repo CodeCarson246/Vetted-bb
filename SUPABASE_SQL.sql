@@ -1211,3 +1211,82 @@ CREATE POLICY "Members manage their organisation's requests"
 -- The invited freelancer reads the request through its message thread, which
 -- the existing "Participants can read messages" policy already allows; the
 -- request row itself stays with the organisation.
+
+-- ============================================================
+-- SECTION 30 — PURCHASE ORDER ATTACHMENTS (2026-09-12)
+-- An organisation (or any client) can attach a purchase order or
+-- requisition to an accepted quote, and the professional can see it, so
+-- the invoice references it without anyone retyping. Files live in a
+-- PRIVATE bucket and are read through short-lived signed URLs; access is
+-- decided by the same participant rule as the quote itself.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS quote_attachments (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  quote_id    uuid NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  path        text NOT NULL,          -- object path inside the quote-attachments bucket
+  file_name   text NOT NULL,
+  file_size   integer,
+  mime_type   text,
+  kind        text NOT NULL DEFAULT 'purchase_order' CHECK (kind IN ('purchase_order','other')),
+  uploaded_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at  timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS quote_attachments_quote_idx ON quote_attachments (quote_id);
+
+-- Who may see or add attachments: exactly the parties who can see the quote.
+CREATE OR REPLACE FUNCTION public.can_access_quote(p_quote_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM quotes q
+     WHERE q.id = p_quote_id
+       AND (
+         q.freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
+         OR (q.client_email IS NOT NULL AND q.client_email = auth.jwt()->>'email')
+         OR (q.organisation_id IS NOT NULL AND q.organisation_id IN (SELECT my_organisation_ids()))
+       )
+  )
+$$;
+GRANT EXECUTE ON FUNCTION public.can_access_quote(uuid) TO authenticated;
+
+ALTER TABLE quote_attachments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Quote participants read attachments" ON quote_attachments;
+CREATE POLICY "Quote participants read attachments"
+  ON quote_attachments FOR SELECT
+  USING (can_access_quote(quote_id));
+DROP POLICY IF EXISTS "Quote participants add attachments" ON quote_attachments;
+CREATE POLICY "Quote participants add attachments"
+  ON quote_attachments FOR INSERT
+  WITH CHECK (can_access_quote(quote_id) AND uploaded_by = auth.uid());
+DROP POLICY IF EXISTS "Uploader removes own attachment" ON quote_attachments;
+CREATE POLICY "Uploader removes own attachment"
+  ON quote_attachments FOR DELETE
+  USING (uploaded_by = auth.uid());
+
+-- Private bucket. Object paths are <quote_id>/<uuid>-<file name>, so the
+-- first folder segment is the quote and the storage policies can reuse
+-- can_access_quote().
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('quote-attachments', 'quote-attachments', false)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "quote-attachments participants upload" ON storage.objects;
+CREATE POLICY "quote-attachments participants upload" ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'quote-attachments'
+    AND can_access_quote(((storage.foldername(name))[1])::uuid)
+  );
+
+DROP POLICY IF EXISTS "quote-attachments participants read" ON storage.objects;
+CREATE POLICY "quote-attachments participants read" ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'quote-attachments'
+    AND can_access_quote(((storage.foldername(name))[1])::uuid)
+  );
+
+DROP POLICY IF EXISTS "quote-attachments uploader delete" ON storage.objects;
+CREATE POLICY "quote-attachments uploader delete" ON storage.objects FOR DELETE
+  USING (bucket_id = 'quote-attachments' AND owner = auth.uid());
