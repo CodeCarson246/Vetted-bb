@@ -13,6 +13,7 @@ import { parsePrice } from '@/lib/price'
 import { effectiveCategories } from '@/lib/categories'
 import TrustMark from '@/components/TrustMark'
 import SectionHeading from '@/components/SectionHeading'
+import { profileUrl } from '@/lib/handles'
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #00267F, #1a3f9e)',
@@ -54,7 +55,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
 
   return (
     <Link
-      href={`/freelancers/${f.id}`}
+      href={profileUrl(f)}
       className="block"
       style={{
         background: 'var(--surface-card)',

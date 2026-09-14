@@ -248,6 +248,15 @@ const SECTIONS = [
         tip: "The full explanation lives at vetted.bb/badges. Send that link to any client who asks what a badge means.",
       },
       {
+        title: "Your profile link",
+        steps: [
+          "Dashboard, then Your profile link. Type the name you want (letters, numbers and hyphens, 3 to 30 characters) and claim it. Your profile then lives at vetted.bb/freelancers/YourName instead of a long code.",
+          "Capitalisation is kept the way you typed it, and the address works however someone types it. Nobody else can take the same name in different capitals.",
+          "You can change it once every 30 days. The old link keeps redirecting to the new one for 90 days, so a card or a post you already shared still works.",
+        ],
+        tip: "Match it to your business name if you trade under one, so the link on your card and your profile say the same thing.",
+      },
+      {
         title: "Billing address and vendor details",
         steps: [
           "Dashboard, then Billing & vendor details. Add your billing address first: it prints in the From block of every quote and invoice, and organisations need a real address on the document.",

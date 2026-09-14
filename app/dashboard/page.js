@@ -19,6 +19,8 @@ import PhoneVerify from '@/components/PhoneVerify'
 import AvailabilitySettings from '@/components/calendar/AvailabilitySettings'
 import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
 import VendorDetailsCard from '@/components/VendorDetailsCard'
+import { profileUrl } from '@/lib/handles'
+import ProfileHandleCard from '@/components/ProfileHandleCard'
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -1312,7 +1314,7 @@ function DashboardInner() {
                         </span>
                       )}
                       <Link
-                        href={`/freelancers/${f.id}`}
+                        href={profileUrl(f)}
                         className="text-white px-4 py-2 rounded-full text-xs font-medium hover:opacity-90 transition-opacity"
                         style={{ backgroundColor: '#00267F' }}
                       >
@@ -1536,7 +1538,7 @@ function DashboardInner() {
             {/* At-a-glance stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
               {[
-                { label: 'Profile views (30d)', value: views30d ?? '', href: `/freelancers/${profile.id}` },
+                { label: 'Profile views (30d)', value: views30d ?? '', href: profileUrl(profile) },
                 { label: 'Rating', value: profile.review_count > 0 ? `★ ${profile.rating}` : '', href: '#reviews-section' },
                 { label: 'Reviews', value: profile.review_count || 0, href: '#reviews-section' },
                 { label: 'Unread inquiries', value: unreadCount, href: '/inbox', highlight: unreadCount > 0 },
@@ -1621,7 +1623,7 @@ function DashboardInner() {
                 {/* Buttons */}
                 <div className="flex sm:flex-col gap-2 flex-shrink-0">
                   <Link
-                    href={`/freelancers/${profile.id}`}
+                    href={profileUrl(profile)}
                     className="px-4 py-2 rounded-full text-sm font-medium text-white transition-colors text-center"
                     style={{ border: '1.5px solid rgba(255,255,255,0.4)' }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
@@ -1925,16 +1927,21 @@ function DashboardInner() {
               )}
             </div>
 
+            <ProfileHandleCard
+              profile={profile}
+              onSaved={h => setProfile(prev => ({ ...prev, handle: h, handle_changed_at: new Date().toISOString() }))}
+            />
+
             {/* Share profile */}
             <div className="bg-white rounded-2xl border border-gray-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 mb-0.5">Share your profile</p>
-                <p className="text-xs text-gray-400 truncate">{SITE_HOST}/freelancers/{profile.id}</p>
+                <p className="text-xs text-gray-400 truncate">{SITE_HOST}{profileUrl(profile)}</p>
               </div>
               <div className="flex flex-wrap gap-2 flex-shrink-0">
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`${SITE_URL}/freelancers/${profile.id}`)
+                    navigator.clipboard.writeText(`${SITE_URL}${profileUrl(profile)}`)
                     setCopied(true)
                     setTimeout(() => setCopied(false), 2000)
                   }}
@@ -1943,7 +1950,7 @@ function DashboardInner() {
                   {copied ? '✓ Copied!' : 'Copy link'}
                 </button>
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`Check out my profile on Vetted.bb: ${SITE_URL}/freelancers/${profile.id}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`Check out my profile on Vetted.bb: ${SITE_URL}${profileUrl(profile)}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs px-4 py-2 rounded-full font-medium text-white hover:opacity-90 transition-opacity"
@@ -1952,7 +1959,7 @@ function DashboardInner() {
                   WhatsApp
                 </a>
                 <a
-                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${SITE_URL}/freelancers/${profile.id}`)}`}
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${SITE_URL}${profileUrl(profile)}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs px-4 py-2 rounded-full font-medium text-white hover:opacity-90 transition-opacity"
@@ -1961,7 +1968,7 @@ function DashboardInner() {
                   Facebook
                 </a>
                 <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out my profile on Vetted.bb!')}&url=${encodeURIComponent(`${SITE_URL}/freelancers/${profile.id}`)}`}
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out my profile on Vetted.bb!')}&url=${encodeURIComponent(`${SITE_URL}${profileUrl(profile)}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs px-4 py-2 rounded-full font-medium text-white hover:opacity-90 transition-opacity"

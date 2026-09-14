@@ -1324,3 +1324,164 @@ AS $$
    LIMIT 1
 $$;
 GRANT EXECUTE ON FUNCTION public.organisation_public(uuid) TO anon, authenticated;
+
+
+-- ============================================================
+-- SECTION 32 — PROFILE HANDLES (2026-09-13)
+-- A freelancer can pick a handle so their profile lives at
+-- /freelancers/<handle> instead of /freelancers/<uuid>. Old uuid links
+-- keep working (the page redirects). Uniqueness is case-insensitive,
+-- format/reserved-word/profanity checks live in the database so the
+-- browser cannot bypass them, and a change is allowed once every 30
+-- days with the previous handle redirecting for 90 days.
+-- Idempotent: safe to re-run.
+-- ============================================================
+
+ALTER TABLE public.freelancers
+  ADD COLUMN IF NOT EXISTS handle                text,
+  ADD COLUMN IF NOT EXISTS handle_changed_at     timestamptz,
+  ADD COLUMN IF NOT EXISTS previous_handle       text,
+  ADD COLUMN IF NOT EXISTS previous_handle_until timestamptz;
+
+-- Case-insensitive uniqueness (ThinkSports and thinksports are one handle).
+CREATE UNIQUE INDEX IF NOT EXISTS freelancers_handle_lower_key
+  ON public.freelancers (lower(handle)) WHERE handle IS NOT NULL;
+CREATE INDEX IF NOT EXISTS freelancers_previous_handle_lower_idx
+  ON public.freelancers (lower(previous_handle)) WHERE previous_handle IS NOT NULL;
+
+-- Format is also enforced at the table level: 3-30 chars, letters,
+-- digits and hyphens, no leading or trailing hyphen.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'freelancers_handle_format') THEN
+    ALTER TABLE public.freelancers ADD CONSTRAINT freelancers_handle_format
+      CHECK (handle IS NULL OR handle ~* '^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$');
+  END IF;
+END $$;
+
+-- Every reason a handle can be refused, in one place. Returns NULL when
+-- the handle is fine, otherwise a short code the UI turns into a message:
+-- 'format' | 'reserved' | 'profanity' | 'taken'.
+CREATE OR REPLACE FUNCTION public.handle_problem(p_handle text, p_exclude uuid DEFAULT NULL)
+RETURNS text
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  h text := lower(coalesce(p_handle, ''));
+  n text;
+  w text;
+  -- Exact names the site itself uses or that would read as official.
+  reserved text[] := ARRAY[
+    'admin','administrator','vetted','vettedbb','vetted-bb','official','support','help','staff','team','moderator','mod',
+    'verified','featured','trusted','government','govt','ministry','treasury','barbados','gov','police','bank',
+    'login','logout','signup','signin','register','search','settings','dashboard','profile','profiles','freelancer','freelancers',
+    'organisation','organisations','organization','client','clients','api','www','mail','email','about','contact','terms','privacy',
+    'guide','badges','verify','inbox','messages','quotes','jobs','bookings','calendar','reviews','saved','invite','new','edit','me','null','undefined','test'
+  ];
+  -- Anything starting with these reads as the platform or the state.
+  reserved_prefix text[] := ARRAY['vetted','admin','official','govt','government','ministry','treasury'];
+  -- Refused wherever they appear, even inside a longer word.
+  banned_anywhere text[] := ARRAY['fuck','shit','cunt','nigg','faggot','motherf','bitch','wanker','twat','slut','whore','pussy','bastard','rapist','nazi','kkk','rasshole','bullah','cocksuck','blowjob','jackass','dumbass','asshole'];
+  -- Refused only as a whole word (so bass-fishing, dickson, assistant pass).
+  banned_word text[] := ARRAY['ass','arse','dick','cock','tit','tits','cum','sex','fag','hoe','ho','damn','hell','crap','piss','penis','vagina','porn','xxx','nude','nudes','anal','boob','boobs','wuk','cunny','bumbo'];
+BEGIN
+  IF h !~ '^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$' THEN
+    RETURN 'format';
+  END IF;
+  IF h = ANY(reserved) THEN
+    RETURN 'reserved';
+  END IF;
+  FOREACH w IN ARRAY reserved_prefix LOOP
+    IF h LIKE w || '%' THEN RETURN 'reserved'; END IF;
+  END LOOP;
+  -- Undo the usual letter-for-digit tricks (sh1t, a55) before checking.
+  n := translate(h, '013457-', 'oieast ');
+  FOREACH w IN ARRAY banned_anywhere LOOP
+    IF position(w IN replace(n, ' ', '')) > 0 THEN RETURN 'profanity'; END IF;
+  END LOOP;
+  FOREACH w IN ARRAY banned_word LOOP
+    IF n ~ ('\m' || w || '\M') THEN RETURN 'profanity'; END IF;
+  END LOOP;
+  IF EXISTS (SELECT 1 FROM freelancers f WHERE lower(f.handle) = h AND (p_exclude IS NULL OR f.id <> p_exclude)) THEN
+    RETURN 'taken';
+  END IF;
+  -- A handle someone gave up recently still redirects to them, so it
+  -- cannot be re-registered until that grace period ends.
+  IF EXISTS (SELECT 1 FROM freelancers f WHERE lower(f.previous_handle) = h AND f.previous_handle_until > now() AND (p_exclude IS NULL OR f.id <> p_exclude)) THEN
+    RETURN 'taken';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.handle_problem(text, uuid) TO anon, authenticated;
+
+-- Live availability check for the settings card (same rules, no write).
+CREATE OR REPLACE FUNCTION public.handle_available(p_handle text, p_freelancer_id uuid DEFAULT NULL)
+RETURNS text
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.handle_problem(p_handle, p_freelancer_id)
+$$;
+GRANT EXECUTE ON FUNCTION public.handle_available(text, uuid) TO anon, authenticated;
+
+-- The only sanctioned way to set a handle. Checks ownership, the rules
+-- above, and the 30-day cooldown; keeps the previous handle redirecting
+-- for 90 days. Returns {ok, handle} or {error, ...}.
+CREATE OR REPLACE FUNCTION public.set_handle(p_freelancer_id uuid, p_handle text)
+RETURNS json
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  f freelancers%ROWTYPE;
+  prob text;
+  wanted text := trim(coalesce(p_handle, ''));
+BEGIN
+  SELECT * INTO f FROM freelancers WHERE id = p_freelancer_id AND user_id = auth.uid();
+  IF NOT FOUND THEN
+    RETURN json_build_object('error', 'not_owner');
+  END IF;
+  prob := public.handle_problem(wanted, f.id);
+  IF prob IS NOT NULL THEN
+    RETURN json_build_object('error', prob);
+  END IF;
+  PERFORM set_config('vetted.allow_handle', '1', true);
+  -- Only the casing changed (thinksports -> ThinkSports): free, no cooldown.
+  IF f.handle IS NOT NULL AND lower(f.handle) = lower(wanted) THEN
+    UPDATE freelancers SET handle = wanted WHERE id = f.id;
+    RETURN json_build_object('ok', true, 'handle', wanted);
+  END IF;
+  IF f.handle_changed_at IS NOT NULL AND f.handle_changed_at > now() - interval '30 days' THEN
+    RETURN json_build_object('error', 'cooldown', 'next_change', f.handle_changed_at + interval '30 days');
+  END IF;
+  UPDATE freelancers
+     SET previous_handle       = f.handle,
+         previous_handle_until = CASE WHEN f.handle IS NULL THEN NULL ELSE now() + interval '90 days' END,
+         handle                = wanted,
+         handle_changed_at     = now()
+   WHERE id = f.id;
+  RETURN json_build_object('ok', true, 'handle', wanted);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.set_handle(uuid, text) TO authenticated;
+
+-- Handles change only through set_handle: a direct UPDATE from the
+-- browser (which RLS otherwise allows on the owner's row) is refused,
+-- so the reserved-word and profanity rules cannot be skipped.
+CREATE OR REPLACE FUNCTION public.freelancers_guard_handle()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.handle IS DISTINCT FROM OLD.handle
+     AND coalesce(current_setting('vetted.allow_handle', true), '') <> '1' THEN
+    RAISE EXCEPTION 'Use set_handle() to change a profile handle';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS freelancers_guard_handle ON public.freelancers;
+CREATE TRIGGER freelancers_guard_handle
+  BEFORE UPDATE ON public.freelancers
+  FOR EACH ROW EXECUTE FUNCTION public.freelancers_guard_handle();

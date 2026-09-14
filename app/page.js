@@ -9,6 +9,7 @@ import VerifiedBadge from '@/components/VerifiedBadge'
 import TrustMark from '@/components/TrustMark'
 import CategoryIcon from '@/components/CategoryIcon'
 import SectionHeading from '@/components/SectionHeading'
+import { profileUrl } from '@/lib/handles'
 
 const iconStyle = { width: '40px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }
 
@@ -296,7 +297,7 @@ export default function Home() {
             {featuredFreelancers.map(f => (
               <Link
                 key={f.id}
-                href={`/freelancers/${f.id}`}
+                href={profileUrl(f)}
                 style={{
                   backgroundColor: 'var(--surface-card)',
                   borderTop: '4px solid #00267F',

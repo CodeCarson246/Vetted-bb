@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { profileUrl } from '@/lib/handles'
 
 const ICONS = {
   dashboard: <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10" />,
@@ -127,7 +128,7 @@ export default function WorkspaceSidebar({ open, onClose }) {
           <div className="my-2 mx-2" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }} />
 
           {profile && (
-            <Link href={`/freelancers/${profile.id}`} onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
+            <Link href={profileUrl(profile)} onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
               <NavIcon name="user" /> <span className="flex-1">View public profile</span>
             </Link>
           )}

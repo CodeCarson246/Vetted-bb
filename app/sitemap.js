@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/categories'
 import { SITE_URL } from '@/lib/siteUrl'
+import { profileUrl } from '@/lib/handles'
 
 export default async function sitemap() {
   const baseUrl = SITE_URL
@@ -24,13 +25,13 @@ export default async function sitemap() {
 
   const { data: freelancers } = await supabase
     .from('freelancers')
-    .select('id, updated_at')
+    .select('id, handle, updated_at')
     .eq('hidden', false)
     .is('deactivated_at', null)
     .order('created_at', { ascending: false })
 
   const freelancerPages = (freelancers || []).map(f => ({
-    url: `${baseUrl}/freelancers/${f.id}`,
+    url: `${baseUrl}${profileUrl(f)}`,
     lastModified: f.updated_at ? new Date(f.updated_at) : new Date(),
     changeFrequency: 'weekly',
     priority: 0.8,

@@ -12,6 +12,7 @@ import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
 import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
+import { profileUrl } from '@/lib/handles'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -336,7 +337,7 @@ export default function ClientMessages() {
           <button onClick={() => setExpandedId(null)} className="md:hidden text-gray-500 p-1 -ml-1" aria-label="Back to list">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <Link href={`/freelancers/${f?.id}`} className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold overflow-hidden flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
+          <Link href={profileUrl(f)} className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold overflow-hidden flex-shrink-0" style={{ backgroundColor: '#00267F' }}>
             {f?.avatar_url ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" /> : (f?.name || '?').split(' ').map(n => n[0]).join('')}
           </Link>
           <div className="min-w-0">
@@ -483,7 +484,7 @@ export default function ClientMessages() {
     return (
       <>
         <div className="flex flex-col items-center text-center mb-6">
-          <Link href={`/freelancers/${f?.id}`} className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-semibold overflow-hidden mb-3" style={{ backgroundColor: '#00267F' }}>
+          <Link href={profileUrl(f)} className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-semibold overflow-hidden mb-3" style={{ backgroundColor: '#00267F' }}>
             {f?.avatar_url ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" /> : (f?.name || '?').split(' ').map(n => n[0]).join('')}
           </Link>
           <p className="font-bold text-gray-900 flex items-center gap-1">{f?.name}{isVerified(f) && <VerifiedBadge size={14} />}</p>
@@ -504,7 +505,7 @@ export default function ClientMessages() {
                 <span>{f.location}</span>
               </div>
             )}
-            <Link href={`/freelancers/${f?.id}`} className="flex items-center gap-2 hover:underline" style={{ color: '#00267F' }}>
+            <Link href={profileUrl(f)} className="flex items-center gap-2 hover:underline" style={{ color: '#00267F' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               View full profile
             </Link>

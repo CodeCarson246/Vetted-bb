@@ -8,6 +8,7 @@ import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { printSavedQuote } from '@/lib/printQuote'
 import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
 import QuoteAttachments from '@/components/QuoteAttachments'
+import { profileUrl } from '@/lib/handles'
 
 function fmtDate(str) {
   if (!str) return ''
@@ -137,14 +138,14 @@ export default function JobsPage() {
               return (
                 <div key={job.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderTop: `4px solid ${mutual ? '#16a34a' : '#00267F'}` }}>
                   <div className="flex items-start gap-4">
-                    <Link href={`/freelancers/${f?.id}`} className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
+                    <Link href={profileUrl(f)} className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
                       {f?.avatar_url
                         ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
                         : initials}
                     </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <Link href={`/freelancers/${f?.id}`} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>
+                        <Link href={profileUrl(f)} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>
                           {f?.company_name?.trim().length > 3 ? f.company_name : f?.name}
                         </Link>
                         <span className="text-sm font-bold" style={{ color: '#00267F' }}>Bds${Number(job.total).toFixed(2)}</span>
@@ -201,7 +202,7 @@ export default function JobsPage() {
                           </button>
                         )}
                         {mutual && job.status === 'paid' && (
-                          <Link href={`/freelancers/${f?.id}#leave-review`} className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#16a34a' }}>
+                          <Link href={`${profileUrl(f)}#leave-review`} className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#16a34a' }}>
                             Leave a review →
                           </Link>
                         )}

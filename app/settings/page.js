@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import ThemeToggle from '@/components/ThemeToggle'
 import InstallAppCard from '@/components/InstallAppCard'
 import { getPushStatus, enablePush, disablePush } from '@/lib/push'
+import { profileUrl } from '@/lib/handles'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 const DURATIONS = [30, 45, 60, 90, 120, 180]
@@ -177,7 +178,7 @@ export default function SettingsPage() {
             <Card title="Public profile" desc="Your listing as clients see it.">
               <div className="flex flex-wrap gap-2">
                 <Link href="/dashboard" className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>Edit profile</Link>
-                <Link href={`/freelancers/${profile.id}`} className="text-sm font-semibold px-4 py-2 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>View public profile</Link>
+                <Link href={profileUrl(profile)} className="text-sm font-semibold px-4 py-2 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>View public profile</Link>
               </div>
             </Card>
           )}

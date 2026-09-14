@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { profileUrl } from '@/lib/handles'
 
 function Stars({ n, size = 14 }) {
   return (
@@ -92,7 +93,7 @@ export default function ReviewsPage() {
             <h1 className="text-2xl font-bold text-gray-900">Reviews</h1>
             <p className="text-sm text-gray-500 mt-1">Monitor customer feedback and manage your reputation.</p>
           </div>
-          {profile && <Link href={`/freelancers/${profile.id}`} className="text-sm font-semibold px-4 py-2.5 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>View public profile</Link>}
+          {profile && <Link href={profileUrl(profile)} className="text-sm font-semibold px-4 py-2.5 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>View public profile</Link>}
         </div>
 
         {/* Stat cards */}

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { SITE_URL } from '@/lib/siteUrl'
 import { effectiveCategories } from '@/lib/categories'
@@ -18,6 +18,7 @@ import WeekView from '@/components/calendar/WeekView'
 import MonthView from '@/components/calendar/MonthView'
 import { nowAST, getWeekStart, getWeekDays, MONTHS } from '@/components/calendar/calUtils'
 import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
+import { HANDLE_RE, isUuid } from '@/lib/handles'
 
 function StarRating({ rating, light = false }) {
   return (
@@ -31,6 +32,7 @@ function StarRating({ rating, light = false }) {
 
 export default function FreelancerProfile() {
   const { id } = useParams()
+  const router = useRouter()
   const [freelancer, setFreelancer] = useState(null)
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
@@ -134,11 +136,21 @@ export default function FreelancerProfile() {
 
   useEffect(() => {
     async function fetchData() {
-      const { data: f } = await supabase
-        .from('freelancers')
-        .select('*')
-        .eq('id', id)
-        .single()
+      // The URL carries either the uuid or the handle. Handle lookups are
+      // case-insensitive; a handle given up in the last 90 days redirects
+      // to its new one; a uuid link redirects to the handle once set.
+      let f = null
+      if (isUuid(id)) {
+        ({ data: f } = await supabase.from('freelancers').select('*').eq('id', id).maybeSingle())
+        if (f?.handle) { router.replace(`/freelancers/${f.handle}`); return }
+      } else if (HANDLE_RE.test(id)) {
+        ({ data: f } = await supabase.from('freelancers').select('*').ilike('handle', id).maybeSingle())
+        if (!f) {
+          const { data: moved } = await supabase.from('freelancers').select('handle')
+            .ilike('previous_handle', id).gt('previous_handle_until', new Date().toISOString()).maybeSingle()
+          if (moved?.handle) { router.replace(`/freelancers/${moved.handle}`); return }
+        }
+      }
 
       if (f) {
         // Message contents are private under RLS; the inquiry count used
@@ -560,7 +572,7 @@ export default function FreelancerProfile() {
     return n ? n.charAt(0).toUpperCase() + n.slice(1) : 'this pro'
   })()
   const whatsappShareUrl = (() => {
-    const profileUrl = `${SITE_URL}/freelancers/${id}`
+    const profileUrl = `${SITE_URL}/freelancers/${freelancer?.handle || id}`
     const loc = freelancer.location ? `based in ${formatParish(freelancer.location)}` : 'in Barbados'
     const reviewPart = freelancer.review_count > 0
       ? ` with ${freelancer.review_count} review${freelancer.review_count === 1 ? '' : 's'}`
@@ -569,7 +581,7 @@ export default function FreelancerProfile() {
     return `https://wa.me/?text=${encodeURIComponent(text)}`
   })()
 
-  const profileShareUrl = `${SITE_URL}/freelancers/${id}`
+  const profileShareUrl = `${SITE_URL}/freelancers/${freelancer?.handle || id}`
   const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileShareUrl)}`
   const xShareUrl = (() => {
     const text = `Check out ${freelancer.name} on Vetted.bb, a ${freelancer.trade} in ${formatParish(freelancer.location) || 'Barbados'}.`
@@ -610,7 +622,7 @@ export default function FreelancerProfile() {
       bestRating: 5,
       worstRating: 1,
     } : undefined,
-    url: `${SITE_URL}/freelancers/${freelancer.id}`,
+    url: `${SITE_URL}/freelancers/${freelancer.handle || freelancer.id}`,
   } : null
 
   return (

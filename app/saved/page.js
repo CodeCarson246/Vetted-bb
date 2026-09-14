@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import { isOrganisationUser } from '@/lib/organisations'
+import { profileUrl } from '@/lib/handles'
 
 function StarRating({ rating }) {
   return (
@@ -127,7 +128,7 @@ export default function SavedProfessionals() {
               return (
                 <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow" style={{ borderTop: '4px solid #00267F' }}>
                   {/* Avatar */}
-                  <Link href={`/freelancers/${f.id}`} className="flex-shrink-0">
+                  <Link href={profileUrl(f)} className="flex-shrink-0">
                     <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold" style={{ background: f.avatar_url ? undefined : '#00267F' }}>
                       {f.avatar_url
                         ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" />
@@ -136,7 +137,7 @@ export default function SavedProfessionals() {
                   </Link>
 
                   {/* Info */}
-                  <Link href={`/freelancers/${f.id}`} className="flex-1 min-w-0" style={{ textDecoration: 'none' }}>
+                  <Link href={profileUrl(f)} className="flex-1 min-w-0" style={{ textDecoration: 'none' }}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{f.name}</span>
                       {isVerified(f) && <VerifiedBadge size={15} />}
@@ -160,7 +161,7 @@ export default function SavedProfessionals() {
                   {/* Actions */}
                   <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 flex-shrink-0">
                     <Link
-                      href={`/freelancers/${f.id}`}
+                      href={profileUrl(f)}
                       className="text-xs font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 transition-opacity"
                       style={{ backgroundColor: '#00267F' }}
                     >

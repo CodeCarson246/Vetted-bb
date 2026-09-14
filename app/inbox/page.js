@@ -19,6 +19,7 @@ import { formatAddressBlock } from '@/lib/organisations'
 import { generateVerifyCode, formatVerifyCode } from '@/lib/verifyCode'
 import { SITE_HOST } from '@/lib/siteUrl'
 import TrustMark from '@/components/TrustMark'
+import { profileUrl } from '@/lib/handles'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -354,151 +355,31 @@ export default function Inbox() {
     setQuoteItems(prev => prev.filter((_, i) => i !== index))
   }
 
+  // Preview of the quote being composed. Builds the same row that
+  // saveQuoteInApp inserts, so the preview and the saved document are one
+  // template (lib/printQuote) and cannot drift apart.
   function printQuote() {
-    const subtotal = quoteTotal()
-    const validCompanyName = profile?.company_name?.trim().length > 3 ? profile.company_name : null
-    const itemRows = quoteItems.map((item, i) => `
-      <tr>
-        <td style="padding:10px 14px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.description||''}</td>
-        <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:center;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.qty}</td>
-        <td style="padding:10px 14px;font-size:13px;color:#374151;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+parseFloat(item.price).toFixed(2):''}</td>
-        <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#111827;text-align:right;border-bottom:1px solid #f3f4f6;background:${i%2===0?'#ffffff':'#f9fafb'}">${item.price?'$'+((parseFloat(item.price)||0)*(parseInt(item.qty)||1)).toFixed(2):''}</td>
-      </tr>`).join('')
-
-    const avatarHtml = profile?.avatar_url
-      ? `<img src="${profile.avatar_url}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;display:block"/>`
-      : `<div style="width:56px;height:56px;border-radius:50%;background:#00267F;color:white;font-size:18px;font-weight:700;text-align:center;line-height:56px;display:block">${(profile?.name||'?').split(' ').map(n=>n[0]).join('')}</div>`
-
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<title>Quote-${quoteNumber}-${quoteClientName}</title>
-<style>
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; background:white; color:#111827; padding:40px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  @page { margin:1.2cm; size:A4; }
-  table { border-collapse:collapse; }
-  * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-</style>
-</head>
-<body>
-
-  <!-- Header: avatar/info left, QUOTE right — table layout -->
-  <table width="100%" style="margin-bottom:28px">
-    <tr>
-      <td style="vertical-align:top;width:50%">
-        <table>
-          <tr>
-            <td style="vertical-align:top;padding-right:14px">
-              ${avatarHtml}
-            </td>
-            <td style="vertical-align:top">
-              <div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:2px">${validCompanyName||profile?.name||''}</div>
-              ${validCompanyName?`<div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.name}</div>`:''}
-              <div style="font-size:13px;color:#6b7280;margin-bottom:1px">${profile?.trade||''}</div>
-              <div style="font-size:12px;color:#9ca3af;margin-bottom:1px">${formatParish(profile?.location)||''}</div>
-              ${profile?.email?`<div style="font-size:12px;color:#9ca3af">${profile.email}</div>`:''}
-              ${formatAddressBlock(billing).split('\n').filter(Boolean).map(l=>`<div style="font-size:12px;color:#6b7280;margin-bottom:1px">${l}</div>`).join('')}
-            </td>
-          </tr>
-        </table>
-      </td>
-      <td style="vertical-align:top;text-align:right;width:50%">
-        <div style="font-size:34px;font-weight:800;color:#00267F;letter-spacing:4px;line-height:1">QUOTE</div>
-        <div style="font-size:12px;color:#9ca3af;margin-top:6px">${quoteNumber}</div>
-        <div style="font-size:12px;color:#9ca3af;margin-top:2px">${new Date(quoteDate + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
-      </td>
-    </tr>
-  </table>
-
-  <!-- Gold divider -->
-  <table width="100%" style="margin-bottom:24px"><tr><td style="background:#F9C000;height:3px;border-radius:2px;font-size:0">&nbsp;</td></tr></table>
-
-  <!-- Billed to -->
-  <div style="margin-bottom:24px">
-    <div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Billed to</div>
-    <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:3px">${quoteClientName||'Client'}</div>
-    ${quoteMsg?.organisations?.division?`<div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:2px">${quoteMsg.organisations.division}</div>`:''}
-    <div style="font-size:13px;color:#6b7280">${quoteClientEmail}</div>
-    ${formatAddressBlock(quoteMsg?.organisations).split('\n').filter(Boolean).map(l=>`<div style="font-size:12px;color:#6b7280;margin-top:1px">${l}</div>`).join('')}
-  </div>
-
-  <!-- Line items -->
-  <table width="100%" style="border-collapse:collapse;margin-bottom:20px">
-    <thead>
-      <tr style="background:#00267F">
-        <th style="padding:10px 14px;text-align:left;color:white;font-size:12px;font-weight:600">Description</th>
-        <th style="padding:10px 14px;text-align:center;color:white;font-size:12px;font-weight:600;width:60px">Qty</th>
-        <th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Unit price</th>
-        <th style="padding:10px 14px;text-align:right;color:white;font-size:12px;font-weight:600;width:100px">Total</th>
-      </tr>
-    </thead>
-    <tbody>${itemRows}</tbody>
-  </table>
-
-  <!-- Totals — right aligned using table -->
-  <table width="100%" style="margin-bottom:24px">
-    <tr>
-      <td width="60%"></td>
-      <td width="40%">
-        <table width="100%">
-          <tr>
-            <td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#6b7280">Subtotal</td>
-            <td style="padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;color:#111827;text-align:right">Bds$${subtotal.toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#111827">Total</td>
-            <td style="padding:10px 0;border-top:2px solid #111827;font-size:14px;font-weight:700;color:#00267F;text-align:right">Bds$${subtotal.toFixed(2)}</td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-
-  <!-- Payment due box -->
-  <table width="100%" style="margin-bottom:24px">
-    <tr>
-      <td style="background:#EEF2FF;border-radius:10px;padding:16px 18px">
-        <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Payment due</div>
-        <div style="font-size:16px;font-weight:700;color:#00267F;margin-bottom:3px">${quoteDueDate()}</div>
-        <div style="font-size:12px;color:#9ca3af">${quotePaymentTerms==='due_receipt'?'Payment due upon receipt':quotePaymentTerms.replace('net','Net ')+' days from invoice date'}</div>
-      </td>
-    </tr>
-  </table>
-
-  ${quoteNotes?.trim()?`
-  <!-- Notes -->
-  <table width="100%" style="margin-bottom:24px">
-    <tr><td style="border-top:1px solid #e5e7eb;padding-top:16px">
-      <div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Notes</div>
-      <div style="font-size:13px;color:#374151;line-height:1.7">${quoteNotes}</div>
-    </td></tr>
-  </table>`:''}
-
-  <!-- Footer -->
-  <table width="100%">
-    <tr><td style="border-top:1px solid #e5e7eb;padding-top:16px;text-align:center">
-      <div style="font-size:11px;color:#9ca3af">Generated via <span style="color:#00267F;font-weight:600">Vetted.bb</span> &middot; Connecting Barbados</div>
-      ${quoteVerifyCode?`<div style="font-size:11px;color:#6b7280;margin-top:6px">Verify this document at <span style="color:#00267F;font-weight:600">${SITE_HOST}/verify</span> with code <span style="font-family:monospace;font-weight:700;color:#111827;letter-spacing:1px">${formatVerifyCode(quoteVerifyCode)}</span></div>`:''}
-    </td></tr>
-  </table>
-
-</body>
-</html>`
-
-    const printFrame = document.createElement('iframe')
-    printFrame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;'
-    document.body.appendChild(printFrame)
-    const doc = printFrame.contentDocument || printFrame.contentWindow.document
-    doc.open()
-    doc.write(html)
-    doc.close()
-    printFrame.contentWindow.focus()
-    setTimeout(() => {
-      printFrame.contentWindow.print()
-      setTimeout(() => document.body.removeChild(printFrame), 1500)
-    }, 800)
+    const [qy, qm, qd] = quoteDate.split('-').map(Number)
+    const due = new Date(qy, qm - 1, qd + termDays(quotePaymentTerms)) // local date, no UTC flip
+    const dueStr = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`
+    printSavedQuote({
+      quote_number: quoteNumber,
+      quote_date: quoteDate,
+      payment_terms: quotePaymentTerms,
+      due_date: dueStr,
+      client_name: quoteClientName,
+      client_email: quoteClientEmail,
+      items: quoteItems,
+      subtotal: quoteTotal(),
+      total: quoteTotal(),
+      notes: quoteNotes,
+      verify_code: quoteVerifyCode || null,
+      currency: 'BBD',
+      reference: quoteReference.trim() || null,
+      from_address: formatAddressBlock(billing) || null,
+      bill_to_division: quoteMsg?.organisations?.division || null,
+      bill_to_address: formatAddressBlock(quoteMsg?.organisations) || null,
+    }, profile)
   }
 
   function printViewingQuote(q) {
@@ -1120,7 +1001,7 @@ export default function Inbox() {
               No messages yet. Share your profile to start receiving enquiries.
             </p>
             {profile && (() => {
-              const profileUrl = `${SITE_URL}/freelancers/${profile.id}`
+              const profileUrl = `${SITE_URL}${profileUrl(profile)}`
               const loc = profile.location ? `based in ${formatParish(profile.location)}` : 'in Barbados'
               const text = `Check out ${profile.name} on Vetted.bb. They're a ${profile.trade} ${loc}. ${profileUrl}`
               const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`

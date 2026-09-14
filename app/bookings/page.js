@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { profileUrl } from '@/lib/handles'
 
 const STATUS = {
   pending: { label: 'Awaiting confirmation', dot: '#F9C000', bg: 'rgba(249,192,0,0.15)', text: '#B45309' },
@@ -116,12 +117,12 @@ function Section({ title, items, busyId, onCancel, muted }) {
           return (
             <div key={b.id} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderTop: `4px solid ${s.dot}`, opacity: muted ? 0.85 : 1 }}>
               <div className="flex items-start gap-4">
-                <Link href={`/freelancers/${f?.id}`} className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
+                <Link href={profileUrl(f)} className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>
                   {f?.avatar_url ? <img src={f.avatar_url} alt={f.name} className="w-full h-full object-cover" /> : initials}
                 </Link>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <Link href={`/freelancers/${f?.id}`} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>{name || 'Professional'}</Link>
+                    <Link href={profileUrl(f)} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>{name || 'Professional'}</Link>
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: s.bg, color: s.text }}>{s.label}</span>
                   </div>
                   <p className="text-sm text-gray-700 mt-0.5">{b.title}{f?.trade ? ` · ${f.trade}` : ''}</p>

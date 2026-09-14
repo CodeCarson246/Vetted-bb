@@ -7,6 +7,7 @@ import { parsePrice } from '@/lib/price'
 import { SITE_URL } from '@/lib/siteUrl'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import CategoryIcon from '@/components/CategoryIcon'
+import { profileUrl } from '@/lib/handles'
 
 // Server-rendered + ISR: Google gets full HTML, revalidated hourly.
 export const revalidate = 3600
@@ -80,7 +81,7 @@ export default async function CategoryPage({ params }) {
     itemListElement: pros.slice(0, 10).map((f, i) => ({
       '@type': 'ListItem',
       position: i + 1,
-      url: `${SITE_URL}/freelancers/${f.id}`,
+      url: `${SITE_URL}${profileUrl(f)}`,
       name: f.name,
     })),
   }
@@ -129,7 +130,7 @@ export default async function CategoryPage({ params }) {
               return (
                 <Link
                   key={f.id}
-                  href={`/freelancers/${f.id}`}
+                  href={profileUrl(f)}
                   className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow"
                   style={{ borderTop: '4px solid #00267F', textDecoration: 'none' }}
                 >

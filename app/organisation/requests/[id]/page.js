@@ -10,6 +10,7 @@ import { printSavedQuote } from '@/lib/printQuote'
 import { currencySymbol } from '@/lib/organisations'
 import { isVerified } from '@/components/VerifiedBadge'
 import TrustMark from '@/components/TrustMark'
+import { profileUrl } from '@/lib/handles'
 
 const STATUS_LABELS = {
   sent: 'Awaiting decision', accepted: 'Accepted', declined: 'Declined',
@@ -130,11 +131,11 @@ export default function QuoteRequestDetail() {
             return (
               <div key={message.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col" style={{ borderTop: `4px solid ${q ? (q.status === 'accepted' || q.status === 'paid' ? '#16a34a' : '#00267F') : '#D1D5DB'}` }}>
                 <div className="flex items-center gap-3 mb-4">
-                  <Link href={`/freelancers/${f.id}`} className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ background: f.avatar_url ? undefined : '#00267F' }}>
+                  <Link href={profileUrl(f)} className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ background: f.avatar_url ? undefined : '#00267F' }}>
                     {f.avatar_url ? <img src={f.avatar_url} alt="" className="w-full h-full object-cover" /> : (f.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </Link>
                   <div className="min-w-0">
-                    <Link href={`/freelancers/${f.id}`} className="block text-sm font-semibold text-gray-900 truncate capitalize" style={{ textDecoration: 'none' }}>
+                    <Link href={profileUrl(f)} className="block text-sm font-semibold text-gray-900 truncate capitalize" style={{ textDecoration: 'none' }}>
                       {f.name}
                       {isVerified(f) && <span className="ml-1.5"><TrustMark kind="verified" size={14} /></span>}
                     </Link>

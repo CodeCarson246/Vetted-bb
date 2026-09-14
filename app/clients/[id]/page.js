@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import { profileUrl } from '@/lib/handles'
 
 function StarRating({ rating, light = false }) {
   return (
@@ -153,7 +154,7 @@ export default function ClientProfile() {
                 </div>
                 {r.comment && <p className="text-sm text-gray-600 leading-relaxed">{r.comment}</p>}
                 {r.freelancers && (
-                  <Link href={`/freelancers/${r.freelancers.id}`} className="text-xs font-medium mt-2 inline-block hover:opacity-80" style={{ color: '#00267F' }}>
+                  <Link href={profileUrl(r.freelancers)} className="text-xs font-medium mt-2 inline-block hover:opacity-80" style={{ color: '#00267F' }}>
                     - {r.freelancers.name}, <span className="capitalize">{r.freelancers.trade}</span>
                   </Link>
                 )}
