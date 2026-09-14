@@ -64,7 +64,7 @@ test('optional sections and lines appear only when filled', () => {
 
 test('avatar is a squircle and the verification block is unchanged', () => {
   const html = buildDocumentHtml(base, issuer)
-  assert.ok(html.includes('border-radius:14px;object-fit:cover'))
+  assert.ok(html.includes('border-radius:calc(14px * var(--s));object-fit:cover'))
   assert.ok(!html.includes('border-radius:50%'))
   assert.ok(html.includes('Verify this document'))
   assert.ok(html.includes('ABCDE-FGHJK'))
@@ -73,7 +73,7 @@ test('avatar is a squircle and the verification block is unchanged', () => {
 test('nothing is printed with a fixed height and blocks refuse to split', () => {
   const html = buildDocumentHtml(base, issuer)
   assert.ok(!/min-height|height:\s*\d+mm/.test(html.slice(0, html.indexOf('<body>'))))
-  assert.ok(html.includes('@media print { body { padding:0; zoom:var(--fit, 1); } }'))
+  assert.ok(html.includes('@media print { body { padding:0; } :root { --s: var(--fit, 1); } }'))
   assert.ok(html.includes('.keep { break-inside:avoid'))
 })
 
@@ -86,4 +86,34 @@ test('the printer chooses the paper, and a slightly long document shrinks to one
   // and never shrinks below 85% (a long document paginates instead).
   assert.ok(html.includes('var W = 650, H = 912, MIN = 0.85'))
   assert.ok(html.indexOf('try { fit() }') < html.indexOf('window.print()'))
+})
+
+test('From block: address before contact lines, parish only without an address, phone only when verified', () => {
+  const verified = { ...issuer, phone: '246-555-0123', phone_verified: true }
+  const withAddr = buildDocumentHtml({ ...base, from_address: '72 Waterhall Terrace\nApes Hill\nSaint James' }, verified)
+  assert.ok(!withAddr.includes('>St. James<'))
+  assert.ok(withAddr.indexOf('72 Waterhall Terrace') < withAddr.indexOf('246-555-0123'))
+  assert.ok(withAddr.indexOf('246-555-0123') < withAddr.indexOf('c@example.com'))
+  const noAddr = buildDocumentHtml(base, { ...issuer, phone: '246-555-0123', phone_verified: false })
+  assert.ok(noAddr.includes('>St. James<'))
+  assert.ok(!noAddr.includes('246-555-0123'))
+})
+
+test('Vetted.bb is not in the letterhead; the footer credits it with the yellow dot', () => {
+  const html = buildDocumentHtml(base, issuer)
+  const body = html.slice(html.indexOf('<body>'))
+  assert.equal(body.split('Vetted<span').length - 1, 1)
+  assert.ok(body.indexOf('Vetted<span') > body.indexOf('Verify this document'))
+  assert.ok(body.includes('Issued through'))
+  assert.ok(body.includes('Vetted<span style="color:#F9C000">.</span>bb'))
+  assert.ok(!body.includes('Generated via'))
+})
+
+test('print fit scales sizes rather than zooming the page, and never rewrites user text', () => {
+  const html = buildDocumentHtml(base, issuer)
+  assert.ok(!/zoom/i.test(html.slice(0, html.indexOf('<body>'))))
+  assert.ok(html.includes('font-size:calc(17px * var(--s))'))
+  assert.ok(!/style="[^"]*\d+px[;"]/.test(html))
+  const tricky = buildDocumentHtml({ ...base, notes: 'style="width:10px"' }, issuer)
+  assert.ok(tricky.includes('style=&quot;width:10px&quot;'))
 })

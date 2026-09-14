@@ -238,7 +238,7 @@ function DashboardInner() {
 
       if (userRole === 'client') {
         const [{ data: msgs }, { data: rLeft }, { data: topF }] = await Promise.all([
-          supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, payment_details)').eq('sender_email', user.email).order('created_at', { ascending: false }),
+          supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, phone, phone_verified, payment_details)').eq('sender_email', user.email).order('created_at', { ascending: false }),
           supabase.from('reviews').select('*').eq('author_user_id', user.id).order('date', { ascending: false }),
           supabase.from('freelancers').select('id, name, trade, avatar_url, rating, min_price').eq('hidden', false).is('deactivated_at', null).order('rating', { ascending: false }).limit(3),
         ])

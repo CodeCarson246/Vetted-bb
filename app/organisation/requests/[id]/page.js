@@ -41,7 +41,7 @@ export default function QuoteRequestDetail() {
     if (!org || !id) return
     const [{ data: r }, { data: msgs }, { data: quotes }] = await Promise.all([
       supabase.from('quote_requests').select('*').eq('id', id).eq('organisation_id', org.id).maybeSingle(),
-      supabase.from('messages').select('id, freelancer_id, created_at, freelancers(id, name, company_name, trade, location, email, avatar_url, verified, phone_verified, govt_vendor_status, payment_details)').eq('quote_request_id', id).order('created_at', { ascending: true }),
+      supabase.from('messages').select('id, freelancer_id, created_at, freelancers(id, name, company_name, trade, location, email, avatar_url, verified, phone, phone_verified, govt_vendor_status, payment_details)').eq('quote_request_id', id).order('created_at', { ascending: true }),
       supabase.from('quotes').select('*').eq('quote_request_id', id).order('created_at', { ascending: false }),
     ])
     setReq(r || null)

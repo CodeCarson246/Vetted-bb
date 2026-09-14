@@ -200,7 +200,7 @@ export default function Inbox() {
 
       const { data: p } = await supabase
         .from('freelancers')
-        .select('id, name, avatar_url, trade, company_name, location, email, verified, phone_verified, ventures, payment_details, default_terms')
+        .select('id, name, avatar_url, trade, company_name, location, email, verified, phone, phone_verified, ventures, payment_details, default_terms')
         .eq('user_id', user.id)
         .single()
 

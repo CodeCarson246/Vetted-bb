@@ -209,7 +209,7 @@ export default function QuotesPage() {
     async function load() {
       const { data: p } = await supabase
         .from('freelancers')
-        .select('id, name, company_name, trade, location, email, avatar_url, ventures, payment_details, default_terms')
+        .select('id, name, company_name, trade, location, email, avatar_url, phone, phone_verified, ventures, payment_details, default_terms')
         .eq('user_id', authUser.id)
         .maybeSingle()
 

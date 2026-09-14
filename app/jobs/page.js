@@ -32,7 +32,7 @@ export default function JobsPage() {
     const orgId = isOrganisationUser(authUser) ? (await fetchMyOrganisation())?.organisation?.id : null
     let q = supabase
       .from('quotes')
-      .select('*, freelancers(id, name, company_name, trade, location, email, avatar_url, payment_details)')
+      .select('*, freelancers(id, name, company_name, trade, location, email, avatar_url, phone, phone_verified, payment_details)')
     q = orgId
       ? q.or(`organisation_id.eq.${orgId},client_email.eq."${authUser.email}"`)
       : q.eq('client_email', authUser.email)
