@@ -73,6 +73,17 @@ test('avatar is a squircle and the verification block is unchanged', () => {
 test('nothing is printed with a fixed height and blocks refuse to split', () => {
   const html = buildDocumentHtml(base, issuer)
   assert.ok(!/min-height|height:\s*\d+mm/.test(html.slice(0, html.indexOf('<body>'))))
-  assert.ok(html.includes('@media print { body { padding:0; } }'))
+  assert.ok(html.includes('@media print { body { padding:0; zoom:var(--fit, 1); } }'))
   assert.ok(html.includes('.keep { break-inside:avoid'))
+})
+
+test('the printer chooses the paper, and a slightly long document shrinks to one sheet', () => {
+  const html = buildDocumentHtml(base, issuer)
+  const head = html.slice(0, html.indexOf('<body>'))
+  // No forced A4: a US Letter printer must get a Letter layout, not a cropped A4 one.
+  assert.ok(!/size\s*:\s*A4/i.test(head))
+  // Fit runs before print, against the smallest page (A4 width, Letter height),
+  // and never shrinks below 85% (a long document paginates instead).
+  assert.ok(html.includes('var W = 650, H = 912, MIN = 0.85'))
+  assert.ok(html.indexOf('try { fit() }') < html.indexOf('window.print()'))
 })
