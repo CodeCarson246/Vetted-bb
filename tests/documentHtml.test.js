@@ -117,3 +117,12 @@ test('print fit scales sizes rather than zooming the page, and never rewrites us
   const tricky = buildDocumentHtml({ ...base, notes: 'style="width:10px"' }, issuer)
   assert.ok(tricky.includes('style=&quot;width:10px&quot;'))
 })
+
+test('PDF mode leaves out the auto-print script; the browser version keeps it', () => {
+  const pdf = buildDocumentHtml(base, issuer, { forPdf: true })
+  assert.ok(!pdf.includes('<script>'))
+  assert.ok(!pdf.includes('window.print'))
+  assert.ok(pdf.includes('Verify this document'))
+  const web = buildDocumentHtml(base, issuer)
+  assert.ok(web.includes('window.print'))
+})
