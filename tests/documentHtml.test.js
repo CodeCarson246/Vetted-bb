@@ -92,11 +92,11 @@ test('From block: address before contact lines, parish only without an address, 
   const verified = { ...issuer, phone: '246-555-0123', phone_verified: true }
   const withAddr = buildDocumentHtml({ ...base, from_address: '72 Waterhall Terrace\nApes Hill\nSaint James' }, verified)
   assert.ok(!withAddr.includes('>St. James<'))
-  assert.ok(withAddr.indexOf('72 Waterhall Terrace') < withAddr.indexOf('246-555-0123'))
-  assert.ok(withAddr.indexOf('246-555-0123') < withAddr.indexOf('c@example.com'))
+  assert.ok(withAddr.indexOf('72 Waterhall Terrace') < withAddr.indexOf('(246) 555-0123'))
+  assert.ok(withAddr.indexOf('(246) 555-0123') < withAddr.indexOf('c@example.com'))
   const noAddr = buildDocumentHtml(base, { ...issuer, phone: '246-555-0123', phone_verified: false })
   assert.ok(noAddr.includes('>St. James<'))
-  assert.ok(!noAddr.includes('246-555-0123'))
+  assert.ok(!noAddr.includes('555-0123'))
 })
 
 test('Vetted.bb is not in the letterhead; the footer credits it with the yellow dot', () => {
@@ -125,4 +125,24 @@ test('PDF mode leaves out the auto-print script; the browser version keeps it', 
   assert.ok(pdf.includes('Verify this document'))
   const web = buildDocumentHtml(base, issuer)
   assert.ok(web.includes('window.print'))
+})
+
+test('quotes state payment terms, never a date to pay by; invoices keep the due date', () => {
+  const quote = buildDocumentHtml({ ...base, payment_terms: 'net14' }, issuer)
+  assert.ok(quote.includes('>Payment terms<'))
+  assert.ok(quote.includes('Net 14 days from invoice date'))
+  assert.ok(quote.includes('This is a quote, not a request for payment.'))
+  assert.ok(!quote.includes('>Payment due<'))
+  assert.ok(!quote.includes('27 September 2026'))
+  assert.ok(buildDocumentHtml({ ...base, payment_terms: 'due_receipt' }, issuer).includes('Due on receipt of invoice'))
+  assert.ok(buildDocumentHtml(base, issuer).includes('Set when invoiced'))
+  const inv = buildDocumentHtml({ ...base, payment_terms: 'net14', invoice_number: 'INV-1', invoiced_at: '2026-09-14T10:00:00Z', invoice_due_date: '2026-09-28' }, issuer, { type: 'invoice' })
+  assert.ok(inv.includes('>Payment due<'))
+  assert.ok(inv.includes('28 September 2026'))
+  assert.ok(!inv.includes('not a request for payment'))
+})
+
+test('the Total amount lines up with the line-total column', () => {
+  const html = buildDocumentHtml(base, issuer)
+  assert.ok(html.includes('padding:calc(10px * var(--s)) calc(14px * var(--s)) calc(10px * var(--s)) 0;border-top:calc(2px * var(--s)) solid #111827;font-size:calc(14px * var(--s));font-weight:700;color:#00267F;text-align:right'))
 })

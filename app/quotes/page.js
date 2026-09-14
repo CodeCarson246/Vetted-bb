@@ -1275,6 +1275,8 @@ export default function QuotesPage() {
                           <button
                             onClick={() => {
                               setInvoicingId(q.id)
+                              // The invoice carries the terms promised on the quote.
+                              setInvoiceTerms(INVOICE_TERMS.some(t => t.value === q.payment_terms) ? q.payment_terms : 'net14')
                               setInvoiceClientPhone(q.client_phone || '')
                               setInvoiceClientAddress(q.client_address || '')
                               setInvoiceTermsText(q.terms || profile?.default_terms || '')
