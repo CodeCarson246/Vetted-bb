@@ -156,7 +156,7 @@ export default function ClientMessages() {
     const orgId = isOrganisationUser(u) ? (await fetchMyOrganisation())?.organisation?.id : null
     let query = supabase
       .from('messages')
-      .select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, verified, phone_verified)')
+      .select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, verified, phone_verified, payment_details)')
     query = orgId
       ? query.or(`organisation_id.eq.${orgId},sender_email.eq."${u.email}"`)
       : query.eq('sender_email', u.email)

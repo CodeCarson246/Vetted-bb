@@ -13,6 +13,7 @@ import { formatDocDate } from '@/lib/formatDate'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
+import { addDaysToDateOnly } from '@/lib/formatDate'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
 import { formatAddressBlock } from '@/lib/organisations'
@@ -60,6 +61,10 @@ export default function Inbox() {
   const [quoteVenture, setQuoteVenture] = useState('')
   // Optional purchase-order / requisition reference the organisation gave.
   const [quoteReference, setQuoteReference] = useState('')
+  const [quoteValidDays, setQuoteValidDays] = useState(30)
+  const [quoteClientPhone, setQuoteClientPhone] = useState('')
+  const [quoteClientAddress, setQuoteClientAddress] = useState('')
+  const [quoteTerms, setQuoteTerms] = useState('')
   // Printed on the document; anyone can check it at /verify/<code>.
   const [quoteVerifyCode, setQuoteVerifyCode] = useState('')
   const [quoteClientName, setQuoteClientName] = useState('')
@@ -195,7 +200,7 @@ export default function Inbox() {
 
       const { data: p } = await supabase
         .from('freelancers')
-        .select('id, name, avatar_url, trade, company_name, location, email, verified, phone_verified, ventures')
+        .select('id, name, avatar_url, trade, company_name, location, email, verified, phone_verified, ventures, payment_details, default_terms')
         .eq('user_id', user.id)
         .single()
 
@@ -264,6 +269,11 @@ export default function Inbox() {
     setQuoteClientName(msg.organisations?.name || msg.sender_name || '')
     setQuoteClientEmail(msg.sender_email || '')
     setQuoteReference('')
+    setQuoteValidDays(30)
+    setQuoteClientPhone('')
+    setQuoteClientAddress('')
+    // Standard conditions come from the profile; editable per document.
+    setQuoteTerms(profile?.default_terms || '')
     setQuoteVerifyCode(generateVerifyCode())
     setQuoteItems(prefillItems?.length > 0 ? prefillItems : [{ description: '', qty: 1, price: '' }])
     const now = new Date()
@@ -314,6 +324,11 @@ export default function Inbox() {
       const q = parseInt(item.qty) || 1
       return sum + p * q
     }, 0)
+  }
+
+  // The date the quoted price stops standing: quote date + "valid for" days.
+  function quoteValidUntil() {
+    return addDaysToDateOnly(quoteDate, Math.min(365, Math.max(1, parseInt(quoteValidDays) || 30)))
   }
 
   function quoteDueDate() {
@@ -376,6 +391,10 @@ export default function Inbox() {
       verify_code: quoteVerifyCode || null,
       currency: 'BBD',
       reference: quoteReference.trim() || null,
+      valid_until: quoteValidUntil(),
+      client_phone: quoteClientPhone.trim() || null,
+      client_address: quoteClientAddress.trim() || null,
+      terms: quoteTerms.trim() || null,
       from_address: formatAddressBlock(billing) || null,
       bill_to_division: quoteMsg?.organisations?.division || null,
       bill_to_address: formatAddressBlock(quoteMsg?.organisations) || null,
@@ -415,6 +434,10 @@ export default function Inbox() {
         verify_code: quoteVerifyCode || generateVerifyCode(),
         currency: 'BBD',
         reference: quoteReference.trim() || null,
+        valid_until: quoteValidUntil(),
+        client_phone: quoteClientPhone.trim() || null,
+        client_address: quoteClientAddress.trim() || null,
+        terms: quoteTerms.trim() || null,
         // Snapshots: what the document said when issued, so it never changes
         // if either party later edits their details.
         from_address: formatAddressBlock(billing) || null,
@@ -1223,6 +1246,16 @@ export default function Inbox() {
                     <input type="email" value={quoteClientEmail} onChange={e => setQuoteClientEmail(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white" />
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Client phone <span className="text-gray-400">(optional)</span></label>
+                    <input type="tel" value={quoteClientPhone} onChange={e => setQuoteClientPhone(e.target.value)} placeholder="246-000-0000"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Client address <span className="text-gray-400">(optional)</span></label>
+                    <textarea value={quoteClientAddress} onChange={e => setQuoteClientAddress(e.target.value)} rows={2} placeholder={"Street\nParish"}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" />
+                  </div>
                 </div>
               </div>
 
@@ -1253,6 +1286,12 @@ export default function Inbox() {
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white">
                       {PAYMENT_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Valid for (days)</label>
+                    <input type="number" min={1} max={365} value={quoteValidDays} onChange={e => setQuoteValidDays(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white" />
+                    <p className="text-xs text-gray-400 mt-1">The quote prints Valid until {quoteValidUntil() ? new Date(quoteValidUntil() + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}. After that the client should ask for a fresh price.</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Their reference <span className="text-gray-400">(optional)</span></label>
@@ -1336,8 +1375,13 @@ export default function Inbox() {
               <div className="bg-white rounded-2xl border border-gray-100 p-6">
                 <h3 className="font-semibold text-gray-900 mb-4 text-sm">Notes (optional)</h3>
                 <textarea value={quoteNotes} onChange={e => setQuoteNotes(e.target.value)}
-                  rows={3} placeholder="e.g. Price excludes materials. A 50% deposit is required before work begins."
+                  rows={3} placeholder="Anything specific to this job, e.g. price excludes materials."
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" />
+                <label className="block text-xs font-medium text-gray-500 mt-4 mb-1">Terms <span className="text-gray-400">(optional)</span></label>
+                <textarea value={quoteTerms} onChange={e => setQuoteTerms(e.target.value)}
+                  rows={3} placeholder="Your standard conditions: deposit, what is excluded, cancellation policy."
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" />
+                <p className="text-xs text-gray-400 mt-1">Pre-filled from the default terms on your profile. Edit them here for this document only.</p>
               </div>
 
             </div>

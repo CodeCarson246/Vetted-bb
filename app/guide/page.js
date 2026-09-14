@@ -77,6 +77,8 @@ const SECTIONS = [
           "Your billing address prints in the From block. Set it under Billing & vendor details on your dashboard. Organisations need a proper address on the document.",
           "A quote to an organisation prints its name, division and address in the Bill to block, exactly as they set it, so the document goes through their accounts without a query.",
           "If they gave you a purchase order or requisition number, put it in the \"Their reference\" box when you build the quote and it prints on the document.",
+          "Every quote states how long the price stands: 30 days unless you change \"Valid for\" in the builder. Invoices show a payment due date instead.",
+          "Set your payment details and default terms once, under Edit profile. Payment details print on every quote and invoice; the terms are pre-filled on each new document and can be edited there.",
         ],
       },
       {

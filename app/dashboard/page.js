@@ -140,6 +140,8 @@ function DashboardInner() {
   const [bio, setBio] = useState('')
   const [yearsExperience, setYearsExperience] = useState('')
   const [qualifications, setQualifications] = useState('')
+  const [paymentDetails, setPaymentDetails] = useState('')
+  const [defaultTerms, setDefaultTerms] = useState('')
   const [hourlyRate, setHourlyRate] = useState('')
   const [available, setAvailable] = useState(false)
   const [skillsInput, setSkillsInput] = useState('')
@@ -236,7 +238,7 @@ function DashboardInner() {
 
       if (userRole === 'client') {
         const [{ data: msgs }, { data: rLeft }, { data: topF }] = await Promise.all([
-          supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location)').eq('sender_email', user.email).order('created_at', { ascending: false }),
+          supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, payment_details)').eq('sender_email', user.email).order('created_at', { ascending: false }),
           supabase.from('reviews').select('*').eq('author_user_id', user.id).order('date', { ascending: false }),
           supabase.from('freelancers').select('id, name, trade, avatar_url, rating, min_price').eq('hidden', false).is('deactivated_at', null).order('rating', { ascending: false }).limit(3),
         ])
@@ -277,6 +279,8 @@ function DashboardInner() {
           setBio(p.bio || '')
           setYearsExperience(p.years_experience ?? '')
           setQualifications(p.qualifications || '')
+          setPaymentDetails(p.payment_details || '')
+          setDefaultTerms(p.default_terms || '')
           setHourlyRate(p.hourly_rate || '')
           setAvailable(p.available || false)
           setSkillsInput((p.skills || []).join(', '))
@@ -398,6 +402,8 @@ function DashboardInner() {
       bio,
       years_experience: yearsExperience === '' ? null : Number(yearsExperience),
       qualifications: qualifications.trim() || null,
+      payment_details: paymentDetails.trim() || null,
+      default_terms: defaultTerms.trim() || null,
       hourly_rate: hourlyRate === '' ? null : Number(hourlyRate),
       available,
       skills,
@@ -1761,6 +1767,33 @@ function DashboardInner() {
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
                       />
                       <p className="text-xs text-gray-400 mt-1.5">List any relevant certifications, diplomas, or degrees. Leave blank if not applicable.</p>
+                    </div>
+
+                    {/* Printed on every quote and invoice, set once here */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment details <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <textarea
+                        value={paymentDetails}
+                        onChange={e => setPaymentDetails(e.target.value)}
+                        rows={3}
+                        maxLength={300}
+                        placeholder={"e.g. Bank transfer: RBC, account 000-000-000. Or cash on completion."}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
+                      />
+                      <p className="text-xs text-gray-400 mt-1.5">How clients should pay you: bank details, mobile payment, or cash on completion. This appears on every quote and invoice you send. {paymentDetails.length}/300</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Default terms <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <textarea
+                        value={defaultTerms}
+                        onChange={e => setDefaultTerms(e.target.value)}
+                        rows={3}
+                        maxLength={1000}
+                        placeholder={"e.g. 50% deposit before work begins. Materials not included unless stated. 48 hours notice to cancel."}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
+                      />
+                      <p className="text-xs text-gray-400 mt-1.5">Standard terms that appear on your quotes and invoices: deposit requirements, what is excluded, cancellation policy. Pre-filled on every new document and editable there.</p>
                     </div>
                   </div>
 

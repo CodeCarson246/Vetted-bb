@@ -186,6 +186,9 @@ export default function QuotesPage() {
   const [quoteMonth, setQuoteMonth] = useState('all')
   const [invoicingId, setInvoicingId] = useState(null)
   const [invoiceTerms, setInvoiceTerms] = useState('net14')
+  const [invoiceClientPhone, setInvoiceClientPhone] = useState('')
+  const [invoiceClientAddress, setInvoiceClientAddress] = useState('')
+  const [invoiceTermsText, setInvoiceTermsText] = useState('')
   const [busyId, setBusyId] = useState(null)
   const [view, setView] = useState('quotes')
   const [confirmAction, setConfirmAction] = useState(null)
@@ -206,7 +209,7 @@ export default function QuotesPage() {
     async function load() {
       const { data: p } = await supabase
         .from('freelancers')
-        .select('id, name, company_name, trade, location, email, avatar_url, ventures')
+        .select('id, name, company_name, trade, location, email, avatar_url, ventures, payment_details, default_terms')
         .eq('user_id', authUser.id)
         .maybeSingle()
 
@@ -277,6 +280,9 @@ export default function QuotesPage() {
       invoiced_at: now.toISOString(),
       invoice_terms: terms.value,
       invoice_due_date: dueStr,
+      client_phone: invoiceClientPhone.trim() || null,
+      client_address: invoiceClientAddress.trim() || null,
+      terms: invoiceTermsText.trim() || null,
     }
     const { error } = await supabase.from('quotes').update(patch).eq('id', q.id)
     if (error) {
@@ -1153,7 +1159,7 @@ export default function QuotesPage() {
 
                     {/* Send-invoice form */}
                     {invoicingId === q.id && q.status === 'accepted' && (
-                      <div className="mt-4 rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="mt-4 rounded-xl border border-gray-200 p-4 flex flex-col gap-3">
                         <div className="flex-1">
                           <label className="block text-xs font-semibold text-gray-700 mb-1">Payment terms</label>
                           <select
@@ -1166,7 +1172,24 @@ export default function QuotesPage() {
                             ))}
                           </select>
                         </div>
-                        <div className="flex items-center gap-2 sm:self-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Client phone <span className="text-gray-400 font-normal">(optional)</span></label>
+                            <input type="tel" value={invoiceClientPhone} onChange={e => setInvoiceClientPhone(e.target.value)} placeholder="246-000-0000"
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Client address <span className="text-gray-400 font-normal">(optional)</span></label>
+                            <textarea value={invoiceClientAddress} onChange={e => setInvoiceClientAddress(e.target.value)} rows={2} placeholder={"Street\nParish"}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Terms <span className="text-gray-400 font-normal">(optional)</span></label>
+                          <textarea value={invoiceTermsText} onChange={e => setInvoiceTermsText(e.target.value)} rows={2} placeholder="Your standard conditions. Pre-filled from your profile."
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" />
+                        </div>
+                        <div className="flex items-center gap-2 self-end">
                           <button
                             onClick={() => sendInvoice(q)}
                             disabled={busyId === q.id}
@@ -1250,7 +1273,12 @@ export default function QuotesPage() {
 
                         {q.status === 'accepted' && invoicingId !== q.id && (
                           <button
-                            onClick={() => setInvoicingId(q.id)}
+                            onClick={() => {
+                              setInvoicingId(q.id)
+                              setInvoiceClientPhone(q.client_phone || '')
+                              setInvoiceClientAddress(q.client_address || '')
+                              setInvoiceTermsText(q.terms || profile?.default_terms || '')
+                            }}
                             className="text-xs font-semibold px-3.5 py-1.5 rounded-full hover:opacity-90 transition-opacity"
                             style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                           >

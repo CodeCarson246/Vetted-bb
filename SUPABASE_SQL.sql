@@ -1485,3 +1485,22 @@ DROP TRIGGER IF EXISTS freelancers_guard_handle ON public.freelancers;
 CREATE TRIGGER freelancers_guard_handle
   BEFORE UPDATE ON public.freelancers
   FOR EACH ROW EXECUTE FUNCTION public.freelancers_guard_handle();
+
+
+-- ============================================================
+-- SECTION 33 — DOCUMENT FIELDS (2026-09-13)
+-- Quote validity, richer billed-to block, per-document terms, and the
+-- freelancer's once-set payment details + default terms. Invoices are
+-- quotes rows (no separate table), so the quote columns cover both.
+-- Idempotent: safe to re-run.
+-- ============================================================
+
+ALTER TABLE public.quotes
+  ADD COLUMN IF NOT EXISTS valid_until    date,
+  ADD COLUMN IF NOT EXISTS client_phone   text,
+  ADD COLUMN IF NOT EXISTS client_address text,
+  ADD COLUMN IF NOT EXISTS terms          text;
+
+ALTER TABLE public.freelancers
+  ADD COLUMN IF NOT EXISTS payment_details text,
+  ADD COLUMN IF NOT EXISTS default_terms   text;
