@@ -13,7 +13,7 @@ class MemoryStorage {
 const store = new MemoryStorage()
 Object.defineProperty(globalThis, 'localStorage', { value: store, configurable: true, writable: true })
 
-const { readDashboardCache, writeDashboardCache, clearDashboardCache, clearAllDashboardCaches } = await import('../lib/dashboardCache.js')
+const { readDashboardCache, writeDashboardCache, clearDashboardCache, clearAllDashboardCaches, readPageCache, writePageCache } = await import('../lib/dashboardCache.js')
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -49,4 +49,18 @@ test('signing out clears every saved dashboard but leaves other settings alone',
   clearAllDashboardCaches()
   assert.equal(readDashboardCache('user-y'), null)
   assert.equal(store.getItem('vetted_theme'), 'dark')
+})
+
+test('the inbox and Quotes & earnings keep their own copies, wiped by the same sign-out', () => {
+  writePageCache('inbox', 'user-z', { messages: [{ id: 1 }] })
+  writePageCache('quotes', 'user-z', { quotes: [] })
+  writeDashboardCache('user-z', { role: 'freelancer' })
+  assert.deepEqual(readPageCache('inbox', 'user-z'), { messages: [{ id: 1 }] })
+  assert.deepEqual(readPageCache('quotes', 'user-z'), { quotes: [] })
+  assert.equal(readPageCache('inbox', 'someone-else'), null)
+  assert.equal(readPageCache(null, 'user-z'), null)
+  clearAllDashboardCaches()
+  assert.equal(readPageCache('inbox', 'user-z'), null)
+  assert.equal(readPageCache('quotes', 'user-z'), null)
+  assert.equal(readDashboardCache('user-z'), null)
 })

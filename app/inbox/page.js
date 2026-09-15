@@ -11,6 +11,8 @@ import { SITE_URL } from '@/lib/siteUrl'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
+import { getMyFreelancer } from '@/lib/myFreelancer'
+import { readPageCache, writePageCache } from '@/lib/dashboardCache'
 import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
 import { addDaysToDateOnly } from '@/lib/formatDate'
@@ -134,12 +136,23 @@ export default function Inbox() {
       return
     }
 
-    // Latest reply per thread → preview the newest message and sort by activity
-    const { data: latestReplies } = await supabase
-      .from('message_replies')
-      .select('message_id, created_at, body, sender_user_id, quote_id')
-      .in('message_id', messageList.map(m => m.id))
-      .order('created_at', { ascending: false })
+    // The latest reply per thread (preview + sort by activity), live client
+    // profiles and client ratings all depend only on the thread list, so
+    // they are fetched together rather than one after another.
+    const clientIds = [...new Set(messageList.map(m => m.sender_user_id).filter(Boolean))]
+    const [{ data: latestReplies }, { data: cps }, { data: clientRevs }] = await Promise.all([
+      supabase
+        .from('message_replies')
+        .select('message_id, created_at, body, sender_user_id, quote_id')
+        .in('message_id', messageList.map(m => m.id))
+        .order('created_at', { ascending: false }),
+      clientIds.length > 0
+        ? supabase.from('client_profiles').select('user_id, display_name, avatar_url').in('user_id', clientIds)
+        : Promise.resolve({ data: [] }),
+      clientIds.length > 0
+        ? supabase.from('reviews').select('client_user_id, rating').in('client_user_id', clientIds).eq('type', 'freelancer')
+        : Promise.resolve({ data: [] }),
+    ])
 
     const latestReply = {}
     ;(latestReplies || []).forEach(r => {
@@ -159,21 +172,11 @@ export default function Inbox() {
     setMessages(enriched)
 
     // Live client profiles (current name + photo) and aggregate ratings.
-    const clientIds = [...new Set(messageList.map(m => m.sender_user_id).filter(Boolean))]
     if (clientIds.length > 0) {
-      const { data: cps } = await supabase
-        .from('client_profiles')
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', clientIds)
       const cpMap = {}
       for (const cp of cps || []) cpMap[cp.user_id] = cp
       setClientProfiles(cpMap)
 
-      const { data: clientRevs } = await supabase
-        .from('reviews')
-        .select('client_user_id, rating')
-        .in('client_user_id', clientIds)
-        .eq('type', 'freelancer')
       const agg = {}
       for (const r of clientRevs || []) {
         if (!agg[r.client_user_id]) agg[r.client_user_id] = { sum: 0, count: 0 }
@@ -190,6 +193,7 @@ export default function Inbox() {
 
   useEffect(() => {
     if (authLoading) return
+    let cancelled = false
     async function init() {
       const user = authUser
       if (!user) {
@@ -198,25 +202,23 @@ export default function Inbox() {
       }
       setUser(user)
 
-      const { data: p } = await supabase
-        .from('freelancers')
-        .select('id, name, avatar_url, trade, company_name, location, email, verified, phone, phone_verified, ventures, payment_details, default_terms')
-        .eq('user_id', user.id)
-        .single()
+      // Instant: the inbox as this device last saw it, while fresh data
+      // loads underneath (see lib/dashboardCache.js).
+      const cached = readPageCache('inbox', user.id)
+      if (cached?.profile) {
+        setProfile(cached.profile)
+        setFreelancerServices(cached.services || [])
+        setBilling(cached.billing || null)
+        setMessages(cached.messages || [])
+        setClientProfiles(cached.clientProfiles || {})
+        setClientRatings(cached.clientRatings || {})
+        setLoading(false)
+      }
 
-      if (p) {
-        setProfile(p)
-        const { data: svc } = await supabase
-          .from('services')
-          .select('id, name, price, description, duration, business_group')
-          .eq('freelancer_id', p.id)
-          .order('created_at', { ascending: true })
-        setFreelancerServices(svc || [])
-        // Billing address, printed in the "From" block of every quote.
-        const { data: bill } = await supabase.from('freelancer_billing').select('*').eq('freelancer_id', p.id).maybeSingle()
-        setBilling(bill || null)
-        await loadInboxList(p)
-      } else {
+      // Shared with the app chrome and sidebar, which ask at the same moment.
+      const p = await getMyFreelancer(user.id)
+      if (cancelled) return
+      if (!p) {
         // No freelancer profile → this user is a client. /inbox is the
         // freelancer inbox; their messages live at /messages. Redirect there
         // (replace, so the back button doesn't return to this dead end)
@@ -224,11 +226,39 @@ export default function Inbox() {
         router.replace('/messages')
         return
       }
+      setProfile(p)
 
+      // Services and the billing address only feed the quote builder, so they
+      // load alongside the thread list instead of before it.
+      const builderData = Promise.all([
+        supabase
+          .from('services')
+          .select('id, name, price, description, duration, business_group')
+          .eq('freelancer_id', p.id)
+          .order('created_at', { ascending: true }),
+        // Billing address, printed in the "From" block of every quote.
+        supabase.from('freelancer_billing').select('*').eq('freelancer_id', p.id).maybeSingle(),
+      ]).then(([{ data: svc }, { data: bill }]) => {
+        if (cancelled) return
+        setFreelancerServices(svc || [])
+        setBilling(bill || null)
+      })
+
+      await loadInboxList(p)
+      if (cancelled) return
       setLoading(false)
+      await builderData
     }
     init()
+    return () => { cancelled = true }
   }, [authUser, authLoading, router])
+
+  // Keep this device's saved inbox current, including live updates, so the
+  // next visit opens straight onto the thread list.
+  useEffect(() => {
+    if (loading || !user || !profile) return
+    writePageCache('inbox', user.id, { profile, services: freelancerServices, billing, messages, clientProfiles, clientRatings })
+  }, [loading, user, profile, freelancerServices, billing, messages, clientProfiles, clientRatings])
 
   // Re-pull the thread list (and the open thread's replies + quotes) so the
   // inbox updates while you sit on it — new client messages, replies and quote

@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
@@ -8,6 +8,8 @@ import { printSavedQuote } from '@/lib/printQuote'
 import QuoteAttachments from '@/components/QuoteAttachments'
 import { formatDocDate } from '@/lib/formatDate'
 import { PAYMENT_TERMS, reminderThreshold, daysUntil, termLabel } from '@/lib/paymentTerms'
+import { getMyFreelancer } from '@/lib/myFreelancer'
+import { readPageCache, writePageCache } from '@/lib/dashboardCache'
 
 // Lifecycle: sent → accepted → invoiced → completed → paid (declined terminal)
 const STATUS_STYLES = {
@@ -202,19 +204,36 @@ export default function QuotesPage() {
   const [receiptSentIds, setReceiptSentIds] = useState(() => new Set())
   const [chartRange, setChartRange] = useState('12m') // '30d' | '12m'
 
+  // While the saved copy is on screen (the first second or two after opening),
+  // a quote's status can be out of date, and acting on it could, say, invoice
+  // a job that was already invoiced. Money actions wait for fresh data.
+  const freshRef = useRef(false)
+  function showStillUpdating() {
+    setToast({ msg: 'Still updating your quotes. Try again in a moment.', err: false })
+    setTimeout(() => setToast(null), 3200)
+  }
+
   useEffect(() => {
     if (authLoading) return
     if (!authUser) { router.push('/login'); return }
+    let cancelled = false
 
     async function load() {
-      const { data: p } = await supabase
-        .from('freelancers')
-        .select('id, name, company_name, trade, location, email, avatar_url, phone, phone_verified, ventures, payment_details, default_terms')
-        .eq('user_id', authUser.id)
-        .maybeSingle()
+      freshRef.current = false
+      // Instant: Quotes & earnings as this device last saw it, while fresh
+      // data loads underneath (see lib/dashboardCache.js).
+      const cached = readPageCache('quotes', authUser.id)
+      if (cached?.profile) {
+        setProfile(cached.profile)
+        setQuotes(cached.quotes || [])
+        setLoading(false)
+      }
 
+      // Shared with the app chrome and sidebar, which ask at the same moment.
+      const p = await getMyFreelancer(authUser.id)
+      if (cancelled) return
       if (!p) {
-        // Not a freelancer — quotes live in their messages instead
+        // Not a freelancer: quotes live in their messages instead
         router.push('/messages')
         return
       }
@@ -225,11 +244,20 @@ export default function QuotesPage() {
         .select('*')
         .eq('freelancer_id', p.id)
         .order('created_at', { ascending: false })
+      if (cancelled) return
       setQuotes(qs || [])
+      freshRef.current = true
       setLoading(false)
     }
     load()
+    return () => { cancelled = true }
   }, [authUser, authLoading, router])
+
+  // Keep this device's saved copy current, including changes made here.
+  useEffect(() => {
+    if (loading || !authUser || !profile) return
+    writePageCache('quotes', authUser.id, { profile, quotes })
+  }, [loading, authUser, profile, quotes])
 
   // Notify the client of a quote lifecycle event (fire-and-forget)
   function notifyQuoteEvent(quoteId, event) {
@@ -244,6 +272,7 @@ export default function QuotesPage() {
   }
 
   async function updateStatus(quoteId, status, extra = {}) {
+    if (!freshRef.current) { showStillUpdating(); return }
     setBusyId(quoteId)
     const patch = { status, ...extra }
     // Marking a job PAID inherently confirms it's done — auto-set the
@@ -266,6 +295,7 @@ export default function QuotesPage() {
   // Send the accepted quote as a formal invoice with its own number,
   // issue date and payment terms.
   async function sendInvoice(q) {
+    if (!freshRef.current) { showStillUpdating(); return }
     setBusyId(q.id)
     const terms = INVOICE_TERMS.find(t => t.value === invoiceTerms) || INVOICE_TERMS[2]
     const now = new Date()
@@ -386,6 +416,7 @@ export default function QuotesPage() {
   }
 
   async function deleteInvoice(q) {
+    if (!freshRef.current) { showStillUpdating(); return }
     setBusyId(q.id)
     // Remove the quote/invoice/receipt cards from the conversation first, then
     // the quote itself. Both are the freelancer's own rows, so RLS permits it
@@ -565,6 +596,7 @@ export default function QuotesPage() {
 
   // Send a "payment due" reminder to the client (email + push + thread note)
   async function sendReminder(q) {
+    if (!freshRef.current) { showStillUpdating(); return }
     setBusyId(q.id)
     const dl = daysUntil(q.invoice_due_date)
     const phrase = dl < 0 ? `was due ${Math.abs(dl)} day${Math.abs(dl) === 1 ? '' : 's'} ago`
@@ -594,6 +626,7 @@ export default function QuotesPage() {
   // stamp and the payment date, for both parties' tax records. Drops a
   // downloadable receipt card into the thread + email + push.
   async function sendReceipt(q) {
+    if (!freshRef.current) { showStillUpdating(); return }
     setBusyId(q.id)
     const ref = q.invoice_number || q.quote_number
     const body = `Sent receipt for ${ref} - paid in full on ${fmtDate(q.paid_at)}. Total $${Number(q.total).toFixed(2)}.`
