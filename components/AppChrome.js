@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useLayoutEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getMyFreelancer } from '@/lib/myFreelancer'
 import { useAuth } from '@/lib/auth-context'
 import { isOrganisationUser } from '@/lib/organisations'
 import SiteNav from '@/components/SiteNav'
@@ -60,8 +60,9 @@ export default function AppChrome({ children }) {
     }
     /* eslint-enable react-hooks/set-state-in-effect */
     let cancelled = false
-    supabase.from('freelancers').select('id').eq('user_id', user.id).maybeSingle()
-      .then(({ data }) => {
+    // Shared with the sidebar and dashboard: one request between them.
+    getMyFreelancer(user.id)
+      .then(data => {
         if (cancelled) return
         const v = !!data
         setIsFreelancer(v)

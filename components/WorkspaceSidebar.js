@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { getMyFreelancer } from '@/lib/myFreelancer'
 import { useAuth } from '@/lib/auth-context'
 import { profileUrl } from '@/lib/handles'
 
@@ -58,11 +59,8 @@ export default function WorkspaceSidebar({ open, onClose }) {
     if (!user) { setProfile(null); setUnread(0); return }
     let cancelled = false
     async function load() {
-      const { data: fp } = await supabase
-        .from('freelancers')
-        .select('id, name, trade, avatar_url')
-        .eq('user_id', user.id)
-        .maybeSingle()
+      // Shared with the app chrome and dashboard: one request between them.
+      const fp = await getMyFreelancer(user.id)
       if (cancelled) return
       setProfile(fp || null)
       if (fp) {

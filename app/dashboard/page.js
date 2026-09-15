@@ -21,6 +21,8 @@ import { DURATION_OPTIONS } from '@/components/calendar/calUtils'
 import VendorDetailsCard from '@/components/VendorDetailsCard'
 import { profileUrl } from '@/lib/handles'
 import ProfileHandleCard from '@/components/ProfileHandleCard'
+import { getMyFreelancer, primeMyFreelancer } from '@/lib/myFreelancer'
+import { readDashboardCache, writeDashboardCache, clearDashboardCache } from '@/lib/dashboardCache'
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -72,11 +74,13 @@ function DashboardInner() {
   const [responseDraft, setResponseDraft] = useState('')
   const [responseSaving, setResponseSaving] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
+  const editFormOpenRef = useRef(false)
   const [highlightPhoto, setHighlightPhoto] = useState(false)
   const [confirmRemovePhoto, setConfirmRemovePhoto] = useState(false)
   const avatarFileInputRef = useRef(null)
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [quoteCount, setQuoteCount] = useState(0)
+  // null until loaded, so a stat shows blank rather than a misleading 0
+  const [unreadCount, setUnreadCount] = useState(null)
+  const [quoteCount, setQuoteCount] = useState(null)
   const [views30d, setViews30d] = useState(null)
   const [clientMessages, setClientMessages] = useState([])
   const [clientThreadReplies, setClientThreadReplies] = useState({})
@@ -224,6 +228,27 @@ function DashboardInner() {
 
   useEffect(() => {
     if (authLoading) return
+    let cancelled = false
+
+    function applyFreelancerProfile(p) {
+      setProfile(p)
+      // If the saved dashboard showed first and the edit form is already
+      // open, don't overwrite what's being typed with the fresh copy.
+      if (editFormOpenRef.current) return
+      setBio(p.bio || '')
+      setYearsExperience(p.years_experience ?? '')
+      setQualifications(p.qualifications || '')
+      setPaymentDetails(p.payment_details || '')
+      setDefaultTerms(p.default_terms || '')
+      setHourlyRate(p.hourly_rate || '')
+      setAvailable(p.available || false)
+      setSkillsInput((p.skills || []).join(', '))
+      setCategory(p.category || '')
+      setExtraCategories(Array.isArray(p.extra_categories) ? p.extra_categories : [])
+      setLocation(p.location || '')
+      setAvatarUrl(p.avatar_url || '')
+    }
+
     async function init() {
       const user = authUser
       if (!user) {
@@ -236,116 +261,145 @@ function DashboardInner() {
       const userRole = user.user_metadata?.role || 'freelancer'
       setRole(userRole)
 
+      // 1. Instant: the dashboard as this device last saw it, while fresh
+      //    data loads underneath (see lib/dashboardCache.js).
+      const cached = readDashboardCache(user.id)
+      if (cached?.role === userRole) {
+        if (userRole === 'client') {
+          setClientMessages(cached.clientMessages || [])
+          setClientReviewsLeft(cached.clientReviewsLeft || [])
+          setTopFreelancers(cached.topFreelancers || [])
+          if (cached.clientProfile) {
+            setClientProfile(cached.clientProfile)
+            setCpName(cached.clientProfile.display_name || '')
+          }
+        } else if (cached.profile) {
+          applyFreelancerProfile(cached.profile)
+          setReviews(cached.reviews || [])
+          setUnreadCount(cached.unreadCount ?? null)
+          setQuoteCount(cached.quoteCount ?? null)
+          setViews30d(cached.views30d ?? null)
+          setServices(cached.services || [])
+          setPortfolioItems(cached.portfolioItems || [])
+          setVentures(cached.ventures || [])
+          setThreadClients(cached.threadClients || [])
+        }
+        setLoading(false)
+      }
+
+      // 2. Fresh data, in as few round trips as possible.
       if (userRole === 'client') {
-        const [{ data: msgs }, { data: rLeft }, { data: topF }] = await Promise.all([
+        const [{ data: msgs }, { data: rLeft }, { data: topF }, { data: cp }] = await Promise.all([
           supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, phone, phone_verified, payment_details)').eq('sender_email', user.email).order('created_at', { ascending: false }),
           supabase.from('reviews').select('*').eq('author_user_id', user.id).order('date', { ascending: false }),
           supabase.from('freelancers').select('id, name, trade, avatar_url, rating, min_price').eq('hidden', false).is('deactivated_at', null).order('rating', { ascending: false }).limit(3),
+          supabase.from('client_profiles').select('*').eq('user_id', user.id).maybeSingle(),
         ])
+        if (cancelled) return
         setClientMessages(msgs || [])
         setClientReviewsLeft(rLeft || [])
         setTopFreelancers(topF || [])
 
-        // Client profile row — created lazily on first dashboard visit
-        const { data: cp } = await supabase
-          .from('client_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle()
         if (cp) {
           setClientProfile(cp)
           setCpName(cp.display_name || '')
         } else {
+          // Client profile row: created lazily on first dashboard visit
           const defaultName = user.user_metadata?.full_name || user.email.split('@')[0]
           const { data: created } = await supabase
             .from('client_profiles')
             .insert({ user_id: user.id, display_name: defaultName })
             .select()
             .maybeSingle()
+          if (cancelled) return
           if (created) {
             setClientProfile(created)
             setCpName(created.display_name || '')
           }
         }
-      } else {
-        const { data: p } = await supabase
-          .from('freelancers')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
-
-        if (p) {
-          setProfile(p)
-          setBio(p.bio || '')
-          setYearsExperience(p.years_experience ?? '')
-          setQualifications(p.qualifications || '')
-          setPaymentDetails(p.payment_details || '')
-          setDefaultTerms(p.default_terms || '')
-          setHourlyRate(p.hourly_rate || '')
-          setAvailable(p.available || false)
-          setSkillsInput((p.skills || []).join(', '))
-          setCategory(p.category || '')
-          setExtraCategories(Array.isArray(p.extra_categories) ? p.extra_categories : [])
-          setLocation(p.location || '')
-          setAvatarUrl(p.avatar_url || '')
-
-          const { data: r } = await supabase
-            .from('reviews')
-            .select('*')
-            .eq('freelancer_id', p.id)
-            .order('date', { ascending: false })
-          setReviews(r || [])
-
-          const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString()
-          const [{ count }, { count: qCount }, { count: vCount }, { data: svc }, { data: portfolio }] = await Promise.all([
-            supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false),
-            supabase.from('quotes').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id),
-            supabase.from('profile_views').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).gte('viewed_at', monthAgo),
-            supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
-            supabase.from('portfolio_items').select('*').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
-          ])
-          setUnreadCount(count || 0)
-          setQuoteCount(qCount || 0)
-          setViews30d(vCount ?? 0)
-          setServices(svc || [])
-          setPortfolioItems(portfolio || [])
-          // Canonical venture list = whatever's saved on the profile, plus any
-          // names already used on services (from before this list existed), so
-          // nothing a pro typed earlier gets orphaned.
-          setVentures([...new Set([
-            ...(Array.isArray(p.ventures) ? p.ventures : []),
-            ...(svc || []).map(s => s.business_group).filter(Boolean),
-          ])])
-
-          // Reviewable clients = those who share a MUTUALLY-COMPLETED job
-          // with this freelancer (both confirmation timestamps set). The
-          // quote carries client_email; messages map that email to the
-          // client's account (sender_user_id) + display name.
-          const [{ data: senders }, { data: doneJobs }] = await Promise.all([
-            supabase.from('messages')
-              .select('sender_user_id, sender_name, sender_email')
-              .eq('freelancer_id', p.id)
-              .not('sender_user_id', 'is', null),
-            supabase.from('quotes')
-              .select('client_email')
-              .eq('freelancer_id', p.id)
-              .not('completed_at', 'is', null)
-              .not('client_completed_at', 'is', null),
-          ])
-          const doneEmails = new Set((doneJobs || []).map(j => (j.client_email || '').toLowerCase()))
-          const seen = new Map()
-          for (const s of senders || []) {
-            if (!doneEmails.has((s.sender_email || '').toLowerCase())) continue
-            if (!seen.has(s.sender_user_id)) seen.set(s.sender_user_id, s.sender_name)
-          }
-          setThreadClients([...seen.entries()].map(([id, name]) => ({ id, name })))
-        }
+        setLoading(false)
+        return
       }
 
+      // Freelancer: the profile is all the page needs to render. It's shared
+      // with the app chrome and sidebar, which ask for it at the same moment.
+      const p = await getMyFreelancer(user.id)
+      if (cancelled) return
+      if (!p) {
+        clearDashboardCache(user.id)
+        setProfile(null)
+        setLoading(false)
+        return
+      }
+      applyFreelancerProfile(p)
       setLoading(false)
+
+      // Everything else in one parallel batch; it fills in as it lands.
+      const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString()
+      const [{ data: r }, { count }, { count: qCount }, { count: vCount }, { data: svc }, { data: portfolio }, { data: senders }, { data: doneJobs }] = await Promise.all([
+        supabase.from('reviews').select('*').eq('freelancer_id', p.id).order('date', { ascending: false }),
+        supabase.from('messages').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).eq('read', false),
+        supabase.from('quotes').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id),
+        supabase.from('profile_views').select('*', { count: 'exact', head: true }).eq('freelancer_id', p.id).gte('viewed_at', monthAgo),
+        supabase.from('services').select('*, service_images(id, url)').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
+        supabase.from('portfolio_items').select('*').eq('freelancer_id', p.id).order('created_at', { ascending: true }),
+        // Reviewable clients = those who share a MUTUALLY-COMPLETED job with
+        // this freelancer (both confirmation timestamps set). The quote
+        // carries client_email; messages map that email to the client's
+        // account (sender_user_id) + display name.
+        supabase.from('messages')
+          .select('sender_user_id, sender_name, sender_email')
+          .eq('freelancer_id', p.id)
+          .not('sender_user_id', 'is', null),
+        supabase.from('quotes')
+          .select('client_email')
+          .eq('freelancer_id', p.id)
+          .not('completed_at', 'is', null)
+          .not('client_completed_at', 'is', null),
+      ])
+      if (cancelled) return
+      setReviews(r || [])
+      setUnreadCount(count || 0)
+      setQuoteCount(qCount || 0)
+      setViews30d(vCount ?? 0)
+      setServices(svc || [])
+      setPortfolioItems(portfolio || [])
+      // Canonical venture list = whatever's saved on the profile, plus any
+      // names already used on services (from before this list existed), so
+      // nothing a pro typed earlier gets orphaned.
+      setVentures([...new Set([
+        ...(Array.isArray(p.ventures) ? p.ventures : []),
+        ...(svc || []).map(sv => sv.business_group).filter(Boolean),
+      ])])
+      const doneEmails = new Set((doneJobs || []).map(j => (j.client_email || '').toLowerCase()))
+      const seen = new Map()
+      for (const snd of senders || []) {
+        if (!doneEmails.has((snd.sender_email || '').toLowerCase())) continue
+        if (!seen.has(snd.sender_user_id)) seen.set(snd.sender_user_id, snd.sender_name)
+      }
+      setThreadClients([...seen.entries()].map(([id, name]) => ({ id, name })))
     }
     init()
+    return () => { cancelled = true }
   }, [authUser, authLoading, router])
+
+  useEffect(() => { editFormOpenRef.current = showEditForm }, [showEditForm])
+
+  // Keep this device's saved dashboard current, including after edits made
+  // on this page, so the next visit opens straight onto real content.
+  useEffect(() => {
+    if (loading || !user || !role) return
+    if (role === 'client') {
+      writeDashboardCache(user.id, { role, clientMessages, clientReviewsLeft, topFreelancers, clientProfile })
+    } else if (profile) {
+      writeDashboardCache(user.id, { role, profile, reviews, unreadCount, quoteCount, views30d, services, portfolioItems, ventures, threadClients })
+    }
+  }, [loading, user, role, profile, reviews, unreadCount, quoteCount, views30d, services, portfolioItems, ventures, threadClients, clientMessages, clientReviewsLeft, topFreelancers, clientProfile])
+
+  // Edits here update the shared profile the sidebar and chrome read.
+  useEffect(() => {
+    if (user && profile) primeMyFreelancer(user.id, profile)
+  }, [user, profile])
 
   async function expandClientMessage(msg) {
     if (expandedClientMsg === msg.id) {
@@ -1547,8 +1601,8 @@ function DashboardInner() {
                 { label: 'Profile views (30d)', value: views30d ?? '', href: profileUrl(profile) },
                 { label: 'Rating', value: profile.review_count > 0 ? `★ ${profile.rating}` : '', href: '#reviews-section' },
                 { label: 'Reviews', value: profile.review_count || 0, href: '#reviews-section' },
-                { label: 'Unread inquiries', value: unreadCount, href: '/inbox', highlight: unreadCount > 0 },
-                { label: 'Quotes sent', value: quoteCount, href: '/quotes' },
+                { label: 'Unread inquiries', value: unreadCount ?? '', href: '/inbox', highlight: unreadCount > 0 },
+                { label: 'Quotes sent', value: quoteCount ?? '', href: '/quotes' },
               ].map(stat => {
                 // Hash anchors scroll in place; routes get client-side <Link>
                 // so the PWA never full-reloads (which resets the theme).
