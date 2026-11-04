@@ -1504,3 +1504,26 @@ ALTER TABLE public.quotes
 ALTER TABLE public.freelancers
   ADD COLUMN IF NOT EXISTS payment_details text,
   ADD COLUMN IF NOT EXISTS default_terms   text;
+
+-- ============================================================
+-- SECTION 34 — REVIEWS: CLOSE THE DIRECT WRITE PATH (2026-11-03)
+-- Both review routes (/api/reviews for client→professional and
+-- /api/client-review for professional→client) check that a real,
+-- mutually-completed job exists before a review is written. That
+-- check was skippable: the INSERT policy below let ANY logged-in
+-- user write a review row straight to the table with the public
+-- anon key, which ships in the browser bundle.
+--
+-- Removing the policy leaves no INSERT policy on reviews, so with
+-- RLS on, only the service role (i.e. the two API routes) can
+-- write one. Reading and deleting your own are unchanged.
+--
+-- Deploy the matching code FIRST (the dashboard now posts client
+-- reviews to /api/client-review instead of inserting directly),
+-- then run this.
+-- ============================================================
+
+DROP POLICY IF EXISTS "Logged-in users can write reviews" ON reviews;
+
+-- Verify: this should return no INSERT row for reviews.
+--   SELECT policyname, cmd FROM pg_policies WHERE tablename = 'reviews';

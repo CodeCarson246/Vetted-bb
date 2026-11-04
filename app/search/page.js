@@ -9,7 +9,7 @@ import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import SearchEmptyState from '@/components/SearchEmptyState'
 import Tooltip from '@/components/Tooltip'
 import { formatParish } from '@/lib/formatParish'
-import { parsePrice } from '@/lib/price'
+import { parsePrice, lowestPaidPrice } from '@/lib/price'
 import { effectiveCategories } from '@/lib/categories'
 import TrustMark from '@/components/TrustMark'
 import SectionHeading from '@/components/SectionHeading'
@@ -153,7 +153,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
                   <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>({f.review_count})</span>
                 </div>
               ) : (
-                <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>New on Vetted.bb</span>
+                <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>No reviews yet</span>
               )}
               {f.client_rating > 0 && (
                 <span style={{ fontSize: '0.75rem', color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -325,10 +325,9 @@ function SearchPage() {
     if (!error) setSearchSaved(true)
   }
 
-  const getMinPrice = (f) => {
-    const prices = (f.services || []).map(s => parsePrice(s.price)).filter(p => p !== null)
-    return prices.length > 0 ? Math.min(...prices) : null
-  }
+  // Paid services only, so "Under $100" means a real job under $100 rather
+  // than matching anyone who lists a free consultation.
+  const getMinPrice = (f) => lowestPaidPrice(f.services)
 
   const getMaxPrice = (f) => {
     const prices = (f.services || []).map(s => parsePrice(s.price)).filter(p => p !== null)

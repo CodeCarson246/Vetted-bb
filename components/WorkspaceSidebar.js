@@ -79,6 +79,11 @@ export default function WorkspaceSidebar({ open, onClose }) {
 
   const isActive = href => pathname === href || pathname.startsWith(href + '/')
   const initials = (profile?.name || user?.email || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+  // The profile lands a moment after the sidebar paints. Fall back to the name
+  // on the account rather than a generic "Your profile / Freelancer", which
+  // read as someone else's card for a beat on a slow connection.
+  const footerName = profile?.name || user?.user_metadata?.full_name || user?.email || ''
+  const footerTrade = profile?.trade || profile?.company_name || ''
 
   const linkBase = 'flex items-center gap-3 px-3 py-2.5 md:py-1.5 rounded-xl text-sm font-medium transition-colors'
   // Tighter only from md up, so the whole panel clears a laptop viewport
@@ -143,24 +148,30 @@ export default function WorkspaceSidebar({ open, onClose }) {
           <Link href="/badges" onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
             <NavIcon name="badges" /> <span className="flex-1">What badges mean</span>
           </Link>
-
-          {/* Legal. The installed app has no site footer, so these are the only
-              way to reach the policies from the home-screen app. */}
-          <div className="mt-auto pt-2 px-3 pb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Link href="/terms" onClick={onClose} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textDecoration: 'none' }}>Terms of Service</Link>
-            <span aria-hidden="true" style={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.72rem' }}>·</span>
-            <Link href="/privacy" onClick={onClose} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textDecoration: 'none' }}>Privacy Policy</Link>
-          </div>
         </nav>
+
+        {/* Legal. The installed app has no site footer, so these are the only
+            way to reach the policies from the home-screen app. They sit
+            OUTSIDE the scrolling nav: inside it, a short window let the
+            profile card below ride up over them. */}
+        <div className="px-4 py-2 flex flex-wrap items-center gap-x-2 gap-y-1 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <Link href="/terms" onClick={onClose} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textDecoration: 'none' }}>Terms of Service</Link>
+          <span aria-hidden="true" style={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.72rem' }}>·</span>
+          <Link href="/privacy" onClick={onClose} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textDecoration: 'none' }}>Privacy Policy</Link>
+        </div>
 
         {/* Profile footer */}
         <Link href="/dashboard" onClick={onClose} className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', textDecoration: 'none' }}>
           <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F9C000', color: '#00267F', fontWeight: 700, fontSize: '0.78rem' }}>
             {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : initials}
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold truncate" style={{ color: '#fff' }}>{profile?.name || 'Your profile'}</p>
-            <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>{profile?.trade || 'Freelancer'}</p>
+          <div className="min-w-0 flex-1">
+            {footerName
+              ? <p className="text-sm font-semibold truncate" style={{ color: '#fff' }}>{footerName}</p>
+              : <span className="block rounded" style={{ height: 13, width: '70%', backgroundColor: 'rgba(255,255,255,0.18)' }} />}
+            {footerTrade
+              ? <p className="text-xs truncate capitalize" style={{ color: 'rgba(255,255,255,0.55)' }}>{footerTrade}</p>
+              : <span className="block rounded mt-1.5" style={{ height: 10, width: '45%', backgroundColor: 'rgba(255,255,255,0.1)' }} />}
           </div>
         </Link>
       </aside>

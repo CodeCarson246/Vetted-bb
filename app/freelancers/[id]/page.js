@@ -49,6 +49,10 @@ export default function FreelancerProfile() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
   const [reviewError, setReviewError] = useState(null)
   const [reviewSuccess, setReviewSuccess] = useState(false)
+  // null while we check, then true/false. The form only appears once this
+  // viewer has a finished, paid job with this professional — the same rule
+  // /api/reviews enforces, so nobody fills in a form that cannot be sent.
+  const [canReview, setCanReview] = useState(null)
 
   // Report review state
   const [reportingReview, setReportingReview] = useState(null)
@@ -133,6 +137,31 @@ export default function FreelancerProfile() {
       setSenderName(u.user_metadata?.full_name || u.email.split('@')[0])
     }
   }, [authUser, authLoading])
+
+  // Can this viewer review this professional? A client can read their own
+  // quotes under RLS, so the same check the API makes can be made here, and
+  // the form stays hidden rather than failing on submit.
+  useEffect(() => {
+    if (authLoading) return
+    if (!authUser || !freelancer?.id || authUser.id === freelancer.user_id) {
+      setCanReview(false)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('quotes')
+      .select('id')
+      .eq('freelancer_id', freelancer.id)
+      .eq('status', 'paid')
+      .not('paid_at', 'is', null)
+      .not('completed_at', 'is', null)
+      .not('client_completed_at', 'is', null)
+      .limit(1)
+      .then(({ data }) => {
+        if (!cancelled) setCanReview((data || []).length > 0)
+      })
+    return () => { cancelled = true }
+  }, [authUser, authLoading, freelancer?.id, freelancer?.user_id])
 
   useEffect(() => {
     async function fetchData() {
@@ -772,7 +801,7 @@ export default function FreelancerProfile() {
                           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>({freelancer.review_count})</span>
                         </div>
                       ) : (
-                        <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#F9C000', border: '1px solid rgba(249,192,0,0.4)' }}>New on Vetted.bb</span>
+                        <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(249,192,0,0.15)', color: '#F9C000', border: '1px solid rgba(249,192,0,0.4)' }}>No reviews yet</span>
                       )}
                     </div>
                     {freelancer.client_rating > 0 && (
@@ -797,9 +826,11 @@ export default function FreelancerProfile() {
                 {/* Right: services-from pill + CTAs — uniform width */}
                 <div className="flex flex-col gap-2 flex-shrink-0 w-full sm:w-52">
                   {services.length > 0 && (() => {
+                    // Cheapest PAID service — a free consultation is worth
+                    // listing but says nothing about what the work costs.
                     const minSvc = services.reduce((acc, s) => {
                       const n = parsePrice(s.price)
-                      if (n === null) return acc
+                      if (n === null || n <= 0) return acc
                       if (!acc) return s
                       return n < parsePrice(acc.price) ? s : acc
                     }, null)
@@ -1409,8 +1440,8 @@ export default function FreelancerProfile() {
           </div>
         </div>
 
-        {/* Leave a review */}
-        {user && freelancer && user.id !== freelancer.user_id && (
+        {/* Leave a review. Only for someone with a finished, paid job here. */}
+        {user && freelancer && user.id !== freelancer.user_id && canReview && (
           <div id="leave-review" className="bg-white rounded-2xl px-7 py-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
             <h2 className="text-base font-bold text-gray-900 mb-1">Leave a review</h2>
             <p className="text-sm text-gray-500 mb-6">Share your experience working with <span className="capitalize">{freelancer.name.split(' ')[0]}</span>.</p>

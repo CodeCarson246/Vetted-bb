@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { CATEGORIES as categories, effectiveCategories } from '@/lib/categories'
+import { popularTrades } from '@/lib/popularTrades'
 import TrustBar from '@/components/TrustBar'
 import VerifiedBadge from '@/components/VerifiedBadge'
 import TrustMark from '@/components/TrustMark'
@@ -60,6 +61,7 @@ export default function Home() {
   const [featuredReviews, setFeaturedReviews] = useState([])
   const [featuredFreelancers, setFeaturedFreelancers] = useState([])
   const [categoryCounts, setCategoryCounts] = useState({})
+  const [tradeChips, setTradeChips] = useState([])
   const [platformStats, setPlatformStats] = useState({ professionals: null, categories: null, parishes: null })
 
   useEffect(() => {
@@ -77,7 +79,7 @@ export default function Home() {
   // Per-category counts. A profile counts under its primary category and any
   // extra ones, so multi-venture pros are tallied everywhere they appear.
   useEffect(() => {
-    supabase.from('freelancers').select('category, extra_categories').eq('hidden', false).is('deactivated_at', null).then(({ data }) => {
+    supabase.from('freelancers').select('category, extra_categories, trade').eq('hidden', false).is('deactivated_at', null).then(({ data }) => {
       if (!data) return
       const counts = {}
       for (const cat of categories) counts[cat.name] = 0
@@ -88,6 +90,9 @@ export default function Home() {
         }
       }
       setCategoryCounts(counts)
+      // The one-tap searches under the box come from the same rows, so a chip
+      // can never lead to an empty results page.
+      setTradeChips(popularTrades(data))
     })
   }, [])
 
@@ -165,27 +170,31 @@ export default function Home() {
               Search
             </button>
           </div>
-          {/* Popular searches — one-tap entry points */}
-          <div className="flex flex-wrap justify-center gap-2 mt-6 animate-rise rise-delay-2">
-            <span className="text-xs self-center mr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Popular:</span>
-            {['Plumber', 'Electrician', 'Photographer', 'Caterer', 'Mechanic', 'Hairdresser'].map(term => (
-              <Link
-                key={term}
-                href={`/search?q=${encodeURIComponent(term.toLowerCase())}`}
-                className="text-xs font-medium px-3.5 py-1.5 rounded-full transition-all"
-                style={{
-                  color: 'rgba(255,255,255,0.85)',
-                  border: '1px solid rgba(255,255,255,0.22)',
-                  backgroundColor: 'rgba(255,255,255,0.06)',
-                  textDecoration: 'none',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(249,192,0,0.18)'; e.currentTarget.style.borderColor = 'rgba(249,192,0,0.5)'; e.currentTarget.style.color = '#F9C000' }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)' }}
-              >
-                {term}
-              </Link>
-            ))}
-          </div>
+          {/* One-tap searches, built from the trades actually listed (see
+              lib/popularTrades). Nothing renders until they load, so a chip
+              never leads to an empty results page. */}
+          {tradeChips.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 mt-6 animate-rise rise-delay-2">
+              <span className="text-xs self-center mr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Browse:</span>
+              {tradeChips.map(chip => (
+                <Link
+                  key={chip.query}
+                  href={`/search?q=${encodeURIComponent(chip.query)}`}
+                  className="text-xs font-medium px-3.5 py-1.5 rounded-full transition-all"
+                  style={{
+                    color: 'rgba(255,255,255,0.85)',
+                    border: '1px solid rgba(255,255,255,0.22)',
+                    backgroundColor: 'rgba(255,255,255,0.06)',
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(249,192,0,0.18)'; e.currentTarget.style.borderColor = 'rgba(249,192,0,0.5)'; e.currentTarget.style.color = '#F9C000' }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)' }}
+                >
+                  {chip.label}
+                </Link>
+              ))}
+            </div>
+          )}
 
           <p className="text-xs mt-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
             Free to use · No account needed to browse · 100% Barbados-based professionals
@@ -356,7 +365,7 @@ export default function Home() {
                       <span style={{ fontSize: '0.82rem', color: '#6B7280' }}>({f.review_count} {f.review_count === 1 ? 'review' : 'reviews'})</span>
                     </>
                   ) : (
-                    <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>New on Vetted.bb</span>
+                    <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>No reviews yet</span>
                   )}
                 </div>
 

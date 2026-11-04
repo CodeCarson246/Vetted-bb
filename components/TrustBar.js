@@ -26,7 +26,11 @@ export default function TrustBar({ variant = 'light' }) {
               <path d="M9 12l2 2 4-4" stroke={iconStroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
-          <p className={`${text} font-medium leading-snug text-sm sm:text-base`}>Every profile manually verified before going live</p>
+          {/* Says only what the system actually enforces: signup requires a
+              confirmed email address. The old line claimed every profile was
+              manually verified, and nothing is checked by hand. Raise this
+              claim only when there is a real check behind it. */}
+          <p className={`${text} font-medium leading-snug text-sm sm:text-base`}>Every professional confirms their email before going live</p>
         </div>
 
         <div className="flex flex-col items-center text-center gap-3">

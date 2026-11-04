@@ -23,6 +23,7 @@ import { profileUrl } from '@/lib/handles'
 import ProfileHandleCard from '@/components/ProfileHandleCard'
 import { getMyFreelancer, primeMyFreelancer } from '@/lib/myFreelancer'
 import { readDashboardCache, writeDashboardCache, clearDashboardCache } from '@/lib/dashboardCache'
+import { lowestPaidPrice } from '@/lib/price'
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -670,33 +671,25 @@ function DashboardInner() {
       return
     }
 
-    // One review per client per freelancer
-    const { data: existing } = await supabase
-      .from('reviews')
-      .select('id')
-      .eq('freelancer_id', profile.id)
-      .eq('client_user_id', client.id)
-      .eq('type', 'freelancer')
-      .maybeSingle()
-    if (existing) {
-      setClientReviewError('You have already reviewed this client.')
-      setClientReviewSubmitting(false)
-      return
-    }
+    // Written through the API, not straight to the table: the route holds the
+    // "both sides marked this job complete" check and the one-per-client rule.
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/client-review', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token || ''}`,
+      },
+      body: JSON.stringify({
+        client_user_id: client.id,
+        rating: clientRating,
+        comment: clientComment,
+      }),
+    }).catch(() => null)
+    const payload = res ? await res.json().catch(() => ({})) : {}
 
-    const { error } = await supabase.from('reviews').insert({
-      freelancer_id: profile.id,
-      author: client.name,
-      author_user_id: user.id,
-      client_user_id: client.id,
-      rating: clientRating,
-      comment: clientComment,
-      type: 'freelancer',
-      date: new Date().toISOString().split('T')[0],
-    })
-
-    if (error) {
-      setClientReviewError(error.message)
+    if (!res || !res.ok) {
+      setClientReviewError(payload.error || 'Could not save your review. Please try again.')
     } else {
       const { data: r } = await supabase
         .from('reviews')
@@ -883,11 +876,9 @@ function DashboardInner() {
       .order('created_at', { ascending: true })
     setServices(updatedSvc || [])
 
-    // Recalculate min_price on the freelancer row — price is stored as text so parseInt is required
-    const minPrice = updatedSvc?.length > 0
-      ? Math.min(...updatedSvc.map(s => parseInt(s.price, 10)))
-      : null
-    await supabase.from('freelancers').update({ min_price: minPrice }).eq('id', profile.id)
+    // Recalculate min_price on the freelancer row. Free services are skipped
+    // so a free consultation can't become a headline price of "From Bds$0".
+    await supabase.from('freelancers').update({ min_price: lowestPaidPrice(updatedSvc) }).eq('id', profile.id)
 
     closeServiceForm()
     setToast({ message: editingService ? 'Service updated' : 'Service added', type: 'success' })
@@ -898,11 +889,8 @@ function DashboardInner() {
     await supabase.from('services').delete().eq('id', id)
     const remaining = services.filter(s => s.id !== id)
     setServices(remaining)
-    // Recalculate min_price — price is stored as text so parseInt is required
-    const minPrice = remaining.length > 0
-      ? Math.min(...remaining.map(s => parseInt(s.price, 10)))
-      : null
-    await supabase.from('freelancers').update({ min_price: minPrice }).eq('id', profile.id)
+    // Recalculate min_price (paid services only — see handleServiceSave)
+    await supabase.from('freelancers').update({ min_price: lowestPaidPrice(remaining) }).eq('id', profile.id)
   }
 
   function openPortfolioForm(item = null) {

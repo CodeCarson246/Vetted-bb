@@ -154,7 +154,7 @@ export default function SavedProfessionals() {
                           <StarRating rating={f.rating || 0} />
                           <span className="text-xs text-gray-400">({f.review_count || 0})</span>
                         </>
-                      ) : <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>New on Vetted.bb</span>}
+                      ) : <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>No reviews yet</span>}
                     </div>
                   </Link>
 

@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import { CATEGORIES, categoryBySlug } from '@/lib/categories'
 import { formatParish } from '@/lib/formatParish'
-import { parsePrice } from '@/lib/price'
+import { lowestPaidPrice } from '@/lib/price'
 import { SITE_URL } from '@/lib/siteUrl'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import CategoryIcon from '@/components/CategoryIcon'
@@ -124,8 +124,7 @@ export default async function CategoryPage({ params }) {
         ) : (
           <div className="flex flex-col gap-3">
             {pros.map(f => {
-              const prices = (f.services || []).map(s => parsePrice(s.price)).filter(p => p !== null)
-              const minPrice = prices.length > 0 ? Math.min(...prices) : null
+              const minPrice = lowestPaidPrice(f.services)
               const initials = (f.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)
               return (
                 <Link
@@ -157,7 +156,7 @@ export default async function CategoryPage({ params }) {
                           <StarRow rating={f.rating} />
                           <span className="text-xs text-gray-400">({f.review_count || 0})</span>
                         </>
-                      ) : <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>New on Vetted.bb</span>}
+                      ) : <span className="chip" style={{ fontSize: '0.72rem', fontWeight: 600 }}>No reviews yet</span>}
                       {minPrice !== null && (
                         <span className="text-xs text-gray-400">· from Bds${minPrice.toFixed(0)}</span>
                       )}
