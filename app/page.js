@@ -22,8 +22,8 @@ const trustSignals = [
   },
   {
     icon: <div style={iconStyle}>🪪</div>,
-    title: "Verified profiles",
-    desc: "Every freelancer on Vetted.bb is a real person based in Barbados.",
+    title: "Phone-verified pros",
+    desc: "Professionals who confirm their phone number carry a tick you can see on their profile.",
   },
   {
     icon: <img src="https://flagcdn.com/bb.svg" width="40" height="28" style={{ borderRadius: '4px' }} alt="Barbados flag" />,
@@ -138,7 +138,7 @@ export default function Home() {
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold text-white mb-6 leading-tight tracking-tight">
             Stop guessing.<br />
-            Find verified professionals<span style={{ color: '#F9C000' }}> in Barbados</span>
+            Find the right professional<span style={{ color: '#F9C000' }}> in Barbados</span>
           </h1>
           {/* Every claim here is one the system actually enforces: reviews are
               gated on a completed, paid job (api/reviews), and every document
@@ -588,7 +588,7 @@ export default function Home() {
                 Get found by clients who are already looking for you
               </h2>
               <p className="text-sm sm:text-base leading-relaxed mb-8" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                Join Barbados&apos; own professional marketplace with real reviews and verified profiles. Set up your free profile in under 10 minutes.
+                Join Barbados&apos; own professional marketplace, where reviews come from real paid jobs. Set up your free profile in under 10 minutes.
               </p>
 
               <ul className="flex flex-col gap-3 mb-8">

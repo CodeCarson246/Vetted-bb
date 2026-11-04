@@ -1972,7 +1972,7 @@ function DashboardInner() {
                     <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Add specific things you can do or tools you use. These help clients find you when they search. e.g. if you are a Plumber: Pipe Repair, Leak Detection, Bathroom Fitting, Drain Cleaning</p>
                     <input
                       type="text"
-                      value={skillsInput}
+                      value={skillsInput} spellCheck="true"
                       onChange={e => setSkillsInput(e.target.value)}
                       placeholder="e.g. Plumbing, Pipe fitting, Drain repair"
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
@@ -2078,7 +2078,7 @@ function DashboardInner() {
                       <input
                         type="text"
                         required
-                        value={serviceName}
+                        value={serviceName} spellCheck="true"
                         onChange={e => setServiceName(e.target.value)}
                         placeholder="e.g. Full house rewire"
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
@@ -2779,7 +2779,7 @@ function DashboardInner() {
                           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">👤</span>
                           <input
                             type="text"
-                            value={createName}
+                            value={createName} spellCheck="true"
                             onChange={e => { setCreateName(e.target.value); setCreateErrors(prev => ({ ...prev, name: '' })) }}
                             placeholder="Jane Smith"
                             className={`w-full pl-10 pr-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.name ? 'border-red-400 focus:border-red-400' : 'border-gray-200'}`}
@@ -2798,7 +2798,7 @@ function DashboardInner() {
                           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">🏢</span>
                           <input
                             type="text"
-                            value={createCompanyName}
+                            value={createCompanyName} spellCheck="true"
                             onChange={e => setCreateCompanyName(e.target.value)}
                             placeholder="e.g. Santana's Plumbing"
                             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
@@ -2821,7 +2821,7 @@ function DashboardInner() {
                           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">🔧</span>
                           <input
                             type="text"
-                            value={createTrade}
+                            value={createTrade} spellCheck="true"
                             onChange={e => { setCreateTrade(e.target.value); setCreateErrors(prev => ({ ...prev, trade: '' })) }}
                             placeholder="e.g. Plumber, Graphic Designer"
                             className={`w-full pl-10 pr-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.trade ? 'border-red-400' : 'border-gray-200'}`}
@@ -2895,7 +2895,7 @@ function DashboardInner() {
                             <div className="flex gap-2">
                               <input
                                 type="text"
-                                value={createVentureInput}
+                                value={createVentureInput} spellCheck="true"
                                 onChange={e => setCreateVentureInput(e.target.value)}
                                 onKeyDown={e => {
                                   if (e.key === 'Enter') {
@@ -2980,7 +2980,7 @@ function DashboardInner() {
                         <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Add specific things you can do or tools you use. These help clients find you when they search. e.g. if you are a Plumber: Pipe Repair, Leak Detection, Bathroom Fitting, Drain Cleaning</p>
                         <input
                           type="text"
-                          value={createSkills}
+                          value={createSkills} spellCheck="true"
                           onChange={e => setCreateSkills(e.target.value)}
                           placeholder="e.g. Plumbing, Pipe fitting, Drain repair"
                           className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
@@ -3106,7 +3106,7 @@ function DashboardInner() {
                           <div className="flex flex-col gap-3 pt-1">
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">Service name</label>
-                              <input type="text" value={createSvcName} onChange={e => setCreateSvcName(e.target.value)} placeholder="e.g. Full house rewire" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
+                              <input type="text" value={createSvcName} spellCheck="true" onChange={e => setCreateSvcName(e.target.value)} placeholder="e.g. Full house rewire" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
                             </div>
                             {/* Only shown when they said they run several
                                 businesses — a dropdown, so names can't drift. */}

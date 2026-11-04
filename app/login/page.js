@@ -7,7 +7,7 @@ import { SITE_URL } from '@/lib/siteUrl'
 import GoogleAuthButton from '@/components/GoogleAuthButton'
 
 const trustPoints = [
-  'Verified freelancers you can trust',
+  'Quotes and invoices you can verify',
   'Two-way reviews for accountability',
   'Built for Barbados',
 ]

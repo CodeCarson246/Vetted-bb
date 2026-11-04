@@ -8,7 +8,7 @@ import GoogleAuthButton from '@/components/GoogleAuthButton'
 import { ORG_KINDS, ensureOrganisation, readPendingInvite } from '@/lib/organisations'
 
 const trustPoints = [
-  'Verified freelancers you can trust',
+  'Quotes and invoices you can verify',
   'Two-way reviews for accountability',
   'Built for Barbados',
 ]
