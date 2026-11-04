@@ -293,13 +293,15 @@ function DashboardInner() {
         const [{ data: msgs }, { data: rLeft }, { data: topF }, { data: cp }] = await Promise.all([
           supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, phone, phone_verified, payment_details)').eq('sender_email', user.email).order('created_at', { ascending: false }),
           supabase.from('reviews').select('*').eq('author_user_id', user.id).order('date', { ascending: false }),
-          supabase.from('freelancers').select('id, name, trade, avatar_url, rating, min_price').eq('hidden', false).is('deactivated_at', null).order('rating', { ascending: false }).limit(3),
+          // services(price) rather than the stored min_price: that column is
+          // only recalculated when a service is saved, so it can be stale.
+          supabase.from('freelancers').select('id, name, trade, avatar_url, rating, services(price)').eq('hidden', false).is('deactivated_at', null).order('rating', { ascending: false }).limit(3),
           supabase.from('client_profiles').select('*').eq('user_id', user.id).maybeSingle(),
         ])
         if (cancelled) return
         setClientMessages(msgs || [])
         setClientReviewsLeft(rLeft || [])
-        setTopFreelancers(topF || [])
+        setTopFreelancers((topF || []).map(({ services, ...f }) => ({ ...f, min_price: lowestPaidPrice(services) })))
 
         if (cp) {
           setClientProfile(cp)
@@ -3191,6 +3193,61 @@ function DashboardInner() {
                             </div>
                           </div>
                         )}
+                      </div>
+
+                      {/* Read it back. People catch their own typos when they
+                          see their words laid out the way a client will, and a
+                          misspelled skill costs them every search for it. A
+                          nudge, never a gate: nothing here blocks the submit. */}
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 flex flex-col gap-3">
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-900">How clients will see you</h4>
+                          <p className="text-xs text-gray-500 mt-0.5">Read it back once. A spelling mistake here costs you searches.</p>
+                        </div>
+
+                        <div className="bg-white rounded-lg border border-gray-200 px-4 py-3.5 flex flex-col gap-2.5">
+                          <div>
+                            <p className="font-semibold text-gray-900 leading-tight">{createName.trim() || 'Your name'}</p>
+                            {createCompanyName.trim() && <p className="text-sm text-gray-700">{createCompanyName.trim()}</p>}
+                            <p className="text-xs text-gray-500 capitalize mt-0.5">
+                              {createTrade.trim() || 'Your trade'}{createLocation ? ` · ${formatParish(createLocation)}` : ''}
+                            </p>
+                          </div>
+
+                          {createBio.trim() && (
+                            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{createBio.trim()}</p>
+                          )}
+
+                          {createSkills.split(',').map(s => s.trim()).filter(Boolean).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {createSkills.split(',').map(s => s.trim()).filter(Boolean).map((skill, i) => (
+                                <span key={`${skill}-${i}`} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-700">{skill}</span>
+                              ))}
+                            </div>
+                          )}
+
+                          {createServices.length > 0 && (
+                            <div className="flex flex-col gap-1 pt-1 border-t border-gray-100">
+                              {createServices.map((svc, i) => (
+                                <div key={`${svc.name}-${i}`} className="flex items-baseline justify-between gap-3">
+                                  <span className="text-sm text-gray-700 min-w-0 break-words">{svc.name}</span>
+                                  <span className="text-sm font-semibold text-gray-900 flex-shrink-0">
+                                    Bds${svc.price}{svc.price_type === 'starting_from' ? '+' : ''}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setCreateStep(1)}
+                          className="self-start text-xs font-semibold hover:opacity-80 transition-opacity"
+                          style={{ color: '#00267F' }}
+                        >
+                          ← Fix something in your details
+                        </button>
                       </div>
 
                       {createError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{createError}</p>}

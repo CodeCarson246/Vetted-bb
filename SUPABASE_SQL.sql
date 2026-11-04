@@ -1527,3 +1527,44 @@ DROP POLICY IF EXISTS "Logged-in users can write reviews" ON reviews;
 
 -- Verify: this should return no INSERT row for reviews.
 --   SELECT policyname, cmd FROM pg_policies WHERE tablename = 'reviews';
+
+-- ============================================================
+-- SECTION 35 — BACKFILL min_price, PAID SERVICES ONLY (2026-11-03)
+-- freelancers.min_price drives the "From Bds$…" figure. It was
+-- computed as the minimum over ALL services, so anyone offering a
+-- free consultation or site visit advertised "From Bds$0", which
+-- tells a client nothing about what the work costs.
+--
+-- The app now skips free services when it recalculates (lib/price.js
+-- lowestPaidPrice), but it only recalculates when a service is saved
+-- or deleted, so existing rows keep the old value until this runs.
+--
+-- Safe to re-run. The public pages no longer depend on it being
+-- fresh (they compute from services), but keeping the column honest
+-- avoids surprises anywhere it is read later.
+-- ============================================================
+
+UPDATE freelancers f
+SET    min_price = sub.min_paid
+FROM (
+  SELECT freelancer_id,
+         MIN(NULLIF(regexp_replace(price::text, '[^0-9.]', '', 'g'), '')::numeric) AS min_paid
+  FROM   services
+  WHERE  NULLIF(regexp_replace(price::text, '[^0-9.]', '', 'g'), '')::numeric > 0
+  GROUP  BY freelancer_id
+) sub
+WHERE f.id = sub.freelancer_id
+  AND (f.min_price IS DISTINCT FROM sub.min_paid);
+
+-- Nobody with only free services (or none at all) should carry a price.
+UPDATE freelancers f
+SET    min_price = NULL
+WHERE  f.min_price IS NOT NULL
+  AND  NOT EXISTS (
+    SELECT 1 FROM services s
+    WHERE s.freelancer_id = f.id
+      AND NULLIF(regexp_replace(s.price::text, '[^0-9.]', '', 'g'), '')::numeric > 0
+  );
+
+-- Verify: every row should show the lowest price above zero, or NULL.
+--   SELECT name, min_price FROM freelancers ORDER BY name;

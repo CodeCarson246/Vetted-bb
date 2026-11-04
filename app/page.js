@@ -33,7 +33,7 @@ const trustSignals = [
 ]
 
 const steps = [
-  { n: "1", icon: "🔍", title: "Search your trade", desc: "Type what you need (plumber, photographer, tutor) and filter by location or category. See real profiles with real reviews." },
+  { n: "1", icon: "🔍", title: "Search your trade", desc: "Type what you need (plumber, photographer, tutor) and filter by location or category. See their services and prices before you get in touch." },
   { n: "2", icon: "💬", title: "Send a quote request", desc: "Pick services from a freelancer's portfolio, add them to your estimate cart, and send a formal quote request, all in-app." },
   { n: "3", icon: "⭐", title: "Get it done & review", desc: "Work with your professional, then leave an honest review. Your feedback helps the whole Barbados community." },
 ]
@@ -201,7 +201,7 @@ export default function Home() {
           )}
 
           <p className="text-xs mt-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            Free to use · No account needed to browse · 100% Barbados-based professionals
+            Free to use · No account needed to browse · Prices up front
           </p>
         </div>
 
