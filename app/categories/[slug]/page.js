@@ -22,7 +22,7 @@ export async function generateMetadata({ params }) {
   if (!cat) return {}
   return {
     title: `${cat.name} in Barbados | Hire Trusted Professionals`,
-    description: `${cat.description} Real reviews, verified profiles, free quotes on Vetted.bb.`,
+    description: `${cat.description} Real reviews from paid jobs, free quotes on Vetted.bb.`,
     alternates: { canonical: `${SITE_URL}/categories/${cat.slug}` },
     openGraph: {
       title: `${cat.name} in Barbados | Vetted.bb`,

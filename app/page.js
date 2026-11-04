@@ -140,8 +140,12 @@ export default function Home() {
             Stop guessing.<br />
             Find verified professionals<span style={{ color: '#F9C000' }}> in Barbados</span>
           </h1>
+          {/* Every claim here is one the system actually enforces: reviews are
+              gated on a completed, paid job (api/reviews), and every document
+              carries a code anyone can check at /verify. The old line promised
+              "verified identities", which nothing checked. */}
           <p className="text-lg sm:text-xl mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
-            Real reviews. Verified identities. Send a quote request in minutes. No more chasing WhatsApp numbers.
+            Reviews only from paid jobs. Quotes and invoices anyone can check. No more chasing WhatsApp numbers.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto">
             <input
@@ -273,7 +277,7 @@ export default function Home() {
           <SectionHeading
             eyebrow={featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Top rated' : 'New on Vetted.bb'}
             title={featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Featured Professionals' : 'Recently joined'}
-            sub={featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Real people. Real reviews. Ready to hire.' : 'Verified people, ready to hire.'}
+            sub={featuredFreelancers.some(f => (f.review_count || 0) > 0) ? 'Real people. Real reviews. Ready to hire.' : 'The newest professionals on the island, ready to hire.'}
           />
 
           {/* Desktop: 3-column grid | Mobile: horizontal scroll carousel */}
