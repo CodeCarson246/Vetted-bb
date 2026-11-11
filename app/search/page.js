@@ -10,10 +10,12 @@ import SearchEmptyState from '@/components/SearchEmptyState'
 import Tooltip from '@/components/Tooltip'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice, lowestPaidPrice } from '@/lib/price'
+import { isProfileComplete } from '@/lib/profileCompleteness'
 import { effectiveCategories } from '@/lib/categories'
 import TrustMark from '@/components/TrustMark'
 import SectionHeading from '@/components/SectionHeading'
 import { profileUrl } from '@/lib/handles'
+import Icon from '@/components/Icon'
 
 const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #00267F, #1a3f9e)',
@@ -56,7 +58,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
   return (
     <Link
       href={profileUrl(f)}
-      className="block"
+      className="card-lift block"
       style={{
         background: 'var(--surface-card)',
         borderRadius: 16,
@@ -67,17 +69,8 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
         boxShadow: '0 2px 12px rgba(0,38,127,0.08)',
         marginBottom: 16,
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
         overflow: 'hidden',
         textDecoration: 'none',
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,38,127,0.15)'
-        e.currentTarget.style.transform = 'translateY(-2px)'
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,38,127,0.08)'
-        e.currentTarget.style.transform = 'translateY(0)'
       }}
     >
       {/* Card body: flex row on desktop, column on mobile */}
@@ -140,7 +133,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
             <p style={{ fontSize: '0.85rem', fontWeight: 500, color: '#6B7280', marginTop: 2, textTransform: 'capitalize' }}>
               {f.trade}
               {f.location && (
-                <span style={{ fontWeight: 400, fontSize: '0.82rem' }}> · 📍 {formatParish(f.location)}</span>
+                <span style={{ fontWeight: 400, fontSize: '0.82rem' }}> · <Icon name="pin" size={12} inline style={{ marginRight: '0.2em' }} />{formatParish(f.location)}</span>
               )}
             </p>
 
@@ -374,6 +367,14 @@ function SearchPage() {
       return true
     })
     .sort((a, b) => {
+      // A profile a client can act on comes first, whatever the sort. One
+      // with no bio and no price answers none of the questions that brought
+      // someone here, so it belongs at the bottom rather than hidden: the
+      // professional keeps their listing, and finishing it is rewarded.
+      const cA = isProfileComplete(a, a.services)
+      const cB = isProfileComplete(b, b.services)
+      if (cA !== cB) return cA ? -1 : 1
+
       if (sortBy === 'rating') {
         const rA = a.rating || 0
         const rB = b.rating || 0
@@ -534,7 +535,7 @@ function SearchPage() {
                   style={{ borderColor: '#00267F', color: '#00267F' }}
                   title="Get notified when a new matching professional joins"
                 >
-                  {searchSaved ? '✓ Saved. We’ll alert you' : savingSearch ? 'Saving…' : '🔔 Save this search'}
+                  {searchSaved ? '✓ Saved. We’ll alert you' : savingSearch ? 'Saving…' : <><Icon name="bell" size={13} inline />Save this search</>}
                 </button>
               )}
             </div>

@@ -19,6 +19,7 @@ import MonthView from '@/components/calendar/MonthView'
 import { nowAST, getWeekStart, getWeekDays, MONTHS } from '@/components/calendar/calUtils'
 import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
 import { HANDLE_RE, isUuid } from '@/lib/handles'
+import Icon from '@/components/Icon'
 
 function StarRating({ rating, light = false }) {
   return (
@@ -559,7 +560,7 @@ export default function FreelancerProfile() {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
         <div className="text-center max-w-sm">
-          <p className="text-4xl mb-3" aria-hidden="true">🔒</p>
+          <div className="mb-3 flex justify-center text-gray-400"><Icon name="lock" size={38} strokeWidth={1.5} /></div>
           <h1 className="text-lg font-bold text-gray-900 mb-1">This profile is currently unavailable</h1>
           <p className="text-sm text-gray-500 mb-5">The professional has taken their listing offline. You can find other trusted pros in the meantime.</p>
           <Link href="/search" className="inline-block text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>
@@ -729,7 +730,7 @@ export default function FreelancerProfile() {
                   )}
                   <p className="font-semibold mt-0.5 capitalize" style={{ color: '#F9C000' }}>{freelancer.trade}</p>
                   {freelancer.location && (
-                    <p className="text-sm mt-0.5 capitalize" style={{ color: '#93b8ff' }}>📍 {formatParish(freelancer.location)}</p>
+                    <p className="text-sm mt-0.5 capitalize" style={{ color: '#93b8ff' }}><Icon name="pin" size={13} inline />{formatParish(freelancer.location)}</p>
                   )}
 
                   {/* Categories this pro appears under (multi-venture profiles
@@ -940,7 +941,7 @@ export default function FreelancerProfile() {
       {!quoteBannerDismissed && (
         <div className="border-b border-gray-100" style={{ backgroundColor: '#F5F7FF' }}>
           <div className="max-w-4xl mx-auto px-4 sm:px-8 py-3 flex items-start gap-2.5">
-            <span className="text-base flex-shrink-0 leading-none mt-0.5">⚡</span>
+            <span className="flex-shrink-0 mt-0.5" style={{ color: '#d9a800' }}><Icon name="bolt" size={15} /></span>
             <p className="text-xs text-gray-500 flex-1 leading-relaxed">
               You can request a detailed quote from this professional. They'll respond with pricing, timeline, and a PDF you can download.
             </p>
@@ -972,7 +973,7 @@ export default function FreelancerProfile() {
               </div>
             )}
             {freelancer.years_experience != null && (
-              <p className="text-sm text-gray-400 mt-4">🗓 {freelancer.years_experience} {freelancer.years_experience === 1 ? 'year' : 'years'} of experience</p>
+              <p className="text-sm text-gray-400 mt-4"><Icon name="calendar" size={14} inline />{freelancer.years_experience} {freelancer.years_experience === 1 ? 'year' : 'years'} of experience</p>
             )}
           </div>
         </div>
@@ -1034,10 +1035,8 @@ export default function FreelancerProfile() {
               {activeServices.map(s => (
                 <div
                   key={s.id}
-                  className="rounded-2xl overflow-hidden flex flex-col"
-                  style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)', transition: 'all 0.2s ease', cursor: s.service_images?.length > 0 ? 'pointer' : 'default' }}
-                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,38,127,0.14)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,38,127,0.08)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                  className={`rounded-2xl overflow-hidden flex flex-col${s.service_images?.length > 0 ? ' card-lift' : ''}`}
+                  style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)', cursor: s.service_images?.length > 0 ? 'pointer' : 'default' }}
                   onClick={() => s.service_images?.length > 0 && openLightbox(s)}
                 >
                   {s.service_images?.length > 0 && (
@@ -1095,7 +1094,7 @@ export default function FreelancerProfile() {
                         return <span className="text-lg font-bold" style={{ color: '#00267F' }}>{fmt}</span>
                       })()}
                       {s.duration && (
-                        <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">⏱ {s.duration}</span>
+                        <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full"><Icon name="clock" size={12} inline />{s.duration}</span>
                       )}
                     </div>
                     {user && user.id !== freelancer.user_id && (
@@ -1286,10 +1285,8 @@ export default function FreelancerProfile() {
               {portfolioItems.map(item => (
                 <div
                   key={item.id}
-                  className="group rounded-2xl overflow-hidden cursor-pointer"
-                  style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)', transition: 'all 0.2s ease' }}
-                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,38,127,0.14)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,38,127,0.08)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                  className="card-lift group rounded-2xl overflow-hidden cursor-pointer"
+                  style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}
                   onClick={() => setPortfolioLightbox(item)}
                 >
                   {/* 4:3 image */}
@@ -1529,7 +1526,7 @@ export default function FreelancerProfile() {
                       background: 'rgba(0,38,127,0.02)',
                     }}
                   >
-                    <span style={{ fontSize: '1.5rem' }}>📷</span>
+                    <span style={{ color: '#6B7280' }}><Icon name="camera" size={24} strokeWidth={1.7} /></span>
                     <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>
                       {reviewImageUploading ? 'Uploading...' : 'Upload a photo of the work done'}
                     </span>
@@ -1660,7 +1657,7 @@ export default function FreelancerProfile() {
           <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-xl">
             {contactSuccess ? (
               <div className="text-center py-6">
-                <p className="text-3xl mb-3">✅</p>
+                <div className="mb-3 flex justify-center" style={{ color: '#16a34a' }}><Icon name="check" size={38} strokeWidth={1.5} /></div>
                 <h3 className="text-lg font-bold text-gray-900 mb-1">Message sent!</h3>
                 <p className="text-sm text-gray-500">Your message has been delivered to {freelancer.name}.</p>
               </div>

@@ -23,6 +23,7 @@ import { generateVerifyCode, formatVerifyCode } from '@/lib/verifyCode'
 import { SITE_HOST } from '@/lib/siteUrl'
 import TrustMark from '@/components/TrustMark'
 import { profileUrl } from '@/lib/handles'
+import Icon from '@/components/Icon'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -634,7 +635,7 @@ export default function Inbox() {
       fetch('/api/notify-reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message_id: msg.id, message: text || '📷 Photo' }),
+        body: JSON.stringify({ message_id: msg.id, message: text || 'Photo' }),
       }).catch(() => {})
     }
     setReplySending(false)
@@ -814,7 +815,7 @@ export default function Inbox() {
           </div>
           {prefillTop.length > 0 && (
             <button onClick={() => openQuote(msg, prefillTop)} className="self-start text-xs font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-opacity inline-flex items-center gap-1.5" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
-              {prefillTop.length === 1 ? '⚡ Quote this service →' : '⚡ Quote these services →'}
+              {prefillTop.length === 1 ? 'Quote this service →' : 'Quote these services →'}
             </button>
           )}
 
@@ -914,7 +915,7 @@ export default function Inbox() {
                     )}
                     {replyPrefill.length > 0 && (
                       <button onClick={() => openQuote(msg, replyPrefill)} className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>
-                        {replyPrefill.length === 1 ? '⚡ Quote this service →' : '⚡ Quote these services →'}
+                        {replyPrefill.length === 1 ? 'Quote this service →' : 'Quote these services →'}
                       </button>
                     )}
                   </div>
@@ -944,7 +945,7 @@ export default function Inbox() {
           <div className="flex items-end gap-2">
             <button onClick={() => openQuote(msg)} title="Create quote" className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-opacity text-sm font-bold" style={{ backgroundColor: '#00267F' }}>$</button>
             <label className="flex-shrink-0 w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:border-gray-400 cursor-pointer flex items-center justify-center" style={{ opacity: photoUploading ? 0.5 : 1 }}>
-              {photoUploading ? '…' : '📷'}
+              {photoUploading ? '…' : <Icon name="camera" size={17} />}
               <input type="file" accept="image/*" hidden disabled={photoUploading} onChange={e => { attachReplyPhoto(e.target.files?.[0]); e.target.value = '' }} />
             </label>
             <textarea value={replyText[msg.id] || ''} onChange={e => setReplyText(prev => ({ ...prev, [msg.id]: e.target.value }))} placeholder="Write a reply…" rows={1} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-2xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" style={{ maxHeight: 120 }} />

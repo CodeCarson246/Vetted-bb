@@ -123,7 +123,7 @@ export default function SiteFooter() {
           className="flex flex-col sm:flex-row sm:justify-between items-center gap-3 text-center sm:text-left"
         >
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', margin: 0 }}>
-            © 2026 Vetted.bb · Connecting Barbados 🇧🇧
+            © 2026 Vetted.bb · Connecting Barbados <img src="https://flagcdn.com/bb.svg" alt="Barbados flag" width="16" height="11" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: 4, borderRadius: 2 }} />
           </p>
           <div style={{ display: 'flex', gap: '16px' }}>
             <Link href="/terms" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none', transition: 'color 0.15s' }}

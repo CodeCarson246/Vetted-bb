@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import Icon from '@/components/Icon'
 
 // Freelancer workspace guide — plain-language walkthroughs of every part of
 // the platform. Static content, searchable, grouped by area. Anyone can open
@@ -9,7 +10,8 @@ import Link from 'next/link'
 const SECTIONS = [
   {
     id: 'messages',
-    icon: '💬',
+    icon: 'message',
+    short: 'Messages',
     title: 'Messages & inbox',
     intro: 'Every job starts as a conversation. The inbox is where enquiries land and deals get made.',
     topics: [
@@ -25,7 +27,7 @@ const SECTIONS = [
       {
         title: 'Sending photos in chat',
         steps: [
-          'Use the 📷 button next to the reply box to attach a photo, handy for "here\'s the problem" shots from clients or progress photos from you.',
+          'Use the camera button next to the reply box to attach a photo, handy for "here\'s the problem" shots from clients or progress photos from you.',
           'Photos are compressed automatically, so they send fast even on mobile data.',
         ],
       },
@@ -40,7 +42,8 @@ const SECTIONS = [
   },
   {
     id: 'quotes',
-    icon: '📄',
+    icon: 'money',
+    short: 'Quotes',
     title: 'Quotes, invoices & getting paid',
     intro: 'The quote flow takes a job from "how much?" to paid, with a record of every step.',
     topics: [
@@ -102,7 +105,8 @@ const SECTIONS = [
   },
   {
     id: 'bookings',
-    icon: '📅',
+    icon: 'calendar',
+    short: 'Bookings',
     title: 'Bookings & calendar',
     intro: 'Your calendar is private by default. Bookings are opt-in, so turn them on only if your work suits scheduled appointments.',
     topics: [
@@ -135,7 +139,8 @@ const SECTIONS = [
   },
   {
     id: 'clients',
-    icon: '👥',
+    icon: 'users',
+    short: 'Clients',
     title: 'Clients',
     intro: 'A lightweight client book, built automatically from your activity, with no data entry.',
     topics: [
@@ -152,7 +157,8 @@ const SECTIONS = [
   },
   {
     id: 'organisations',
-    icon: '🏢',
+    icon: 'building',
+    short: 'Organisations',
     title: 'Organisations & government work',
     intro: 'Companies, agencies and government departments can hire on Vetted.bb through an organisation account. Here is what that looks like from your side.',
     topics: [
@@ -186,7 +192,8 @@ const SECTIONS = [
   },
   {
     id: 'reviews',
-    icon: '⭐',
+    icon: 'star',
+    short: 'Reviews',
     title: 'Reviews & reputation',
     intro: 'Reviews are two-way on Vetted.bb: clients rate you, and you rate clients.',
     topics: [
@@ -209,7 +216,8 @@ const SECTIONS = [
   },
   {
     id: 'account',
-    icon: '⚙️',
+    icon: 'settings',
+    short: 'Account',
     title: 'Notifications, visibility & account',
     intro: 'Control how you\'re alerted, how visible you are, and your account itself.',
     topics: [
@@ -307,7 +315,6 @@ export default function GuidePage() {
       {/* Hero */}
       <div style={{ backgroundColor: '#00267F' }}>
         <div className="max-w-3xl mx-auto px-4 sm:px-8 py-10 text-center">
-          <p className="text-3xl mb-2" aria-hidden="true">📖</p>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">How Vetted.bb works</h1>
           <p className="text-sm mb-6" style={{ color: '#93b8ff' }}>
             Short, practical walkthroughs of every part of your workspace, from first enquiry to getting paid.
@@ -336,69 +343,71 @@ export default function GuidePage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
-        {/* Section quick links */}
+        {/* Contents. A plain row of links under a rule, the way a printed
+            manual lists its chapters, rather than a cloud of pills. */}
         {!q && (
-          <div className="flex flex-wrap gap-2 mb-8 justify-center">
+          <nav aria-label="Guide sections" className="guide-nav flex flex-wrap gap-x-6 gap-y-2 mb-10 pb-4" style={{ borderBottom: '1px solid var(--border-card)' }}>
             {SECTIONS.map(s => (
               <a
                 key={s.id}
                 href={`#${s.id}`}
-                className="text-xs font-semibold px-3.5 py-2 rounded-full border transition-colors hover:border-gray-400"
-                style={{ borderColor: 'var(--border-card)', color: 'var(--accent)', textDecoration: 'none', backgroundColor: 'var(--surface-card)' }}
+                className="text-sm font-semibold pb-1"
+                style={{ color: 'var(--muted)', textDecoration: 'none' }}
               >
-                {s.icon} {s.title}
+                {s.short || s.title}
               </a>
             ))}
-          </div>
+          </nav>
         )}
 
         {visibleSections.length === 0 && (
           <div className="text-center py-16">
-            <p className="text-3xl mb-3" aria-hidden="true">🔍</p>
+            <div className="mb-3 flex justify-center text-gray-400"><Icon name="search" size={30} strokeWidth={1.5} /></div>
             <p className="font-semibold text-gray-900 mb-1">Nothing found for &quot;{query}&quot;</p>
             <p className="text-sm text-gray-500">Try a different word, or message us at hello@vetted.bb and we&apos;ll point you the right way.</p>
           </div>
         )}
 
         {visibleSections.map(section => (
-          <section key={section.id} id={section.id} className="mb-8" style={{ scrollMarginTop: 90 }}>
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="text-xl" aria-hidden="true">{section.icon}</span>
-              <h2 className="text-lg font-bold text-gray-900">{section.title}</h2>
+          <section key={section.id} id={section.id} className="mb-12" style={{ scrollMarginTop: 90 }}>
+            {/* Section heading: the icon the workspace sidebar uses for the
+                same area, so the guide reads as part of the app. A rule
+                under it does the work a box used to. */}
+            <div className="flex items-center gap-2.5 pb-2.5" style={{ color: 'var(--accent)', borderBottom: '2px solid var(--accent)' }}>
+              <Icon name={section.icon} size={19} />
+              <h2 className="text-lg font-bold" style={{ fontFamily: "'Sora', sans-serif", letterSpacing: '-0.01em' }}>{section.title}</h2>
             </div>
-            <p className="text-sm text-gray-500 mb-4">{section.intro}</p>
+            <p className="text-sm text-gray-500 mt-3 mb-2 leading-relaxed">{section.intro}</p>
 
-            <div className="flex flex-col gap-2.5">
+            {/* Topics are rows separated by a hairline, not a card each. */}
+            <div>
               {section.topics.map(topic => {
                 const key = `${section.id}:${topic.title}`
                 const open = openKey === key || (!!q && section.topics.length <= 2)
                 return (
-                  <div key={key} className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ borderLeft: '3px solid #F9C000' }}>
+                  <div key={key} style={{ borderBottom: '1px solid var(--border-card)' }}>
                     <button
                       onClick={() => setOpenKey(openKey === key ? null : key)}
-                      className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left"
+                      className="w-full flex items-center justify-between gap-3 py-3.5 text-left"
                       style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                       aria-expanded={open}
                     >
-                      <span className="text-sm font-semibold text-gray-900">{topic.title}</span>
+                      <span className={`text-[15px] font-semibold ${open ? '' : 'text-gray-900'}`} style={open ? { color: 'var(--accent)' } : undefined}>{topic.title}</span>
                       <span className="text-gray-400"><Chevron open={open} /></span>
                     </button>
                     {open && (
-                      <div className="px-5 pb-5">
-                        <ol className="flex flex-col gap-2.5">
+                      <div className="pb-6 pt-1">
+                        {/* Numerals hang in the margin (see .guide-steps). */}
+                        <ol className="guide-steps">
                           {topic.steps.map((step, i) => (
-                            <li key={i} className="flex gap-3">
-                              <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold text-white mt-0.5" style={{ backgroundColor: '#00267F' }}>
-                                {i + 1}
-                              </span>
-                              <span className="text-sm text-gray-600 leading-relaxed">{step}</span>
-                            </li>
+                            <li key={i} className="text-sm text-gray-600 leading-relaxed">{step}</li>
                           ))}
                         </ol>
                         {topic.tip && (
-                          <p className="text-xs mt-4 rounded-xl px-4 py-3 leading-relaxed" style={{ backgroundColor: '#FEF9EC', border: '1px solid #F9C000', color: '#92400e' }}>
-                            💡 <strong>Tip:</strong> {topic.tip}
-                          </p>
+                          <div className="mt-5 pl-4" style={{ borderLeft: '2px solid #F9C000' }}>
+                            <span className="block text-[10.5px] font-bold uppercase mb-1" style={{ letterSpacing: '0.13em', color: 'var(--accent)' }}>Tip</span>
+                            <p className="text-sm text-gray-600 leading-relaxed">{topic.tip}</p>
+                          </div>
                         )}
                       </div>
                     )}

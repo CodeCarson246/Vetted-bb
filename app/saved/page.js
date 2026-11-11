@@ -8,6 +8,7 @@ import { formatParish } from '@/lib/formatParish'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import { isOrganisationUser } from '@/lib/organisations'
 import { profileUrl } from '@/lib/handles'
+import Icon from '@/components/Icon'
 
 function StarRating({ rating }) {
   return (
@@ -189,7 +190,7 @@ export default function SavedProfessionals() {
             <div className="flex flex-col gap-2">
               {searches.map(s => (
                 <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3" style={{ borderLeft: '4px solid #F9C000' }}>
-                  <span className="text-lg flex-shrink-0" aria-hidden="true">🔔</span>
+                  <span className="flex-shrink-0" style={{ color: 'var(--accent)' }}><Icon name="bell" size={18} /></span>
                   <a href={searchHref(s)} className="flex-1 min-w-0 text-sm font-medium text-gray-800 hover:underline" style={{ textDecoration: 'none' }}>
                     {searchLabel(s)}
                   </a>

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { passwordChecks, validatePassword, POLICY_KEYS, POLICY_LABELS } from '@/lib/passwordPolicy'
 import GoogleAuthButton from '@/components/GoogleAuthButton'
 import { ORG_KINDS, ensureOrganisation, readPendingInvite } from '@/lib/organisations'
+import Icon from '@/components/Icon'
 
 const trustPoints = [
   'Quotes and invoices you can verify',
@@ -191,7 +192,7 @@ function SignupContent() {
           <div className="w-full max-w-md">
             {success ? (
               <div className="text-center">
-                <p className="text-4xl mb-4">📬</p>
+                <div className="mb-4 flex justify-center" style={{ color: 'var(--accent)' }}><Icon name="mail" size={40} strokeWidth={1.5} /></div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Check your email</h2>
                 <p className="text-gray-500 text-sm">We sent a confirmation link to <span className="font-medium text-gray-700">{email}</span>. Click it to activate your account.</p>
                 <Link href="/login" className="inline-block mt-8 text-sm font-semibold hover:opacity-75 transition-opacity" style={{ color: '#00267F' }}>Back to log in →</Link>

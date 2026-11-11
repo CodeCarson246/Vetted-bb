@@ -72,7 +72,7 @@ export async function POST(request) {
     if (data.user?.id) {
       await createNotification(data.user.id, {
         type: 'welcome',
-        title: 'Welcome to Vetted.bb 👋',
+        title: 'Welcome to Vetted.bb',
         body: role === 'freelancer'
           ? 'Set up your profile, add your services, and start getting hired.'
           : role === 'organisation'

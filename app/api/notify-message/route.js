@@ -65,7 +65,7 @@ export async function POST(request) {
     // Browser push first (fire-and-forget) — the email below is the
     // reliable channel, push is the instant one.
     sendPushToUser(freelancer.user_id, {
-      title: `💬 ${senderName} sent you a message`,
+      title: `${senderName} sent you a message`,
       body: message ? message.slice(0, 120) : subject,
       url: '/inbox',
     }).catch(() => {})

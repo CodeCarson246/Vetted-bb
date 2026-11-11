@@ -11,31 +11,12 @@ import TrustMark from '@/components/TrustMark'
 import CategoryIcon from '@/components/CategoryIcon'
 import SectionHeading from '@/components/SectionHeading'
 import { profileUrl } from '@/lib/handles'
-
-const iconStyle = { width: '40px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }
-
-const trustSignals = [
-  {
-    icon: <div style={iconStyle}>✅</div>,
-    title: "Two-way reviews",
-    desc: "Freelancers rate clients. Clients rate freelancers. Real accountability on both sides.",
-  },
-  {
-    icon: <div style={iconStyle}>🪪</div>,
-    title: "Phone-verified pros",
-    desc: "Professionals who confirm their phone number carry a tick you can see on their profile.",
-  },
-  {
-    icon: <img src="https://flagcdn.com/bb.svg" width="40" height="28" style={{ borderRadius: '4px' }} alt="Barbados flag" />,
-    title: "Barbados based",
-    desc: "Built specifically for the local community, not a generic global platform.",
-  },
-]
+import Icon from '@/components/Icon'
 
 const steps = [
-  { n: "1", icon: "🔍", title: "Search your trade", desc: "Type what you need (plumber, photographer, tutor) and filter by location or category. See their services and prices before you get in touch." },
-  { n: "2", icon: "💬", title: "Send a quote request", desc: "Pick services from a freelancer's portfolio, add them to your estimate cart, and send a formal quote request, all in-app." },
-  { n: "3", icon: "⭐", title: "Get it done & review", desc: "Work with your professional, then leave an honest review. Your feedback helps the whole Barbados community." },
+  { n: "1", icon: "search", title: "Search your trade", desc: "Type what you need (plumber, photographer, tutor) and filter by location or category. See their services and prices before you get in touch." },
+  { n: "2", icon: "send", title: "Send a quote request", desc: "Pick services from a freelancer's portfolio, add them to your estimate cart, and send a formal quote request, all in-app." },
+  { n: "3", icon: "star", title: "Get it done & review", desc: "Work with your professional, then leave an honest review. Your feedback helps the whole Barbados community." },
 ]
 
 // Toggle: set NEXT_PUBLIC_SHOW_STATS_NUMBERS=true in .env.local to switch from
@@ -311,6 +292,7 @@ export default function Home() {
               <Link
                 key={f.id}
                 href={profileUrl(f)}
+                className="card-lift"
                 style={{
                   backgroundColor: 'var(--surface-card)',
                   borderTop: '4px solid #00267F',
@@ -320,10 +302,7 @@ export default function Home() {
                   textDecoration: 'none',
                   display: 'flex',
                   flexDirection: 'column',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--card-shadow-hover)' }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--card-shadow)' }}
               >
                 {/* Header row */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
@@ -479,18 +458,8 @@ export default function Home() {
               <a
                 key={cat.name}
                 href={isEmpty ? '/signup?role=freelancer' : `/categories/${cat.slug}`}
-                className="flex flex-col items-center gap-3 px-4 py-6 bg-white border border-gray-100 rounded-2xl cursor-pointer transition-all group"
-                style={{ borderColor: '' }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = isEmpty ? '#F9C000' : '#00267F'
-                  e.currentTarget.style.transform = 'translateY(-3px)'
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,38,127,0.1)'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = ''
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
+                className="card-lift card-lift-border flex flex-col items-center gap-3 px-4 py-6 bg-white border border-gray-100 rounded-2xl cursor-pointer group"
+                style={{ '--lift-border': isEmpty ? '#F9C000' : '#00267F' }}
               >
                 <span className="flex items-center justify-center rounded-2xl" style={{ width: 56, height: 56, backgroundColor: 'var(--selected-fill)', color: 'var(--accent)' }}>
                   <CategoryIcon slug={cat.slug} size={28} />
@@ -543,7 +512,7 @@ export default function Home() {
                   {step.n}
                 </div>
                 {/* Icon */}
-                <div style={{ fontSize: '1.8rem', marginBottom: '14px' }}>{step.icon}</div>
+                <div style={{ marginBottom: '14px', color: '#F9C000' }}><Icon name={step.icon} size={28} strokeWidth={1.8} /></div>
                 <h3 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '1.05rem', color: 'white', marginBottom: '10px' }}>
                   {step.title}
                 </h3>
@@ -628,9 +597,9 @@ export default function Home() {
                 {/* Three uniform cards as a centred triangle (centroid = ring
                     centre) with clear gaps so they never touch. */}
                 {[
-                  { icon: '🔧', label: 'Plumber', rating: '4.9', dx: -48, dy: -36, verified: true },
-                  { icon: '💇', label: 'Stylist', rating: '4.9', dx: 48, dy: -36 },
-                  { icon: '💻', label: 'Developer', rating: '5.0', dx: 0, dy: 72 },
+                  { slug: 'trades-construction', label: 'Plumber', rating: '4.9', dx: -48, dy: -36, verified: true },
+                  { slug: 'beauty-wellness', label: 'Stylist', rating: '4.9', dx: 48, dy: -36 },
+                  { slug: 'technology', label: 'Developer', rating: '5.0', dx: 0, dy: 72 },
                 ].map(c => (
                   <div
                     key={c.label}
@@ -641,7 +610,7 @@ export default function Home() {
                       backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
                     }}
                   >
-                    <span className="text-2xl leading-none">{c.icon}</span>
+                    <CategoryIcon slug={c.slug} size={26} color="#ffffff" />
                     <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>
                       {c.label}{c.verified && <VerifiedBadge size={12} />}
                     </span>

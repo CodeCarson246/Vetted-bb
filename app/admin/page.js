@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import Icon from '@/components/Icon'
 
 // Admin access is enforced server-side by /api/admin (ADMIN_EMAILS env
 // var + JWT verification). This page is only a UI shell — it holds no
@@ -278,7 +279,7 @@ export default function AdminPanel() {
             <div className="px-6 py-5 border-b border-gray-100">
               <h2 className="font-semibold text-gray-900" style={{ color: '#00267F' }}>Freelancers ({freelancerCount})</h2>
               <div className="mt-3 rounded-xl px-4 py-3 text-xs text-amber-800 leading-relaxed" style={{ backgroundColor: '#FEF9EC', border: '1px solid #F9C000' }}>
-                <p className="font-semibold mb-1">⚠ Verification checklist: before approving the verified badge:</p>
+                <p className="font-semibold mb-1">Verification checklist: before approving the verified badge:</p>
                 <ul className="list-disc list-inside space-y-0.5 text-amber-700">
                   <li>Visit the public profile and review all portfolio/service images</li>
                   <li>Images should be genuine photos of real work, not stock photos, placeholders, or unrelated content</li>
@@ -311,7 +312,7 @@ export default function AdminPanel() {
                         <span className="flex flex-wrap gap-1 mt-1 normal-case">
                           {f.deactivated_at && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600">Deactivated</span>}
                           {f.hidden && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Hidden</span>}
-                          {f.flagged && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700" title={f.flag_reason || 'Flagged'}>🚩 {f.flag_reason ? f.flag_reason.slice(0, 30) : 'Flagged'}</span>}
+                          {f.flagged && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700" title={f.flag_reason || 'Flagged'}><Icon name="flag" size={10} inline />{f.flag_reason ? f.flag_reason.slice(0, 30) : 'Flagged'}</span>}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-gray-600 capitalize">{f.trade || ''}</td>
@@ -348,7 +349,7 @@ export default function AdminPanel() {
                               ? { backgroundColor: '#374151', color: 'white', borderColor: '#374151' }
                               : { borderColor: '#d1d5db', color: '#9ca3af' }}
                           >
-                            {f.hidden ? '🙈 Hidden' : 'Hide'}
+                            {f.hidden ? 'Hidden' : 'Hide'}
                           </button>
                           <button
                             onClick={() => flagProfile(f)}
@@ -358,7 +359,7 @@ export default function AdminPanel() {
                               ? { backgroundColor: '#b45309', color: 'white', borderColor: '#b45309' }
                               : { borderColor: '#d1d5db', color: '#9ca3af' }}
                           >
-                            🚩 Flag
+                            Flag
                           </button>
                         </div>
                       </td>

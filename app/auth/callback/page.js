@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { TERMS_VERSION } from '@/lib/terms'
 import { consumePendingInvite, fetchMyOrganisation } from '@/lib/organisations'
+import Icon from '@/components/Icon'
 
 // Lands here after Google redirects back. supabase-js picks the session out
 // of the URL automatically; this page just waits for it, makes sure the user
@@ -151,7 +152,7 @@ export default function AuthCallback() {
     <main className="min-h-screen bg-white flex items-center justify-center px-6">
       {status === 'working' && (
         <div className="text-center">
-          <p className="text-3xl mb-3" aria-hidden="true">🔐</p>
+          <div className="mb-3 flex justify-center text-gray-400"><Icon name="lock" size={32} strokeWidth={1.5} /></div>
           <p className="text-sm text-gray-500">Signing you in…</p>
         </div>
       )}
@@ -184,7 +185,7 @@ export default function AuthCallback() {
               disabled={!agreedToTerms}
               className="flex-1 rounded-xl border-2 border-gray-200 bg-white p-5 text-left hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200"
             >
-              <span className="block text-2xl mb-2" aria-hidden="true">🔍</span>
+              <span className="block mb-2" style={{ color: 'var(--accent)' }}><Icon name="search" size={24} strokeWidth={1.8} /></span>
               <span className="block font-bold text-gray-900">I&apos;m a client</span>
               <span className="block text-xs text-gray-500 mt-1">I want to find and hire trusted professionals.</span>
             </button>
@@ -193,7 +194,7 @@ export default function AuthCallback() {
               disabled={!agreedToTerms}
               className="flex-1 rounded-xl border-2 border-gray-200 bg-white p-5 text-left hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200"
             >
-              <span className="block text-2xl mb-2" aria-hidden="true">🛠️</span>
+              <span className="block mb-2" style={{ color: 'var(--accent)' }}><Icon name="tools" size={24} strokeWidth={1.8} /></span>
               <span className="block font-bold text-gray-900">I&apos;m a freelancer</span>
               <span className="block text-xs text-gray-500 mt-1">I want to offer my services and get hired.</span>
             </button>
@@ -202,7 +203,7 @@ export default function AuthCallback() {
               disabled={!agreedToTerms}
               className="flex-1 rounded-xl border-2 border-gray-200 bg-white p-5 text-left hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200"
             >
-              <span className="block text-2xl mb-2" aria-hidden="true">🏢</span>
+              <span className="block mb-2" style={{ color: 'var(--accent)' }}><Icon name="building" size={24} strokeWidth={1.8} /></span>
               <span className="block font-bold text-gray-900">An organisation</span>
               <span className="block text-xs text-gray-500 mt-1">I hire on behalf of a team, company or agency.</span>
             </button>
@@ -212,7 +213,7 @@ export default function AuthCallback() {
 
       {status === 'error' && (
         <div className="text-center max-w-sm">
-          <p className="text-3xl mb-3" aria-hidden="true">😕</p>
+          <div className="mb-3 flex justify-center text-gray-400"><Icon name="alert" size={32} strokeWidth={1.5} /></div>
           <h1 className="text-lg font-bold text-gray-900 mb-1">We couldn&apos;t complete that</h1>
           <p className="text-sm text-gray-500 mb-5">{errorMsg}</p>
           <Link href="/login" className="inline-block text-sm font-semibold px-5 py-2.5 rounded-full text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#00267F' }}>

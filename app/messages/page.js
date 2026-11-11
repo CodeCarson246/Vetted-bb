@@ -13,6 +13,7 @@ import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
 import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
 import { profileUrl } from '@/lib/handles'
+import Icon from '@/components/Icon'
 
 function EnvelopeIcon({ className }) {
   return (
@@ -113,7 +114,7 @@ export default function ClientMessages() {
           senderName,
           senderEmail: user.email,
           subject: `Re: ${msg.subject || 'your conversation'}`,
-          message: text || '📷 Photo',
+          message: text || 'Photo',
         }),
       }).catch(() => {})
     }
@@ -465,7 +466,7 @@ export default function ClientMessages() {
           )}
           <div className="flex items-end gap-2">
             <label className="flex-shrink-0 w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:border-gray-400 cursor-pointer flex items-center justify-center" style={{ opacity: photoUploading ? 0.5 : 1 }}>
-              {photoUploading ? '…' : '📷'}
+              {photoUploading ? '…' : <Icon name="camera" size={17} />}
               <input type="file" accept="image/*" hidden disabled={photoUploading} onChange={e => { attachReplyPhoto(e.target.files?.[0]); e.target.value = '' }} />
             </label>
             <textarea value={newReplies[msg.id] || ''} onChange={e => setNewReplies(prev => ({ ...prev, [msg.id]: e.target.value }))} placeholder={`Reply to ${f?.name || 'the freelancer'}…`} rows={1} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-2xl text-sm text-gray-900 outline-none focus:border-gray-400 bg-white resize-none" style={{ maxHeight: 120 }} />

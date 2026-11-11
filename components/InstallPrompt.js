@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { subscribeInstall, canInstall, promptInstall } from '@/lib/install'
+import Icon from '@/components/Icon'
 
 // Mobile "Add to Home Screen" prompt.
 // - Android/Chrome: uses the shared install store (beforeinstallprompt) to
@@ -68,7 +69,7 @@ export default function InstallPrompt() {
       role="dialog"
       aria-label="Add Vetted.bb to your home screen"
     >
-      <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden="true">📲</span>
+      <span style={{ flexShrink: 0, color: '#F9C000' }}><Icon name="download" size={22} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>Add Vetted.bb to your home screen</p>
         <p style={{ fontSize: 12, margin: '2px 0 0', color: 'rgba(255,255,255,0.8)', lineHeight: 1.4 }}>

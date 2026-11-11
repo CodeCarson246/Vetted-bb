@@ -11,7 +11,6 @@ import { getQuoteId, dedupeThreadReplies, quoteReplyKind, isReceiptBody } from '
 import { formatDocDate } from '@/lib/formatDate'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
 import Tooltip from '@/components/Tooltip'
-import CoachTip from '@/components/CoachTip'
 import { SITE_URL, SITE_HOST } from '@/lib/siteUrl'
 import { CATEGORIES, MAX_CATEGORIES } from '@/lib/categories'
 import PushToggle from '@/components/PushToggle'
@@ -24,6 +23,9 @@ import ProfileHandleCard from '@/components/ProfileHandleCard'
 import { getMyFreelancer, primeMyFreelancer } from '@/lib/myFreelancer'
 import { readDashboardCache, writeDashboardCache, clearDashboardCache } from '@/lib/dashboardCache'
 import { lowestPaidPrice } from '@/lib/price'
+import ProfileSetup from '@/components/ProfileSetup'
+import { profileRequirements, isProfileComplete, completionPercent, isPricedService } from '@/lib/profileCompleteness'
+import Icon from '@/components/Icon'
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -179,51 +181,10 @@ function DashboardInner() {
 
   // Create form state
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [createStep, setCreateStep] = useState(1)
-  const [createErrors, setCreateErrors] = useState({})
-  // Guided tour through the create-profile form: null = off, 0..4 = active tip
-  const [tourStep, setTourStep] = useState(null)
-  const TOUR_TOTAL = 5
-
-  function startTourIfNew() {
-    try {
-      if (!localStorage.getItem('vetted_profile_tour_done')) setTourStep(0)
-    } catch { setTourStep(0) }
-  }
-
-  function endTour() {
-    setTourStep(null)
-    try { localStorage.setItem('vetted_profile_tour_done', '1') } catch { /* ignore */ }
-  }
-
-  function nextTour() {
-    setTourStep(s => (s >= TOUR_TOTAL - 1 ? null : s + 1))
-    if (tourStep >= TOUR_TOTAL - 1) {
-      try { localStorage.setItem('vetted_profile_tour_done', '1') } catch { /* ignore */ }
-    }
-  }
-  const [createName, setCreateName] = useState('')
-  const [createCompanyName, setCreateCompanyName] = useState('')
-  const [createTrade, setCreateTrade] = useState('')
-  const [createLocation, setCreateLocation] = useState('')
-  const [createBio, setCreateBio] = useState('')
-  const [createRate, setCreateRate] = useState('')
-  const [createCategory, setCreateCategory] = useState('')
-  const [createSkills, setCreateSkills] = useState('')
-  const [createAvailable, setCreateAvailable] = useState(true)
-  const [createServices, setCreateServices] = useState([])
-  const [showCreateSvcForm, setShowCreateSvcForm] = useState(false)
-  const [createSvcName, setCreateSvcName] = useState('')
-  const [createSvcBusinessGroup, setCreateSvcBusinessGroup] = useState('')
-  const [createMultiVenture, setCreateMultiVenture] = useState(null) // null = unanswered
-  const [createVentures, setCreateVentures] = useState([])
-  const [createVentureInput, setCreateVentureInput] = useState('')
-  const [createSvcPrice, setCreateSvcPrice] = useState('')
-  const [createSvcPriceType, setCreateSvcPriceType] = useState('fixed')
-  const [createSvcDescription, setCreateSvcDescription] = useState('')
-  const [createSvcDuration, setCreateSvcDuration] = useState('')
+  // Guided setup: creating a first profile, or filling the gaps in one.
+  const [showSetup, setShowSetup] = useState(false)
+  const [setupError, setSetupError] = useState(null)
   const [creating, setCreating] = useState(false)
-  const [createError, setCreateError] = useState(null)
 
   const { user: authUser, loading: authLoading } = useAuth()
 
@@ -486,60 +447,52 @@ function DashboardInner() {
     setSaving(false)
   }
 
-  async function handleCreate(e) {
-    e.preventDefault()
+  // Called by the guided setup (components/ProfileSetup) with the six
+  // essentials. Someone who leaves early still gets a profile from whatever
+  // they gave; the dashboard banner then shows what is outstanding.
+  async function handleSetupCreate(answers) {
     setCreating(true)
-    setCreateError(null)
-
-    const skills = createSkills.split(',').map(s => s.trim()).filter(Boolean)
+    setSetupError(null)
 
     const { data, error } = await supabase
       .from('freelancers')
       .insert({
-        name: createName,
-        company_name: createCompanyName || null,
-        trade: createTrade,
-        location: createLocation,
-        bio: createBio,
-        hourly_rate: createRate || null,
-        available: createAvailable,
-        skills,
-        category: createCategory || null,
-        ventures: createVentures,
+        name: answers.name,
+        company_name: answers.company_name,
+        trade: answers.trade,
+        location: answers.location,
+        bio: answers.bio,
+        category: answers.category,
+        available: true,
+        skills: [],
+        ventures: [],
         user_id: user.id,
         email: user.email,
         rating: 0,
         review_count: 0,
         client_rating: 0,
+        min_price: answers.service ? lowestPaidPrice([answers.service]) : null,
       })
       .select()
       .single()
 
     if (error) {
-      setCreateError(error.message)
+      setSetupError(error.message)
       setCreating(false)
       return
     }
 
-    const newProfileId = data.id
-
-    if (createServices.length > 0) {
-      const results = await Promise.all(
-        createServices.map(svc =>
-          supabase.from('services').insert({
-            freelancer_id: newProfileId,
-            name: svc.name,
-            price: svc.price,
-            price_type: svc.price_type || 'fixed',
-            description: svc.description || null,
-            duration: svc.duration || null,
-            business_group: svc.business_group || null,
-          }).select().single()
-        )
-      )
-      const insertErrors = results.filter(r => r.error)
-      if (insertErrors.length > 0) {
-        setCreateError('Profile created but some services failed to save. You can add them from your dashboard.')
+    if (answers.service) {
+      const { error: svcError } = await supabase.from('services').insert({
+        freelancer_id: data.id,
+        name: answers.service.name,
+        price: answers.service.price,
+        price_type: answers.service.price_type,
+      })
+      if (svcError) {
+        setSetupError('Your profile was created, but the service did not save. Add it from your dashboard.')
+        setCreating(false)
+        return
       }
     }
 
@@ -547,30 +500,66 @@ function DashboardInner() {
     fetch('/api/match-saved-searches', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ freelancer_id: newProfileId }),
+      body: JSON.stringify({ freelancer_id: data.id }),
     }).catch(() => {})
 
-    router.push(`/freelancers/${newProfileId}`)
+    router.push(`/freelancers/${data.id}`)
   }
 
-  function addCreateService() {
-    if (!createSvcName.trim() || !createSvcPrice.trim()) return
-    setCreateServices(prev => [...prev, {
-      name: createSvcName.trim(),
-      price: createSvcPrice.trim(),
-      price_type: createSvcPriceType,
-      description: createSvcDescription.trim(),
-      duration: createSvcDuration.trim(),
-      business_group: createSvcBusinessGroup.trim() || null,
-    }])
-    setCreateSvcName('')
-    setCreateSvcPrice('')
-    setCreateSvcPriceType('fixed')
-    setCreateSvcDescription('')
-    setCreateSvcDuration('')
-    // Keep the venture name — the next service is usually for the same one.
-    setShowCreateSvcForm(false)
+  // Same flow, run against a profile that already exists, to fill its gaps.
+  async function handleSetupFinish(answers) {
+    setCreating(true)
+    setSetupError(null)
+
+    const { error } = await supabase
+      .from('freelancers')
+      .update({
+        name: answers.name,
+        company_name: answers.company_name,
+        trade: answers.trade,
+        location: answers.location,
+        bio: answers.bio,
+        category: answers.category,
+      })
+      .eq('id', profile.id)
+
+    if (error) {
+      setSetupError(error.message)
+      setCreating(false)
+      return
+    }
+
+    let nextServices = services
+    if (answers.service) {
+      const { data: svc, error: svcError } = await supabase.from('services').insert({
+        freelancer_id: profile.id,
+        name: answers.service.name,
+        price: answers.service.price,
+        price_type: answers.service.price_type,
+      }).select().single()
+      if (svcError) {
+        setSetupError('Your details saved, but the service did not. Add it from your dashboard.')
+        setCreating(false)
+        return
+      }
+      nextServices = [...services, svc]
+      setServices(nextServices)
+    }
+
+    await supabase.from('freelancers')
+      .update({ min_price: lowestPaidPrice(nextServices) })
+      .eq('id', profile.id)
+
+    const updated = { ...profile, ...answers, min_price: lowestPaidPrice(nextServices) }
+    delete updated.service
+    delete updated.complete
+    setProfile(updated)
+    primeMyFreelancer(user.id, updated)
+    setShowSetup(false)
+    setCreating(false)
+    setToast({ message: 'Profile updated', type: 'success' })
   }
+
 
   async function handleAvatarUpload(e) {
     const file = e.target.files?.[0]
@@ -1148,10 +1137,16 @@ function DashboardInner() {
     )
   }
 
+  // The six essentials, separate from the "profile strength" list below:
+  // those are improvements, these are what makes a listing usable at all.
+  const essentials = profile ? profileRequirements(profile, services) : []
+  const essentialsDone = profile ? isProfileComplete(profile, services) : false
+  const firstGapIndex = essentials.findIndex(r => !r.done)
+
   const completenessItems = profile ? [
     { label: 'Profile photo', done: !!profile.avatar_url, weight: 30, action: () => setShowEditForm(true) },
     { label: 'Bio (min. 100 characters)', done: !!profile.bio && profile.bio.length >= 100, weight: 20, action: () => setShowEditForm(true) },
-    { label: 'Add a service', done: services.some(s => s.name?.trim() && s.description?.trim()), weight: 20, action: () => setShowServiceForm(true) },
+    { label: 'Add a service with a price', done: services.some(s => s.name?.trim() && isPricedService(s)), weight: 20, action: () => setShowServiceForm(true) },
     { label: 'Location set', done: !!(profile.location?.trim()), weight: 10, action: () => setShowEditForm(true) },
     { label: 'Add 3+ skill tags', done: (profile.skills || []).length >= 3, weight: 10, action: () => setShowEditForm(true) },
     { label: 'Confirm availability', done: profile.available !== null && profile.available !== undefined, weight: 10, action: () => setShowEditForm(true) },
@@ -1535,8 +1530,64 @@ function DashboardInner() {
           </div>
         ) : profile ? (
           <>
-            {/* Profile completeness — first thing freelancers see */}
-            {completenessScore < 100 && (
+            {/* Unfinished setup. Takes the place of the profile-strength card
+                below until the essentials are in: one ask at a time beats two
+                checklists, and these are the ones a client actually needs. */}
+            {!essentialsDone && (
+              <div className="rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #F9C000', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
+                <div className="px-6 py-5" style={{ backgroundColor: '#00267F' }}>
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#F9C000' }}>Your profile is live, but unfinished</p>
+                  <h3 className="text-lg sm:text-xl font-bold text-white mt-1.5" style={{ fontFamily: "'Sora', sans-serif" }}>
+                    {essentials.filter(r => !r.done).length === 1
+                      ? 'One thing left before clients can really use your profile'
+                      : `${essentials.filter(r => !r.done).length} things left before clients can really use your profile`}
+                  </h3>
+                  <p className="text-sm mt-2 leading-relaxed" style={{ color: '#93b8ff' }}>
+                    People search, see what you charge, then get in touch. Without a price there is nothing to act on, so they move to the next person.
+                  </p>
+                </div>
+
+                <div className="bg-white px-6 py-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: '#E9EDF5' }}>
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completionPercent(profile, services)}%`, backgroundColor: '#F9C000' }} />
+                    </div>
+                    <span className="text-xs font-bold tabular-nums flex-shrink-0" style={{ color: '#00267F' }}>
+                      {essentials.filter(r => r.done).length} of {essentials.length}
+                    </span>
+                  </div>
+
+                  <ul className="flex flex-col gap-2.5 mb-5">
+                    {essentials.map(r => (
+                      <li key={r.key} className="flex items-start gap-3">
+                        <span
+                          className="flex items-center justify-center rounded-full flex-shrink-0 text-[11px] font-bold mt-0.5"
+                          style={{ width: 18, height: 18, backgroundColor: r.done ? '#16a34a' : '#F3F4F6', color: r.done ? '#fff' : '#9CA3AF', border: r.done ? 'none' : '1.5px solid #E5E7EB' }}
+                        >
+                          {r.done ? '✓' : ''}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium" style={{ color: r.done ? '#9CA3AF' : '#111827', textDecoration: r.done ? 'line-through' : 'none' }}>{r.label}</span>
+                          {!r.done && <span className="block text-xs mt-0.5" style={{ color: '#6B7280' }}>{r.hint}</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button
+                    onClick={() => { setSetupError(null); setShowSetup(true) }}
+                    className="w-full sm:w-auto px-8 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+                  >
+                    Finish my setup →
+                  </button>
+                  <p className="text-xs text-gray-400 mt-3">About a minute. We will skip what you have already done.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Profile strength — the improvements, once the essentials are in */}
+            {essentialsDone && completenessScore < 100 && (
               <div className="bg-white rounded-2xl px-6 py-5 mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                 <div className="flex items-start justify-between gap-4 mb-1">
                   <p className="text-sm font-semibold text-gray-900">Profile strength</p>
@@ -1560,7 +1611,6 @@ function DashboardInner() {
                     border: '1px solid rgba(245,158,11,0.3)',
                     marginBottom: '20px',
                   }}>
-                    <span style={{ fontSize: '0.8rem', color: '#F59E0B', flexShrink: 0, lineHeight: 1.6 }}>💡</span>
                     <p style={{ fontSize: '0.78rem', color: '#92400e', lineHeight: 1.55, margin: 0 }}>{completenessTip}</p>
                   </div>
                 )}
@@ -1658,7 +1708,7 @@ function DashboardInner() {
                 <div className="flex-1 min-w-0 text-center sm:text-left">
                   <h1 className="text-2xl font-bold text-white leading-tight">{profile.name}</h1>
                   <p className="font-semibold mt-0.5 capitalize" style={{ color: '#F9C000' }}>{profile.trade}</p>
-                  {profile.location && <p className="text-sm mt-1 capitalize" style={{ color: '#93b8ff' }}>📍 {formatParish(profile.location)}</p>}
+                  {profile.location && <p className="text-sm mt-1 capitalize" style={{ color: '#93b8ff' }}><Icon name="pin" size={13} inline />{formatParish(profile.location)}</p>}
                   <div className="flex items-center gap-2 mt-2.5 justify-center sm:justify-start flex-wrap">
                     <div className="flex items-center gap-1">
                       <StarRating rating={profile.rating} />
@@ -1878,7 +1928,7 @@ function DashboardInner() {
                                 ? { backgroundColor: '#00267F', color: 'white', borderColor: '#00267F' }
                                 : { borderColor: 'var(--border-card)', color: 'var(--foreground)' }}
                             >
-                              {on ? '✓ ' : '+ '}{c.icon} {c.name}
+                              {on ? '✓ ' : '+ '}{c.name}
                             </button>
                           )
                         })}
@@ -1950,7 +2000,7 @@ function DashboardInner() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">📍 Parish</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Parish</label>
                     <select
                       value={location}
                       onChange={e => setLocation(e.target.value)}
@@ -2237,7 +2287,7 @@ function DashboardInner() {
                         <p className="font-semibold text-gray-900 capitalize">{svc.name}</p>
                         {svc.description && <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{svc.description}</p>}
                         {svc.service_images?.length > 0 && (
-                          <p className="text-xs text-gray-400 mt-1">📷 {svc.service_images.length} photo{svc.service_images.length > 1 ? 's' : ''}</p>
+                          <p className="text-xs text-gray-400 mt-1"><Icon name="camera" size={12} inline />{svc.service_images.length} photo{svc.service_images.length > 1 ? 's' : ''}</p>
                         )}
                         <div className="flex items-center gap-3 mt-2">
                           <span className="text-sm font-bold" style={{ color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>
@@ -2686,12 +2736,12 @@ function DashboardInner() {
         ) : (
           /* No profile — create form */
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-md">
-            {!showCreateForm ? (
-              /* Welcome onboarding state — always shown for freelancers with no profile */
+              {/* Welcome state. The setup itself opens as a full-screen guided
+                  flow (components/ProfileSetup) rather than a form on this page. */}
               <div>
                 {/* Hero banner */}
                 <div className="rounded-2xl px-8 sm:px-12 py-10 text-center" style={{ backgroundColor: '#00267F' }}>
-                  <p className="text-4xl mb-4">🎉</p>
+                  <div className="mb-4 flex justify-center" style={{ color: '#F9C000' }}><Icon name="shield" size={44} strokeWidth={1.5} /></div>
                   <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
                     Welcome to Vetted.bb{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name.split(' ')[0]}` : ''}!
                   </h2>
@@ -2728,543 +2778,16 @@ function DashboardInner() {
 
                   <div className="text-center">
                     <button
-                      onClick={() => { setCreateStep(1); setCreateErrors({}); setShowCreateForm(true); startTourIfNew() }}
+                      onClick={() => { setSetupError(null); setShowCreateForm(true) }}
                       className="px-10 py-3.5 rounded-full font-bold text-base hover:opacity-90 transition-opacity shadow-sm"
                       style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                     >
                       Create my profile →
                     </button>
-                    <p className="text-xs text-gray-400 mt-3">⏱ Takes about 2 minutes</p>
+                    <p className="text-xs text-gray-400 mt-3">Takes about 2 minutes · 6 quick questions</p>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div>
-                {/* Form hero banner */}
-                <div className="rounded-2xl px-8 sm:px-12 py-8 text-center" style={{ backgroundColor: '#00267F' }}>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Create your profile</h2>
-                  <p className="text-sm" style={{ color: '#93b8ff' }}>Tell clients what you do and how to find you</p>
-                  <div className="h-1 w-16 rounded-full mx-auto mt-4" style={{ backgroundColor: '#F9C000' }} />
-                </div>
-
-                {/* Progress indicator */}
-                <div className="px-8 sm:px-12 pt-6 pb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#00267F' }}>1</div>
-                      <span className="text-sm font-semibold" style={{ color: createStep === 1 ? '#00267F' : '#6b7280' }}>Your details</span>
-                    </div>
-                    <div className="flex-1 h-px bg-gray-200" />
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: createStep === 2 ? '#00267F' : '#e5e7eb', color: createStep === 2 ? 'white' : '#9ca3af' }}>2</div>
-                      <span className="text-sm font-semibold" style={{ color: createStep === 2 ? '#00267F' : '#9ca3af' }}>Your services</span>
-                    </div>
-                  </div>
-                </div>
-
-                <form onSubmit={handleCreate} className="px-8 sm:px-12 pb-8 pt-4 flex flex-col gap-5">
-
-                  {/* ── Step 1 ── */}
-                  {createStep === 1 && (
-                    <>
-                      {/* Profile completion guidance — create flow only */}
-                      <div style={{ backgroundColor: 'rgba(147,184,255,0.15)', borderLeft: '3px solid #00267F', borderRadius: '8px', padding: '14px 16px' }}>
-                        <p style={{ fontSize: '0.82rem', color: '#374151', lineHeight: 1.55 }}>
-                          💡 <strong>Take 5 minutes to complete your profile fully.</strong> Profiles with a photo, a bio, and at least 3 services get significantly more enquiries. Use the ⓘ icons next to each field if you need guidance on what to add.
-                        </p>
-                      </div>
-
-                      {/* Full name */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full name</label>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">👤</span>
-                          <input
-                            type="text"
-                            value={createName} spellCheck="true"
-                            onChange={e => { setCreateName(e.target.value); setCreateErrors(prev => ({ ...prev, name: '' })) }}
-                            placeholder="Jane Smith"
-                            className={`w-full pl-10 pr-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.name ? 'border-red-400 focus:border-red-400' : 'border-gray-200'}`}
-                            style={!createErrors.name ? { '--tw-ring-color': '#00267F' } : {}}
-                            onFocus={e => { if (!createErrors.name) e.target.style.borderColor = '#00267F' }}
-                            onBlur={e => { if (!createErrors.name) e.target.style.borderColor = '' }}
-                          />
-                        </div>
-                        {createErrors.name && <p className="text-xs text-red-500 mt-1">{createErrors.name}</p>}
-                      </div>
-
-                      {/* Company name */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Company name <span className="text-gray-400 font-normal">(optional)</span></label>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">🏢</span>
-                          <input
-                            type="text"
-                            value={createCompanyName} spellCheck="true"
-                            onChange={e => setCreateCompanyName(e.target.value)}
-                            placeholder="e.g. Santana's Plumbing"
-                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
-                            onFocus={e => e.target.style.borderColor = '#00267F'}
-                            onBlur={e => e.target.style.borderColor = ''}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Trade */}
-                      <div>
-                        <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
-                          Trade / profession
-                          <Tooltip text="This is your professional title, the one-word or short description of what you do. Clients will see this as your main category. Example: Electrician, Photographer, Baker, Football Coach">
-                            <span style={{ fontSize: '0.875rem', color: '#9CA3AF', cursor: 'help', lineHeight: 1 }}>ⓘ</span>
-                          </Tooltip>
-                        </label>
-                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Your main job title, what you do. e.g. Plumber, Graphic Designer, Personal Trainer, Web Developer</p>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none select-none">🔧</span>
-                          <input
-                            type="text"
-                            value={createTrade} spellCheck="true"
-                            onChange={e => { setCreateTrade(e.target.value); setCreateErrors(prev => ({ ...prev, trade: '' })) }}
-                            placeholder="e.g. Plumber, Graphic Designer"
-                            className={`w-full pl-10 pr-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.trade ? 'border-red-400' : 'border-gray-200'}`}
-                            onFocus={e => { if (!createErrors.trade) e.target.style.borderColor = '#00267F' }}
-                            onBlur={e => { if (!createErrors.trade) e.target.style.borderColor = '' }}
-                          />
-                        </div>
-                        {createErrors.trade && <p className="text-xs text-red-500 mt-1">{createErrors.trade}</p>}
-                        <CoachTip show={tourStep === 0} step={1} total={TOUR_TOTAL} title="Your trade is your headline" onNext={nextTour} onSkip={endTour}>
-                          It&apos;s the first thing clients see on your card and the main way you show up in searches. Keep it simple and recognisable, so &quot;Plumber&quot; finds you more clients than &quot;Fluid Systems Specialist&quot;.
-                        </CoachTip>
-                      </div>
-
-                      {/* Category */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category</label>
-                        <select
-                          value={createCategory}
-                          onChange={e => setCreateCategory(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
-                          onFocus={e => e.target.style.borderColor = '#00267F'}
-                          onBlur={e => e.target.style.borderColor = ''}
-                        >
-                          <option value="">Select a category</option>
-                          {CATEGORIES.map(c => (
-                            <option key={c.name} value={c.name}>{c.name}</option>
-                          ))}
-                        </select>
-                        <p className="text-xs text-gray-400 mt-1.5">This helps clients find you when browsing categories.</p>
-                      </div>
-
-                      {/* Multiple businesses? Collected up front so the service
-                          form can offer a dropdown instead of free text. */}
-                      <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(0,38,127,0.03)', border: '1px solid var(--border-card)' }}>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Do you run more than one business?</label>
-                        <p className="text-xs text-gray-500 mb-3">
-                          Run them all from this one profile. Everywhere else you would build a separate listing for each and split your reputation between them. Here your reviews, your rating and your enquiries all build up in one place and work for every venture you own. One login, one inbox, one reputation. Clients see the full range of what you do, with each business kept in its own section.
-                        </p>
-                        <div className="flex gap-2 mb-1">
-                          {[['no', 'Just one'], ['yes', 'More than one']].map(([val, label]) => {
-                            const on = createMultiVenture === val
-                            return (
-                              <button
-                                key={val}
-                                type="button"
-                                onClick={() => { setCreateMultiVenture(val); if (val === 'no') { setCreateVentures([]); setCreateVentureInput('') } }}
-                                className="flex-1 py-2.5 rounded-lg border-2 text-sm font-semibold transition-colors"
-                                style={on
-                                  ? { borderColor: '#00267F', backgroundColor: 'var(--selected-fill)', color: 'var(--accent)' }
-                                  : { borderColor: 'var(--border-card)', color: 'var(--foreground)' }}
-                              >
-                                {label}
-                              </button>
-                            )
-                          })}
-                        </div>
-
-                        {createMultiVenture === 'yes' && (
-                          <div className="mt-3">
-                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Name each business</label>
-                            {createVentures.length > 0 && (
-                              <div className="flex flex-wrap gap-2 mb-2">
-                                {createVentures.map(v => (
-                                  <span key={v} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                                    {v}
-                                    <button type="button" onClick={() => setCreateVentures(prev => prev.filter(x => x !== v))} className="hover:opacity-70" aria-label={`Remove ${v}`}>×</button>
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={createVentureInput} spellCheck="true"
-                                onChange={e => setCreateVentureInput(e.target.value)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault()
-                                    const v = createVentureInput.trim()
-                                    if (v && !createVentures.includes(v)) setCreateVentures(prev => [...prev, v])
-                                    setCreateVentureInput('')
-                                  }
-                                }}
-                                placeholder="e.g. Joe's Landscaping"
-                                className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const v = createVentureInput.trim()
-                                  if (v && !createVentures.includes(v)) setCreateVentures(prev => [...prev, v])
-                                  setCreateVentureInput('')
-                                }}
-                                disabled={!createVentureInput.trim()}
-                                className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
-                                style={{ backgroundColor: '#00267F' }}
-                              >
-                                Add
-                              </button>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-1.5">You&apos;ll pick which business each service belongs to in the next step. You can add or rename these later.</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Location */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">📍 Parish</label>
-                        <select
-                          value={createLocation}
-                          onChange={e => { setCreateLocation(e.target.value); setCreateErrors(prev => ({ ...prev, location: '' })) }}
-                          className={`w-full px-4 py-3 border rounded-lg text-gray-900 outline-none bg-white transition-colors ${createErrors.location ? 'border-red-400' : 'border-gray-200'}`}
-                          onFocus={e => { if (!createErrors.location) e.target.style.borderColor = '#00267F' }}
-                          onBlur={e => { if (!createErrors.location) e.target.style.borderColor = '' }}
-                        >
-                          <option value="" disabled>Select your parish</option>
-                          {['Christ Church','Saint Andrew','Saint George','Saint James','Saint John','Saint Joseph','Saint Lucy','Saint Michael','Saint Peter','Saint Philip','Saint Thomas'].map(p => (
-                            <option key={p} value={p}>{formatParish(p)}</option>
-                          ))}
-                        </select>
-                        {createErrors.location && <p className="text-xs text-red-500 mt-1">{createErrors.location}</p>}
-                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginTop: 4 }}>Select the parish you are based in. Clients will use this to find professionals near them.</p>
-                        <CoachTip show={tourStep === 1} step={2} total={TOUR_TOTAL} title="Get found by clients near you" onNext={nextTour} onSkip={endTour}>
-                          Clients filter their search by parish, and most prefer someone close by. Picking your parish puts you at the top of local results, for jobs you can actually get to.
-                        </CoachTip>
-                      </div>
-
-                      {/* Bio */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="block text-sm font-semibold text-gray-700">Bio</label>
-                          <span className={`text-xs ${createBio.length > 300 ? 'text-red-500 font-medium' : 'text-gray-400'}`}>{createBio.length}/300</span>
-                        </div>
-                        <textarea
-                          value={createBio}
-                          onChange={e => setCreateBio(e.target.value.slice(0, 300))}
-                          rows={4}
-                          placeholder="Tell clients about your experience and what you do..."
-                          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white resize-none"
-                          onFocus={e => e.target.style.borderColor = '#00267F'}
-                          onBlur={e => e.target.style.borderColor = ''}
-                        />
-                        <CoachTip show={tourStep === 2} step={3} total={TOUR_TOTAL} title="Turn profile views into enquiries" onNext={nextTour} onSkip={endTour}>
-                          A couple of friendly sentences here builds instant trust. Mention your years of experience, what you specialise in, and the areas you cover. Profiles with a bio get noticeably more messages than empty ones.
-                        </CoachTip>
-                      </div>
-
-                      {/* Skills */}
-                      <div>
-                        <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
-                          Skills <span className="text-gray-400 font-normal">(comma separated)</span>
-                          <Tooltip text="Skills are NOT the same as your trade. They are the specific services or specialities you offer within your trade. A Web Developer might add: React, WordPress, E-Commerce, Mobile-Friendly Design. Add 3–8 skills for best results.">
-                            <span style={{ fontSize: '0.875rem', color: '#9CA3AF', cursor: 'help', lineHeight: 1 }}>ⓘ</span>
-                          </Tooltip>
-                        </label>
-                        <p style={{ fontSize: '0.78rem', color: '#6B7280', marginBottom: '6px' }}>Add specific things you can do or tools you use. These help clients find you when they search. e.g. if you are a Plumber: Pipe Repair, Leak Detection, Bathroom Fitting, Drain Cleaning</p>
-                        <input
-                          type="text"
-                          value={createSkills} spellCheck="true"
-                          onChange={e => setCreateSkills(e.target.value)}
-                          placeholder="e.g. Plumbing, Pipe fitting, Drain repair"
-                          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 outline-none bg-white"
-                          onFocus={e => e.target.style.borderColor = '#00267F'}
-                          onBlur={e => e.target.style.borderColor = ''}
-                        />
-                        <CoachTip show={tourStep === 3} step={4} total={TOUR_TOTAL} title="Skills power the search engine" onNext={nextTour} onSkip={endTour} nextLabel="Next: services →">
-                          Every skill you list is a keyword clients can search for. &quot;Leak detection&quot; or &quot;wedding photography&quot; brings in searches your trade alone would miss, and 3 to 8 specific skills works best. One last tip waits on the next step!
-                        </CoachTip>
-                      </div>
-
-                      {/* Availability */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Availability</label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setCreateAvailable(true)}
-                            className={`py-3 rounded-lg border-2 text-sm font-semibold transition-all ${createAvailable ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'}`}
-                          >
-                            ✓ Available
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCreateAvailable(false)}
-                            className={`py-3 rounded-lg border-2 text-sm font-semibold transition-all ${!createAvailable ? 'border-gray-400 bg-gray-100 text-gray-700' : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'}`}
-                          >
-                            ✗ Unavailable
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Step 1 nav */}
-                      <div className="flex gap-3 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => { setShowCreateForm(false); setCreateStep(1); setCreateErrors({}) }}
-                          className="flex-1 py-3 rounded-lg border border-gray-200 text-gray-600 font-medium hover:border-gray-300 transition-colors bg-white"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const errs = {}
-                            if (!createName.trim()) errs.name = 'Full name is required'
-                            if (!createTrade.trim()) errs.trade = 'Trade or profession is required'
-                            if (!createLocation.trim()) errs.location = 'Location is required'
-                            if (Object.keys(errs).length > 0) { setCreateErrors(errs); return }
-                            setCreateErrors({})
-                            setCreateStep(2)
-                          }}
-                          className="flex-1 py-3 rounded-lg font-semibold text-white hover:opacity-90 transition-opacity"
-                          style={{ backgroundColor: '#00267F' }}
-                        >
-                          Next →
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {/* ── Step 2 ── */}
-                  {createStep === 2 && (
-                    <>
-                      {/* Services section */}
-                      <div className="border border-gray-100 rounded-xl p-5">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold text-gray-900 text-sm">Your services <span className="text-gray-400 font-normal">(optional)</span></h3>
-                          {!showCreateSvcForm && (
-                            <button
-                              type="button"
-                              onClick={() => setShowCreateSvcForm(true)}
-                              className="text-sm font-medium hover:opacity-80 transition-opacity"
-                              style={{ color: '#00267F' }}
-                            >
-                              + Add a service
-                            </button>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-400 mb-4">You can add these later from your dashboard.</p>
-
-                        <CoachTip show={tourStep === 4 && createStep === 2} step={5} total={TOUR_TOTAL} title="Win the job before the first message" onNext={nextTour} onSkip={endTour} nextLabel="Finish tour ✓">
-                          Listing your services with prices answers the two questions every client has: &quot;can they do it?&quot; and &quot;what will it cost?&quot; Use &quot;Starting from&quot; pricing if jobs vary. Profiles with 3+ priced services get the most enquiries. <strong>Run more than one business?</strong> Name it in the &quot;Which business is this for?&quot; box. Every venture you own sits on this one profile, so the reputation you build works for all of them at once, and a client who came for one can discover the rest.
-                        </CoachTip>
-
-                        {createServices.length > 0 && (
-                          <div className="flex flex-col gap-2 mb-4">
-                            {createServices.map((svc, i) => (
-                              <div key={i} className="flex items-start justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-gray-900 text-sm capitalize">{svc.name}</p>
-                                  {svc.business_group && (
-                                    <span className="inline-block text-[0.65rem] font-bold px-2 py-0.5 rounded-full mt-1" style={{ backgroundColor: '#EEF2FF', color: '#00267F' }}>
-                                      {svc.business_group}
-                                    </span>
-                                  )}
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-sm font-semibold" style={{ color: svc.price_type === 'starting_from' ? '#F59E0B' : '#00267F' }}>
-                                      {(() => {
-                                        const n = parseFloat(String(svc.price).replace(/[^0-9.]/g, ''))
-                                        if (isNaN(n)) return svc.price
-                                        const fmt = `Bds$${Number.isInteger(n) ? n : n.toFixed(2)}`
-                                        return svc.price_type === 'starting_from' ? `${fmt}+` : fmt
-                                      })()}
-                                    </span>
-                                    {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
-                                  </div>
-                                  {svc.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{svc.description}</p>}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setCreateServices(prev => prev.filter((_, idx) => idx !== i))}
-                                  className="flex-shrink-0 text-xs text-red-400 hover:text-red-600 font-medium transition-colors mt-0.5"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {showCreateSvcForm && (
-                          <div className="flex flex-col gap-3 pt-1">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Service name</label>
-                              <input type="text" value={createSvcName} spellCheck="true" onChange={e => setCreateSvcName(e.target.value)} placeholder="e.g. Full house rewire" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
-                            </div>
-                            {/* Only shown when they said they run several
-                                businesses — a dropdown, so names can't drift. */}
-                            {createVentures.length > 0 && (
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Which business is this for?</label>
-                                <select
-                                  value={createSvcBusinessGroup}
-                                  onChange={e => setCreateSvcBusinessGroup(e.target.value)}
-                                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white"
-                                >
-                                  <option value="">Not specific to one</option>
-                                  {createVentures.map(v => <option key={v} value={v}>{v}</option>)}
-                                </select>
-                              </div>
-                            )}
-                            <div>
-                              {/* Price type toggle */}
-                              <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setCreateSvcPriceType('fixed')}
-                                  className="flex-1 py-2 text-xs font-medium transition-colors"
-                                  style={createSvcPriceType === 'fixed'
-                                    ? { backgroundColor: '#00267F', color: 'white' }
-                                    : { backgroundColor: 'var(--surface-card)', color: '#6b7280' }}
-                                >
-                                  Fixed price
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setCreateSvcPriceType('starting_from')}
-                                  className="flex-1 py-2 text-xs font-medium transition-colors border-l border-gray-200"
-                                  style={createSvcPriceType === 'starting_from'
-                                    ? { backgroundColor: '#00267F', color: 'white' }
-                                    : { backgroundColor: 'var(--surface-card)', color: '#6b7280' }}
-                                >
-                                  Starting from
-                                </button>
-                              </div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">
-                                {createSvcPriceType === 'fixed' ? 'Price (BBD $)' : 'Starting from (BBD $)'}
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={createSvcPrice}
-                                onChange={e => setCreateSvcPrice(e.target.value)}
-                                placeholder="0.00"
-                                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white"
-                                onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''}
-                              />
-                              {createSvcPriceType === 'starting_from' && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  This tells clients your base price. The final cost may be higher depending on the job.
-                                </p>
-                              )}
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Description <span className="text-gray-400 font-normal">(optional)</span></label>
-                              <textarea value={createSvcDescription} onChange={e => setCreateSvcDescription(e.target.value)} rows={2} placeholder="Describe what's included..." className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white resize-none" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''} />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Duration <span className="text-gray-400 font-normal">(optional)</span></label>
-                              <select value={createSvcDuration} onChange={e => setCreateSvcDuration(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-gray-900 text-sm outline-none bg-white" onFocus={e => e.target.style.borderColor = '#00267F'} onBlur={e => e.target.style.borderColor = ''}>
-                                <option value="">Select duration</option>
-                                <option>30 minutes</option>
-                                <option>1 hour</option>
-                                <option>1.5 hours</option>
-                                <option>2 hours</option>
-                                <option>3 hours</option>
-                                <option>Half day</option>
-                                <option>Full day</option>
-                                <option>2-3 days</option>
-                                <option>1 week</option>
-                              </select>
-                            </div>
-                            <div className="flex gap-2">
-                              <button type="button" onClick={() => { setShowCreateSvcForm(false); setCreateSvcName(''); setCreateSvcPrice(''); setCreateSvcPriceType('fixed'); setCreateSvcDescription(''); setCreateSvcDuration('') }} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-300 transition-colors bg-white">Cancel</button>
-                              <button type="button" onClick={addCreateService} disabled={!createSvcName.trim() || !createSvcPrice.trim()} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: '#00267F' }}>Add service</button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Read it back. People catch their own typos when they
-                          see their words laid out the way a client will, and a
-                          misspelled skill costs them every search for it. A
-                          nudge, never a gate: nothing here blocks the submit. */}
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 flex flex-col gap-3">
-                        <div>
-                          <h4 className="text-sm font-semibold text-gray-900">How clients will see you</h4>
-                          <p className="text-xs text-gray-500 mt-0.5">Read it back once. A spelling mistake here costs you searches.</p>
-                        </div>
-
-                        <div className="bg-white rounded-lg border border-gray-200 px-4 py-3.5 flex flex-col gap-2.5">
-                          <div>
-                            <p className="font-semibold text-gray-900 leading-tight">{createName.trim() || 'Your name'}</p>
-                            {createCompanyName.trim() && <p className="text-sm text-gray-700">{createCompanyName.trim()}</p>}
-                            <p className="text-xs text-gray-500 capitalize mt-0.5">
-                              {createTrade.trim() || 'Your trade'}{createLocation ? ` · ${formatParish(createLocation)}` : ''}
-                            </p>
-                          </div>
-
-                          {createBio.trim() && (
-                            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{createBio.trim()}</p>
-                          )}
-
-                          {createSkills.split(',').map(s => s.trim()).filter(Boolean).length > 0 && (
-                            <div className="flex flex-wrap gap-1.5">
-                              {createSkills.split(',').map(s => s.trim()).filter(Boolean).map((skill, i) => (
-                                <span key={`${skill}-${i}`} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-700">{skill}</span>
-                              ))}
-                            </div>
-                          )}
-
-                          {createServices.length > 0 && (
-                            <div className="flex flex-col gap-1 pt-1 border-t border-gray-100">
-                              {createServices.map((svc, i) => (
-                                <div key={`${svc.name}-${i}`} className="flex items-baseline justify-between gap-3">
-                                  <span className="text-sm text-gray-700 min-w-0 break-words">{svc.name}</span>
-                                  <span className="text-sm font-semibold text-gray-900 flex-shrink-0">
-                                    Bds${svc.price}{svc.price_type === 'starting_from' ? '+' : ''}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setCreateStep(1)}
-                          className="self-start text-xs font-semibold hover:opacity-80 transition-opacity"
-                          style={{ color: '#00267F' }}
-                        >
-                          ← Fix something in your details
-                        </button>
-                      </div>
-
-                      {createError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{createError}</p>}
-
-                      {/* Step 2 nav */}
-                      <div className="flex gap-3 pt-2">
-                        <button type="button" onClick={() => setCreateStep(1)} className="flex-1 py-3 rounded-lg border border-gray-200 text-gray-600 font-medium hover:border-gray-300 transition-colors bg-white">← Back</button>
-                        <button type="submit" disabled={creating} className="flex-1 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed" style={{ backgroundColor: '#00267F' }}>
-                          {creating ? 'Creating...' : 'Create profile'}
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                </form>
-              </div>
-            )}
           </div>
         )}
 
@@ -3541,6 +3064,37 @@ function DashboardInner() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Guided setup: a first profile, or filling the gaps in one. */}
+      {showCreateForm && !profile && (
+        <ProfileSetup
+          mode="create"
+          initial={{ name: user?.user_metadata?.full_name || '' }}
+          saving={creating}
+          error={setupError}
+          onSave={handleSetupCreate}
+          onClose={() => setShowCreateForm(false)}
+        />
+      )}
+      {showSetup && profile && (
+        <ProfileSetup
+          mode="finish"
+          initial={{
+            name: profile.name || '',
+            company_name: profile.company_name || '',
+            trade: profile.trade || '',
+            category: profile.category || '',
+            location: profile.location || '',
+            bio: profile.bio || '',
+            hasPricedService: services.some(isPricedService),
+          }}
+          startAt={firstGapIndex >= 0 ? firstGapIndex : 0}
+          saving={creating}
+          error={setupError}
+          onSave={handleSetupFinish}
+          onClose={() => { setShowSetup(false); setCreating(false) }}
+        />
       )}
 
     </main>

@@ -4,13 +4,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
-
-const ICON = {
-  message: '💬', reply: '💬', quote: '📄', invoice: '🧾', receipt: '✅',
-  reminder: '⏰', review: '⭐', quote_accepted: '✅', quote_declined: '✖️',
-  job_completed: '✅', job_paid: '💰', saved: '❤️', profile_views: '👁️', welcome: '👋',
-  saved_search: '🔍', booking_request: '📅', booking_confirmed: '✅', booking_declined: '✖️',
-}
+import Icon from '@/components/Icon'
+import { notificationIcon } from '@/lib/notificationIcons'
 
 function timeAgo(iso) {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
@@ -166,7 +161,7 @@ export default function NotificationBell() {
                   className="hover:bg-gray-50 border-b border-gray-50"
                   style={{ display: 'flex', gap: 10, width: '100%', textAlign: 'left', padding: '12px 16px', background: n.read ? 'transparent' : 'rgba(0,38,127,0.04)', border: 'none', borderBottom: '1px solid var(--row-stripe, #f3f4f6)', cursor: 'pointer' }}
                 >
-                  <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.3 }} aria-hidden="true">{ICON[n.type] || '🔔'}</span>
+                  <span style={{ flexShrink: 0, marginTop: 2, color: 'var(--accent)' }}><Icon name={notificationIcon(n.type)} size={17} /></span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span className="text-gray-900" style={{ display: 'block', fontSize: 13, fontWeight: n.read ? 400 : 600, lineHeight: 1.4 }}>{n.title}</span>
                     {n.body && <span className="text-gray-500" style={{ display: 'block', fontSize: 12, lineHeight: 1.4, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</span>}

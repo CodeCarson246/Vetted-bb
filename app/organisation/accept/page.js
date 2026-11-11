@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { stashPendingInvite, consumePendingInvite } from '@/lib/organisations'
+import Icon from '@/components/Icon'
 
 // Where an invite link lands. Signed in: redeem it and go to the workspace.
 // Not signed in: park the token and offer sign-up or log-in; it is redeemed
@@ -46,14 +47,14 @@ function AcceptInvite() {
       <div className="bg-white rounded-2xl w-full max-w-md p-7 sm:p-8 text-center" style={{ borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
         {view === 'working' && (
           <>
-            <p className="text-3xl mb-3" aria-hidden="true">🏢</p>
+            <div className="mb-3 flex justify-center" style={{ color: 'var(--accent)' }}><Icon name="building" size={32} strokeWidth={1.5} /></div>
             <p className="text-sm text-gray-500">Adding you to the organisation…</p>
           </>
         )}
 
         {view === 'need-login' && (
           <>
-            <p className="text-3xl mb-3" aria-hidden="true">🏢</p>
+            <div className="mb-3 flex justify-center" style={{ color: 'var(--accent)' }}><Icon name="building" size={32} strokeWidth={1.5} /></div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">You’ve been invited to join an organisation</h1>
             <p className="text-sm text-gray-500 mb-6">Create an account or log in with the email address the invitation was sent to, and you’ll be added automatically.</p>
             <div className="flex flex-col gap-2.5">
@@ -69,7 +70,7 @@ function AcceptInvite() {
 
         {view === 'error' && (
           <>
-            <p className="text-3xl mb-3" aria-hidden="true">😕</p>
+            <div className="mb-3 flex justify-center text-gray-400"><Icon name="alert" size={32} strokeWidth={1.5} /></div>
             <h1 className="text-lg font-bold text-gray-900 mb-1">We couldn’t use that invitation</h1>
             <p className="text-sm text-gray-500 mb-5">{error}</p>
             <p className="text-xs text-gray-400">Ask the person who invited you to send a fresh link.</p>

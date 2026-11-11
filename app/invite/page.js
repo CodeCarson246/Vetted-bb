@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { SITE_URL, SITE_HOST } from '@/lib/siteUrl'
+import Icon from '@/components/Icon'
 
 // Peer referral: any visitor can share Vetted.bb with a friend. The link
 // points at the homepage so the friend gets the full pitch, then signs up
@@ -35,7 +36,7 @@ export default function InvitePage() {
 
         {/* Hero */}
         <div className="rounded-2xl px-6 sm:px-10 py-10 text-center" style={{ background: 'linear-gradient(135deg, #00267F 0%, #001a5c 100%)' }}>
-          <p className="text-4xl mb-3" aria-hidden="true">💌</p>
+          <div className="mb-3 flex justify-center" style={{ color: '#F9C000' }}><Icon name="mail" size={40} strokeWidth={1.5} /></div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Invite friends to Vetted.bb</h1>
           <p className="text-sm sm:text-base max-w-md mx-auto" style={{ color: '#93b8ff' }}>
             Know someone in Barbados who needs a trusted pro, or a skilled pro who should be listed? Send them your invite link.

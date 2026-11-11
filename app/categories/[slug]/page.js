@@ -130,7 +130,7 @@ export default async function CategoryPage({ params }) {
                 <Link
                   key={f.id}
                   href={profileUrl(f)}
-                  className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-md transition-shadow"
+                  className="card-lift bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4"
                   style={{ borderTop: '4px solid #00267F', textDecoration: 'none' }}
                 >
                   <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: '#00267F' }}>

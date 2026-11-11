@@ -25,7 +25,7 @@ export default function CategoriesIndex() {
             <Link
               key={cat.slug}
               href={`/categories/${cat.slug}`}
-              className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-md transition-all"
+              className="card-lift bg-white rounded-2xl border border-gray-100 p-6"
               style={{ borderTop: '3px solid #00267F', textDecoration: 'none' }}
             >
               <span className="flex items-center justify-center rounded-2xl mb-3" style={{ width: 48, height: 48, backgroundColor: 'var(--selected-fill)', color: 'var(--accent)' }}>

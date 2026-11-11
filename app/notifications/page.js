@@ -3,13 +3,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
-
-const ICON = {
-  message: '💬', reply: '💬', quote: '📄', invoice: '🧾', receipt: '✅',
-  reminder: '⏰', review: '⭐', quote_accepted: '✅', quote_declined: '✖️',
-  job_completed: '✅', job_paid: '💰', saved: '❤️', profile_views: '👁️', welcome: '👋',
-  saved_search: '🔍',
-}
+import Icon from '@/components/Icon'
+import { notificationIcon } from '@/lib/notificationIcons'
 
 const FILTERS = [
   ['all', 'All'],
@@ -154,7 +149,7 @@ export default function NotificationsPage() {
           <p className="text-gray-400 text-sm text-center py-10">Loading…</p>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 px-6 py-12 text-center">
-            <p className="text-3xl mb-2">🔔</p>
+            <div className="mb-2 flex justify-center text-gray-400"><Icon name="bell" size={32} strokeWidth={1.5} /></div>
             <p className="text-gray-500 text-sm">{filter === 'all' ? 'No notifications yet.' : 'Nothing here for this filter.'}</p>
           </div>
         ) : (
@@ -174,7 +169,7 @@ export default function NotificationsPage() {
                         className="text-left"
                         style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                       >
-                        <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1.3 }} aria-hidden="true">{ICON[n.type] || '🔔'}</span>
+                        <span style={{ flexShrink: 0, marginTop: 2, color: 'var(--accent)' }}><Icon name={notificationIcon(n.type)} size={19} /></span>
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span className="text-gray-900" style={{ display: 'block', fontSize: 14, fontWeight: n.read ? 400 : 600, lineHeight: 1.4 }}>{n.title}</span>
                           {n.body && <span className="text-gray-500" style={{ display: 'block', fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{n.body}</span>}
