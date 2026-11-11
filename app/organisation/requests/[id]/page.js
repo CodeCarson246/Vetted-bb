@@ -151,7 +151,7 @@ export default function QuoteRequestDetail() {
                 ) : (
                   <>
                     <div className="flex items-baseline justify-between gap-2 mb-1">
-                      <p className="text-2xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{sym}{Number(q.total || 0).toFixed(2)}</p>
+                      <p className="text-2xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>{sym}{Number(q.total || 0).toFixed(2)}</p>
                       {isLowest && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>Lowest</span>}
                     </div>
                     <p className="text-xs text-gray-500 mb-3">{q.quote_number} · {termLabel(q.payment_terms)}</p>

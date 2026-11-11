@@ -219,7 +219,7 @@ export default function JobsPage() {
       {confirmAction && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setConfirmAction(null)}>
           <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-gray-900 mb-2" style={{ fontFamily: "'Sora', sans-serif" }}>{confirmAction.title}</h3>
+            <h3 className="font-bold text-gray-900 mb-2" style={{ fontFamily: 'var(--font-display)' }}>{confirmAction.title}</h3>
             <p className="text-sm text-gray-500 leading-relaxed mb-6">{confirmAction.body}</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmAction(null)} className="flex-1 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">Cancel</button>

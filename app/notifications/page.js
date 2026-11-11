@@ -107,7 +107,7 @@ export default function NotificationsPage() {
     <main className="page-bg" style={{ minHeight: '100vh' }}>
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px 80px' }}>
         <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-          <h1 className="text-gray-900" style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '1.8rem' }}>Notifications</h1>
+          <h1 className="text-gray-900" style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.8rem' }}>Notifications</h1>
           <div className="flex items-center gap-2">
             {unread > 0 && (
               <button onClick={markAllRead} className="text-sm font-semibold px-4 py-2 rounded-full border transition-colors" style={{ borderColor: '#00267F', color: '#00267F' }}>

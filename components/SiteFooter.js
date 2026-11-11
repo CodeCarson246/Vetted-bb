@@ -81,7 +81,7 @@ export default function SiteFooter() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '2px',
-                fontFamily: "'Sora', sans-serif",
+                fontFamily: 'var(--font-logo)',
                 fontWeight: 800,
                 fontSize: '1.1rem',
                 lineHeight: 1,
@@ -100,7 +100,7 @@ export default function SiteFooter() {
           {columns.map(col => (
             <div key={col.heading}>
               <p style={{
-                fontFamily: "'Sora', sans-serif",
+                fontFamily: 'var(--font-display)',
                 fontWeight: 700,
                 fontSize: '0.875rem',
                 color: 'white',

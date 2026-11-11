@@ -235,7 +235,7 @@ export default function CalendarPage() {
           ].map(c => (
             <div key={c.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
               <p className="text-xs text-gray-500">{c.label}</p>
-              <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: c.color, fontFamily: "'Sora', sans-serif" }}>{c.value}</p>
+              <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: c.color, fontFamily: 'var(--font-display)' }}>{c.value}</p>
             </div>
           ))}
         </div>

@@ -106,7 +106,7 @@ export default function ReviewsPage() {
           ].map(c => (
             <div key={c.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
               <p className="text-xs text-gray-500">{c.label}</p>
-              <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{c.value}</p>
+              <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>{c.value}</p>
               <p className="text-xs text-gray-400 mt-1">{c.sub}</p>
             </div>
           ))}

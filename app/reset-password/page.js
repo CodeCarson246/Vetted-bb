@@ -75,7 +75,7 @@ export default function ResetPassword() {
           <Link
             href="/"
             className="hover:opacity-90 transition-opacity"
-            style={{ display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: 'var(--surface-card)', borderRadius: '999px', padding: '10px 28px', fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '1.5rem', textDecoration: 'none', lineHeight: 1 }}
+            style={{ display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: 'var(--surface-card)', borderRadius: '999px', padding: '10px 28px', fontFamily: 'var(--font-logo)', fontWeight: 800, fontSize: '1.5rem', textDecoration: 'none', lineHeight: 1 }}
           >
             <span style={{ color: '#00267F' }}>Vetted</span>
             <span style={{ color: '#F9C000' }}>.</span>

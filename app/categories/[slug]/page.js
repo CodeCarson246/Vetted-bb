@@ -96,7 +96,7 @@ export default async function CategoryPage({ params }) {
           <span className="inline-flex items-center justify-center rounded-2xl mb-4" style={{ width: 64, height: 64, backgroundColor: 'rgba(255,255,255,0.12)' }}>
             <CategoryIcon slug={cat.slug} size={34} color="#F9C000" />
           </span>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ fontFamily: "'Sora', sans-serif" }}>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ fontFamily: 'var(--font-display)' }}>
             {cat.name} in Barbados
           </h1>
           <p className="text-base" style={{ color: 'rgba(255,255,255,0.75)' }}>{cat.description}</p>
@@ -141,7 +141,7 @@ export default async function CategoryPage({ params }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{f.name}</span>
+                      <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>{f.name}</span>
                       {isVerified(f) && <VerifiedBadge size={15} />}
                       <span className={`text-xs font-medium ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
                         ● {f.available ? 'Available' : 'Unavailable'}

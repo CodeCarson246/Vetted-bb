@@ -200,7 +200,7 @@ export default function OrganisationRecords() {
             { label: 'Declined', value: String(filtered.filter(r => r.status === 'declined').length), sub: 'quotes', accent: '#9ca3af' },
           ].map(t => (
             <div key={t.label} className="bg-white rounded-2xl border border-gray-100 p-5" style={{ borderTop: `3px solid ${t.accent}` }}>
-              <p className="text-2xl font-bold text-gray-900 tabular-nums" style={{ fontFamily: "'Sora', sans-serif" }}>{ready ? t.value : '…'}</p>
+              <p className="text-2xl font-bold text-gray-900 tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{ready ? t.value : '…'}</p>
               <p className="text-sm text-gray-500 mt-1">{t.label}</p>
               <p className="text-xs text-gray-400">{t.sub}</p>
             </div>

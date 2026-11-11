@@ -169,7 +169,7 @@ function PhaseCard({ phase }) {
         {phase.statusLabel}
       </span>
       <h2 style={{
-        fontFamily: "'Sora', sans-serif",
+        fontFamily: 'var(--font-display)',
         fontWeight: 800,
         fontSize: '1.1rem',
         color: muted ? '#9CA3AF' : '#111827',
@@ -179,7 +179,7 @@ function PhaseCard({ phase }) {
         {phase.title}
       </h2>
       <p style={{
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: 'var(--font-body)',
         fontSize: '0.875rem',
         color: muted ? '#9CA3AF' : '#6B7280',
         lineHeight: 1.65,
@@ -276,18 +276,18 @@ export default function Roadmap() {
           Built in public
         </div>
         <h1 style={{
-          fontFamily: "'Sora', sans-serif",
+          fontFamily: 'var(--font-display)',
           fontWeight: 800,
           fontSize: 'clamp(2rem, 5vw, 3rem)',
           color: '#00267F',
           marginBottom: '16px',
           lineHeight: 1.15,
-          letterSpacing: '-0.5px',
+          letterSpacing: '-0.005em',
         }}>
           Where we&apos;re going
         </h1>
         <p style={{
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: 'var(--font-body)',
           fontSize: '1.05rem',
           color: '#6B7280',
           lineHeight: 1.7,
@@ -347,7 +347,7 @@ export default function Roadmap() {
           padding: '40px 36px',
         }}>
           <h2 style={{
-            fontFamily: "'Sora', sans-serif",
+            fontFamily: 'var(--font-display)',
             fontWeight: 800,
             fontSize: '1.4rem',
             color: '#00267F',
@@ -356,7 +356,7 @@ export default function Roadmap() {
             What should we build next?
           </h2>
           <p style={{
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: 'var(--font-body)',
             fontSize: '0.9rem',
             color: '#6B7280',
             marginBottom: '28px',
@@ -386,7 +386,7 @@ export default function Roadmap() {
                   onMouseLeave={e => { if (!submitted && !selected) e.currentTarget.style.borderColor = 'var(--border-card)' }}
                 >
                   <p style={{
-                    fontFamily: "'Sora', sans-serif",
+                    fontFamily: 'var(--font-display)',
                     fontWeight: 700,
                     fontSize: '0.95rem',
                     color: selected ? 'var(--accent)' : 'var(--foreground)',
@@ -395,7 +395,7 @@ export default function Roadmap() {
                     {opt.label}
                   </p>
                   <p style={{
-                    fontFamily: "'Inter', sans-serif",
+                    fontFamily: 'var(--font-body)',
                     fontSize: '0.8rem',
                     color: 'var(--muted)',
                     marginBottom: '14px',
@@ -430,7 +430,7 @@ export default function Roadmap() {
           {submitted ? (
             <p style={{
               display: 'inline-block',
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-body)',
               fontSize: '0.875rem',
               color: '#16a34a',
               fontWeight: 600,
@@ -449,7 +449,7 @@ export default function Roadmap() {
                 borderRadius: '999px',
                 backgroundColor: vote ? 'var(--navy)' : 'var(--border-card)',
                 color: vote ? '#fff' : 'var(--muted)',
-                fontFamily: "'Sora', sans-serif",
+                fontFamily: 'var(--font-display)',
                 fontWeight: 700,
                 fontSize: '0.875rem',
                 border: 'none',
@@ -466,7 +466,7 @@ export default function Roadmap() {
       {/* ── Changelog ── */}
       <section style={{ maxWidth: '880px', margin: '0 auto', padding: '0 24px 96px' }}>
         <h2 style={{
-          fontFamily: "'Sora', sans-serif",
+          fontFamily: 'var(--font-display)',
           fontWeight: 800,
           fontSize: '1.5rem',
           color: '#111827',
@@ -494,7 +494,7 @@ export default function Roadmap() {
               }}
             >
               <span style={{
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'var(--font-body)',
                 fontSize: '0.8rem',
                 color: '#9CA3AF',
                 minWidth: '72px',
@@ -503,7 +503,7 @@ export default function Roadmap() {
                 {entry.date}
               </span>
               <span style={{
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'var(--font-body)',
                 fontSize: '0.875rem',
                 color: '#374151',
                 flex: 1,

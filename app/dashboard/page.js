@@ -1537,7 +1537,7 @@ function DashboardInner() {
               <div className="rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #F9C000', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
                 <div className="px-6 py-5" style={{ backgroundColor: '#00267F' }}>
                   <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#F9C000' }}>Your profile is live, but unfinished</p>
-                  <h3 className="text-lg sm:text-xl font-bold text-white mt-1.5" style={{ fontFamily: "'Sora', sans-serif" }}>
+                  <h3 className="text-lg sm:text-xl font-bold text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
                     {essentials.filter(r => !r.done).length === 1
                       ? 'One thing left before clients can really use your profile'
                       : `${essentials.filter(r => !r.done).length} things left before clients can really use your profile`}
@@ -1654,7 +1654,7 @@ function DashboardInner() {
                   className="bg-white rounded-2xl border border-gray-100 p-4 text-center transition-all hover:shadow-md"
                   style={{ borderTop: `3px solid ${stat.highlight ? '#F9C000' : '#00267F'}`, textDecoration: 'none' }}
                 >
-                  <p className="text-2xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{stat.value}</p>
+                  <p className="text-2xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>{stat.value}</p>
                   <p className="text-xs text-gray-500 mt-1">{stat.label}</p>
                 </Cmp>
                 )

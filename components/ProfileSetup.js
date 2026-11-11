@@ -208,7 +208,7 @@ export default function ProfileSetup({
                   ref={liveRef}
                   tabIndex={-1}
                   className="text-2xl sm:text-3xl font-bold mb-2 outline-none"
-                  style={{ fontFamily: "'Sora', sans-serif", color: 'var(--accent)', textWrap: 'balance' }}
+                  style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)', textWrap: 'balance' }}
                 >
                   {current.question}
                 </h2>
@@ -517,7 +517,7 @@ export default function ProfileSetup({
       {leaving && (
         <div className="fixed inset-0 z-10 flex items-center justify-center p-5" style={{ backgroundColor: 'rgba(0,16,54,0.5)' }}>
           <div className="rounded-2xl p-6 w-full" style={{ maxWidth: 420, backgroundColor: 'var(--surface-card)' }}>
-            <h3 className="font-bold text-lg mb-2" style={{ fontFamily: "'Sora', sans-serif", color: 'var(--accent)' }}>
+            <h3 className="font-bold text-lg mb-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)' }}>
               Leave setup for now?
             </h3>
             <p className="text-sm leading-relaxed mb-5" style={{ color: 'var(--muted)' }}>

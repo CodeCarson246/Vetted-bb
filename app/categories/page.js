@@ -31,7 +31,7 @@ export default function CategoriesIndex() {
               <span className="flex items-center justify-center rounded-2xl mb-3" style={{ width: 48, height: 48, backgroundColor: 'var(--selected-fill)', color: 'var(--accent)' }}>
                 <CategoryIcon slug={cat.slug} size={28} />
               </span>
-              <p className="font-semibold mb-1" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{cat.name}</p>
+              <p className="font-semibold mb-1" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>{cat.name}</p>
               <p className="text-xs text-gray-500 leading-relaxed">{cat.description}</p>
             </Link>
           ))}

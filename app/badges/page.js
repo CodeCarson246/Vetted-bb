@@ -43,7 +43,7 @@ export default function Badges() {
       <section className="w-full px-4 sm:px-8 py-14 sm:py-16" style={{ backgroundColor: '#00267F' }}>
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-3" style={{ color: '#F9C000' }}>Trust marks</p>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 leading-tight" style={{ letterSpacing: '-0.8px' }}>What our badges mean</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 leading-tight" style={{ letterSpacing: '-0.005em' }}>What our badges mean</h1>
           <p className="text-base leading-relaxed max-w-2xl mx-auto" style={{ color: '#c3d4ff' }}>
             Four marks, each with one meaning. None can be bought.
           </p>

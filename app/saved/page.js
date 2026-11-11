@@ -140,7 +140,7 @@ export default function SavedProfessionals() {
                   {/* Info */}
                   <Link href={profileUrl(f)} className="flex-1 min-w-0" style={{ textDecoration: 'none' }}>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{f.name}</span>
+                      <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>{f.name}</span>
                       {isVerified(f) && <VerifiedBadge size={15} />}
                       <span className={`text-xs font-medium ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
                         ● {f.available ? 'Available' : 'Unavailable'}

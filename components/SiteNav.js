@@ -127,7 +127,7 @@ export default function SiteNav() {
 
         {/* Logo */}
         <Link href="/" style={{
-          fontFamily: "'Sora', sans-serif",
+          fontFamily: 'var(--font-logo)',
           fontWeight: 800,
           fontSize: '1.4rem',
           letterSpacing: '-0.5px',
@@ -190,7 +190,7 @@ export default function SiteNav() {
                 fontSize: '0.875rem',
                 color: '#374151',
                 outline: 'none',
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'var(--font-body)',
               }}
               onFocus={e => (e.currentTarget.style.border = '1px solid rgba(0,38,127,0.45)')}
               onBlur={e => (e.currentTarget.style.border = '1px solid rgba(0,38,127,0.2)')}
@@ -377,7 +377,7 @@ export default function SiteNav() {
                     <Link
                       href="/dashboard"
                       onClick={() => setDropdownOpen(false)}
-                      style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
+                      style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: 'var(--font-body)', color: '#374151', textDecoration: 'none' }}
                       onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F0F4FF'; e.currentTarget.style.color = '#00267F' }}
                       onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                     >
@@ -387,7 +387,7 @@ export default function SiteNav() {
                       <Link
                         href="/jobs"
                         onClick={() => setDropdownOpen(false)}
-                        style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
+                        style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: 'var(--font-body)', color: '#374151', textDecoration: 'none' }}
                         onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F0F4FF'; e.currentTarget.style.color = '#00267F' }}
                         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                       >
@@ -398,7 +398,7 @@ export default function SiteNav() {
                       <Link
                         href="/bookings"
                         onClick={() => setDropdownOpen(false)}
-                        style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
+                        style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: 'var(--font-body)', color: '#374151', textDecoration: 'none' }}
                         onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F0F4FF'; e.currentTarget.style.color = '#00267F' }}
                         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                       >
@@ -409,7 +409,7 @@ export default function SiteNav() {
                       <Link
                         href={`/freelancers/${profileId}`}
                         onClick={() => setDropdownOpen(false)}
-                        style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
+                        style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: 'var(--font-body)', color: '#374151', textDecoration: 'none' }}
                         onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F0F4FF'; e.currentTarget.style.color = '#00267F' }}
                         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                       >
@@ -419,7 +419,7 @@ export default function SiteNav() {
                     <Link
                       href="/invite"
                       onClick={() => setDropdownOpen(false)}
-                      style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
+                      style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: 'var(--font-body)', color: '#374151', textDecoration: 'none' }}
                       onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F0F4FF'; e.currentTarget.style.color = '#00267F' }}
                       onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                     >
@@ -428,7 +428,7 @@ export default function SiteNav() {
                     <Link
                       href="/settings"
                       onClick={() => setDropdownOpen(false)}
-                      style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: "'Inter', sans-serif", color: '#374151', textDecoration: 'none' }}
+                      style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: 'var(--font-body)', color: '#374151', textDecoration: 'none' }}
                       onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F0F4FF'; e.currentTarget.style.color = '#00267F' }}
                       onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
                     >
@@ -446,7 +446,7 @@ export default function SiteNav() {
                         textAlign: 'left',
                         padding: '10px 16px',
                         fontSize: '0.875rem',
-                        fontFamily: "'Inter', sans-serif",
+                        fontFamily: 'var(--font-body)',
                         color: '#ef4444',
                         background: 'none',
                         border: 'none',
@@ -470,7 +470,7 @@ export default function SiteNav() {
                   color: '#00267F',
                   padding: '10px 22px',
                   borderRadius: '10px',
-                  fontFamily: "'Sora', sans-serif",
+                  fontFamily: 'var(--font-display)',
                   fontSize: '0.875rem',
                   fontWeight: 600,
                   border: '1.5px solid #00267F',
@@ -490,7 +490,7 @@ export default function SiteNav() {
                   color: '#00267F',
                   padding: '10px 22px',
                   borderRadius: '10px',
-                  fontFamily: "'Sora', sans-serif",
+                  fontFamily: 'var(--font-display)',
                   fontSize: '0.875rem',
                   fontWeight: 600,
                   border: '1.5px solid #00267F',
@@ -512,7 +512,7 @@ export default function SiteNav() {
                   color: '#00267F',
                   padding: '10px 22px',
                   borderRadius: '10px',
-                  fontFamily: "'Sora', sans-serif",
+                  fontFamily: 'var(--font-display)',
                   fontSize: '0.875rem',
                   fontWeight: 600,
                   textDecoration: 'none',
@@ -665,7 +665,7 @@ export default function SiteNav() {
               <Link
                 href="/signup?role=freelancer"
                 onClick={() => setMenuOpen(false)}
-                style={{ backgroundColor: '#F9C000', color: '#00267F', padding: '10px 16px', borderRadius: '10px', fontFamily: "'Sora', sans-serif", fontSize: '0.875rem', fontWeight: 600, textDecoration: 'none', textAlign: 'center' }}
+                style={{ backgroundColor: '#F9C000', color: '#00267F', padding: '10px 16px', borderRadius: '10px', fontFamily: 'var(--font-display)', fontSize: '0.875rem', fontWeight: 600, textDecoration: 'none', textAlign: 'center' }}
               >
                 Join as a Freelancer
               </Link>

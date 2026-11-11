@@ -67,7 +67,7 @@ export default function ForOrganisations() {
       <section className="w-full px-4 sm:px-8 py-16 sm:py-24" style={{ backgroundColor: '#00267F' }}>
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-4" style={{ color: '#F9C000' }}>For organisations</p>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 leading-tight" style={{ letterSpacing: '-1px' }}>
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 leading-tight" style={{ letterSpacing: '-0.005em' }}>
             Hire with confidence, as a team.
           </h1>
           <p className="text-base sm:text-lg leading-relaxed mb-9 max-w-2xl mx-auto" style={{ color: '#c3d4ff' }}>
@@ -89,7 +89,7 @@ export default function ForOrganisations() {
       {/* Built for teams */}
       <section className="px-4 sm:px-8 py-16 sm:py-20">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 text-center" style={{ letterSpacing: '-0.5px' }}>Built for teams, not inboxes</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 text-center" style={{ letterSpacing: '-0.005em' }}>Built for teams, not inboxes</h2>
           <p className="text-base text-gray-600 text-center mb-10 max-w-2xl mx-auto leading-relaxed">
             Most hiring in Barbados runs on one person’s WhatsApp. That works until that person is away, moves on, or forgets. An organisation account fixes the record.
           </p>
@@ -107,11 +107,11 @@ export default function ForOrganisations() {
       {/* How it works */}
       <section id="how-it-works" className="px-4 sm:px-8 py-16 sm:py-20" style={{ backgroundColor: 'var(--surface-card)', scrollMarginTop: 80 }}>
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.5px' }}>How it works</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.005em' }}>How it works</h2>
           <ol className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
             {STEPS.map(s => (
               <li key={s.n} className="flex flex-col rounded-2xl px-6 py-7 h-full" style={{ backgroundColor: 'var(--selected-fill)', borderTop: '4px solid #F9C000' }}>
-                <span className="inline-flex items-center justify-center rounded-full text-sm font-extrabold mb-4 flex-shrink-0" style={{ width: 40, height: 40, backgroundColor: '#00267F', color: '#F9C000', fontFamily: "'Sora', sans-serif" }} aria-hidden="true">{s.n}</span>
+                <span className="inline-flex items-center justify-center rounded-full text-sm font-extrabold mb-4 flex-shrink-0" style={{ width: 40, height: 40, backgroundColor: '#00267F', color: '#F9C000', fontFamily: 'var(--font-display)' }} aria-hidden="true">{s.n}</span>
                 <h3 className="text-base font-bold text-gray-900 mb-2 leading-snug md:min-h-[2.75rem]">{s.title}</h3>
                 <p className="text-sm text-gray-600 leading-relaxed">{s.body}</p>
               </li>
@@ -125,7 +125,7 @@ export default function ForOrganisations() {
         <div className="max-w-3xl mx-auto">
           <div className="bg-white px-6 py-8 sm:px-10 sm:py-10" style={CARD}>
             <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#00267F' }}>Public sector</p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3" style={{ letterSpacing: '-0.5px' }}>Working with government departments</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3" style={{ letterSpacing: '-0.005em' }}>Working with government departments</h2>
             <p className="text-base text-gray-600 leading-relaxed mb-6">
               Public bodies have their own way of paying suppliers. The platform is built to fit it rather than fight it.
             </p>
@@ -146,7 +146,7 @@ export default function ForOrganisations() {
       {/* What we do not do */}
       <section className="px-4 sm:px-8 pb-16 sm:pb-20">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.5px' }}>What we deliberately don’t do</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.005em' }}>What we deliberately don’t do</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {NOT_POINTS.map(([t, b]) => (
               <div key={t} className="bg-white px-6 py-7" style={CARD}>
@@ -161,7 +161,7 @@ export default function ForOrganisations() {
       {/* Closing */}
       <section className="w-full px-4 sm:px-8 py-14" style={{ backgroundColor: '#00267F' }}>
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3" style={{ letterSpacing: '-0.5px' }}>Set up your organisation in two minutes</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3" style={{ letterSpacing: '-0.005em' }}>Set up your organisation in two minutes</h2>
           <p className="text-base leading-relaxed mb-6" style={{ color: '#c3d4ff' }}>Create the account, invite your team, and start with your first search.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/signup?role=organisation" className="inline-block text-sm font-bold px-7 py-3 rounded-full hover:opacity-90 transition-opacity" style={{ backgroundColor: '#F9C000', color: '#00267F', textDecoration: 'none' }}>

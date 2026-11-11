@@ -687,7 +687,7 @@ export default function QuotesPage() {
               className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 text-center"
               style={{ borderTop: `3px solid ${stat.accent}` }}
             >
-              <p className="text-xl sm:text-3xl font-bold mb-1 tabular-nums" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>
+              <p className="text-xl sm:text-3xl font-bold mb-1 tabular-nums" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>
                 {stat.value}
               </p>
               <p className="text-xs sm:text-sm text-gray-500">{stat.label}</p>
@@ -734,11 +734,11 @@ export default function QuotesPage() {
             {/* Summary */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ borderTop: '3px solid #F9C000' }}>
-                <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>${outstandingTotal.toFixed(0)}</p>
+                <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>${outstandingTotal.toFixed(0)}</p>
                 <p className="text-xs sm:text-sm text-gray-500 mt-1">Pending payment</p>
               </div>
               <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center" style={{ borderTop: `3px solid ${overdueCount ? '#ef4444' : '#00267F'}` }}>
-                <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: overdueCount ? '#ef4444' : '#00267F', fontFamily: "'Sora', sans-serif" }}>{overdueCount}</p>
+                <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: overdueCount ? '#ef4444' : '#00267F', fontFamily: 'var(--font-display)' }}>{overdueCount}</p>
                 <p className="text-xs sm:text-sm text-gray-500 mt-1">Overdue</p>
               </div>
             </div>
@@ -835,7 +835,7 @@ export default function QuotesPage() {
                   ].map(c => (
                     <div key={c.label} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
                       <p className="text-xs text-gray-500">{c.label}</p>
-                      <p className="text-xl sm:text-2xl font-bold tabular-nums mt-1" style={{ color: '#00267F', fontFamily: "'Sora', sans-serif" }}>{c.value}</p>
+                      <p className="text-xl sm:text-2xl font-bold tabular-nums mt-1" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>{c.value}</p>
                       {c.delta !== null && c.delta !== undefined ? (
                         <p className="text-xs mt-1 font-medium" style={{ color: c.delta >= 0 ? '#16a34a' : '#ef4444' }}>
                           {c.delta >= 0 ? '↑' : '↓'} {Math.abs(c.delta).toFixed(0)}% <span className="text-gray-400 font-normal">{c.sub}</span>
@@ -932,7 +932,7 @@ export default function QuotesPage() {
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#F9C000' }}>
                     {filterLabel}
                   </p>
-                  <p className="text-4xl sm:text-5xl font-bold text-white tabular-nums" style={{ fontFamily: "'Sora', sans-serif" }}>
+                  <p className="text-4xl sm:text-5xl font-bold text-white tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>
                     ${filteredTotal.toFixed(2)}
                   </p>
                   <p className="text-sm mt-2" style={{ color: '#93b8ff' }}>
@@ -1365,7 +1365,7 @@ export default function QuotesPage() {
           onClick={() => setConfirmAction(null)}
         >
           <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-gray-900 mb-2" style={{ fontFamily: "'Sora', sans-serif" }}>
+            <h3 className="font-bold text-gray-900 mb-2" style={{ fontFamily: 'var(--font-display)' }}>
               {confirmAction.title}
             </h3>
             <p className="text-sm text-gray-500 leading-relaxed mb-6">{confirmAction.body}</p>

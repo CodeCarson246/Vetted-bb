@@ -171,7 +171,7 @@ export default function OrganisationDashboard() {
             { label: 'Completed', value: stats.completed, href: '/jobs' },
           ].map(s => (
             <Link key={s.label} href={s.href} className="bg-white rounded-2xl border border-gray-100 p-5 hover:border-gray-300 transition-colors" style={{ borderTop: `3px solid ${s.accent ? '#F9C000' : '#00267F'}` }}>
-              <p className="text-3xl font-bold text-gray-900 tabular-nums" style={{ fontFamily: "'Sora', sans-serif" }}>{ready ? s.value : '…'}</p>
+              <p className="text-3xl font-bold text-gray-900 tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{ready ? s.value : '…'}</p>
               <p className="text-sm text-gray-500 mt-1">{s.label}</p>
             </Link>
           ))}

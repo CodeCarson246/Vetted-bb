@@ -43,7 +43,7 @@ export default async function OrganisationPublic({ params }) {
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-10">
         <div className="bg-white rounded-2xl px-6 py-7 sm:px-8 sm:py-8" style={{ borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 text-lg font-bold" style={{ backgroundColor: '#00267F', color: '#F9C000', fontFamily: "'Sora', sans-serif" }} aria-hidden="true">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 text-lg font-bold" style={{ backgroundColor: '#00267F', color: '#F9C000', fontFamily: 'var(--font-display)' }} aria-hidden="true">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
@@ -66,7 +66,7 @@ export default async function OrganisationPublic({ params }) {
               { label: 'Quotes received', value: org.quotes_received },
             ].map(t => (
               <div key={t.label} className="rounded-xl p-4" style={{ backgroundColor: 'var(--selected-fill)' }}>
-                <p className="text-2xl font-bold text-gray-900 tabular-nums" style={{ fontFamily: "'Sora', sans-serif" }}>{t.value ?? 0}</p>
+                <p className="text-2xl font-bold text-gray-900 tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{t.value ?? 0}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{t.label}</p>
               </div>
             ))}

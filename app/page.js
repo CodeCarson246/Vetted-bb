@@ -224,7 +224,7 @@ export default function Home() {
             ].map(({ value, label }, i) => (
               <div key={label} style={i < 2 ? { borderRight: '1px solid rgba(0,38,127,0.08)' } : {}}>
                 <p style={{
-                  fontFamily: "'Sora', sans-serif",
+                  fontFamily: 'var(--font-display)',
                   fontWeight: 800,
                   fontSize: 'clamp(2rem, 5vw, 2.75rem)',
                   color: '#00267F',
@@ -234,7 +234,7 @@ export default function Home() {
                   {value === null ? '' : value}
                 </p>
                 <p style={{
-                  fontFamily: "'Inter', sans-serif",
+                  fontFamily: 'var(--font-body)',
                   fontSize: '0.8rem',
                   color: '#6B7280',
                   fontWeight: 500,
@@ -327,7 +327,7 @@ export default function Home() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '3px' }}>
-                      <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '1rem', color: '#00267F', lineHeight: 1.2 }}>{f.name}</span>
+                      <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color: '#00267F', lineHeight: 1.2 }}>{f.name}</span>
                       {(f.phone_verified || f.verified) && <VerifiedBadge size={15} />}
                       {f.featured && <TrustMark kind="featured" />}
                     </div>
@@ -344,7 +344,7 @@ export default function Home() {
                           <span key={s} style={{ fontSize: '0.85rem', color: s <= Math.round(f.rating) ? '#F9C000' : '#e5e7eb' }}>★</span>
                         ))}
                       </div>
-                      <span style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.85rem', color: '#00267F' }}>{f.rating}</span>
+                      <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.85rem', color: '#00267F' }}>{f.rating}</span>
                       <span style={{ fontSize: '0.82rem', color: '#6B7280' }}>({f.review_count} {f.review_count === 1 ? 'review' : 'reviews'})</span>
                     </>
                   ) : (
@@ -435,7 +435,7 @@ export default function Home() {
                 fontWeight: 600,
                 textDecoration: 'none',
                 display: 'inline-block',
-                fontFamily: "'Sora', sans-serif",
+                fontFamily: 'var(--font-display)',
                 transition: 'opacity 0.2s',
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
@@ -503,7 +503,7 @@ export default function Home() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontFamily: "'Sora', sans-serif",
+                  fontFamily: 'var(--font-display)',
                   fontWeight: 800,
                   fontSize: '1.1rem',
                   marginBottom: '16px',
@@ -513,7 +513,7 @@ export default function Home() {
                 </div>
                 {/* Icon */}
                 <div style={{ marginBottom: '14px', color: '#F9C000' }}><Icon name={step.icon} size={28} strokeWidth={1.8} /></div>
-                <h3 style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '1.05rem', color: 'white', marginBottom: '10px' }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.05rem', color: 'white', marginBottom: '10px' }}>
                   {step.title}
                 </h3>
                 <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.65 }}>
@@ -534,7 +534,7 @@ export default function Home() {
         >
           <div className="flex-1">
             <p className="text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: '#00267F' }}>For organisations</p>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1.5" style={{ letterSpacing: '-0.4px' }}>Hiring for a team, a company or a government department?</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1.5" style={{ letterSpacing: '-0.005em' }}>Hiring for a team, a company or a government department?</h2>
             <p className="text-sm text-gray-600 leading-relaxed">One account for your whole organisation. Search the pool, enquire together, and keep every quote and invoice in one place. Professionals invoice you directly, and we take nothing.</p>
           </div>
           <Link href="/for-organisations" className="inline-flex items-center justify-center text-sm font-bold px-6 py-3 rounded-full text-white hover:opacity-90 transition-opacity flex-shrink-0" style={{ backgroundColor: '#00267F', textDecoration: 'none' }}>

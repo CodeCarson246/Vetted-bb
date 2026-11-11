@@ -7,15 +7,15 @@ export default function SectionHeading({ eyebrow, title, sub, align = 'left', to
   return (
     <div className={className} style={{ textAlign: align }}>
       {eyebrow && (
-        <p style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.75rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: dark ? '#F9C000' : '#d9a800', marginBottom: '8px' }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '1.5px', textTransform: 'uppercase', color: dark ? '#F9C000' : '#d9a800', marginBottom: '8px' }}>
           {eyebrow}
         </p>
       )}
-      <Tag style={{ fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 'clamp(1.75rem, 3.5vw, 2.2rem)', letterSpacing: '-0.8px', color: dark ? '#ffffff' : '#00267F', marginBottom: sub ? '8px' : 0, lineHeight: 1.15 }}>
+      <Tag style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'clamp(1.75rem, 3.5vw, 2.2rem)', letterSpacing: '-0.005em', color: dark ? '#ffffff' : '#00267F', marginBottom: sub ? '8px' : 0, lineHeight: 1.15 }}>
         {title}
       </Tag>
       {sub && (
-        <p style={{ color: dark ? '#93b8ff' : '#6B7280', fontSize: '1rem', fontFamily: "'Inter', sans-serif", maxWidth: align === 'center' ? '40rem' : undefined, marginLeft: align === 'center' ? 'auto' : 0, marginRight: align === 'center' ? 'auto' : 0 }}>
+        <p style={{ color: dark ? '#93b8ff' : '#6B7280', fontSize: '1rem', fontFamily: 'var(--font-body)', maxWidth: align === 'center' ? '40rem' : undefined, marginLeft: align === 'center' ? 'auto' : 0, marginRight: align === 'center' ? 'auto' : 0 }}>
           {sub}
         </p>
       )}

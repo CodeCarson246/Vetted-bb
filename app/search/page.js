@@ -91,7 +91,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
           >
             {f.avatar_url
               ? <img src={f.avatar_url} alt={f.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 14 }} />
-              : <span style={{ color: '#fff', fontFamily: 'Sora, sans-serif', fontWeight: 700, fontSize: '1rem' }}>{initials}</span>
+              : <span style={{ color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem' }}>{initials}</span>
             }
           </div>
 
@@ -99,7 +99,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
           <div className="flex-1 min-w-0">
             {/* Name row */}
             <div className="flex flex-wrap items-center gap-2">
-              <h3 style={{ fontFamily: 'Sora, sans-serif', fontWeight: 700, color: '#00267F', fontSize: '1rem', lineHeight: 1.3, margin: 0, textTransform: 'capitalize' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: '#00267F', fontSize: '1rem', lineHeight: 1.3, margin: 0, textTransform: 'capitalize' }}>
                 {f.name}
               </h3>
               {/* Featured badge */}
@@ -205,7 +205,7 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Services</span>
               <Tooltip content={
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.75rem', lineHeight: 1.6 }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', lineHeight: 1.6 }}>
                   <span style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>Price guide</span>
                   <span style={{ display: 'block' }}><span style={{ color: '#93b8ff' }}>■</span> Navy = fixed rate</span>
                   <span style={{ display: 'block' }}><span style={{ color: '#F59E0B' }}>■</span> Orange = starting from <span style={{ color: '#c0c8d8' }}>(may vary)</span></span>

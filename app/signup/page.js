@@ -141,7 +141,7 @@ function SignupContent() {
               backgroundColor: 'var(--surface-card)',
               borderRadius: '999px',
               padding: '10px 28px',
-              fontFamily: "'Sora', sans-serif",
+              fontFamily: 'var(--font-logo)',
               fontWeight: 800,
               fontSize: '1.5rem',
               textDecoration: 'none',

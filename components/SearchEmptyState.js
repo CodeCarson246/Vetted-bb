@@ -44,7 +44,7 @@ export default function SearchEmptyState({ query, category, onClearFilters }) {
         {headline}
       </h2>
 
-      <p className="text-sm leading-relaxed max-w-md mb-10" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
+      <p className="text-sm leading-relaxed max-w-md mb-10" style={{ color: '#6B7280', fontFamily: 'var(--font-body)' }}>
         {subline}
       </p>
 

@@ -1118,7 +1118,7 @@ export default function FreelancerProfile() {
         ) : user?.id === freelancer.user_id ? (
           <div className="bg-white rounded-2xl px-7 py-10 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
             <h2 className="text-base font-bold text-gray-900 mb-2">Services</h2>
-            <p className="text-sm mb-4" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
+            <p className="text-sm mb-4" style={{ color: '#6B7280', fontFamily: 'var(--font-body)' }}>
               Add your services so clients know what you offer.
             </p>
             <Link href="/dashboard?edit=true" className="text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>
@@ -1152,7 +1152,7 @@ export default function FreelancerProfile() {
                       style={{
                         marginTop: '12px', padding: '9px 20px', borderRadius: '8px',
                         backgroundColor: '#00267F', color: 'white',
-                        fontFamily: "'Sora', sans-serif", fontWeight: 600,
+                        fontFamily: 'var(--font-display)', fontWeight: 600,
                         fontSize: '0.85rem', border: 'none', cursor: 'pointer',
                       }}
                     >
@@ -1316,7 +1316,7 @@ export default function FreelancerProfile() {
         ) : user?.id === freelancer.user_id ? (
           <div className="bg-white rounded-2xl px-7 py-10 text-center" style={{ border: '1px solid rgba(0,38,127,0.15)', borderTop: '4px solid #00267F', boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }}>
             <h2 className="text-base font-bold text-gray-900 mb-2">Previous Work</h2>
-            <p className="text-sm mb-4" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
+            <p className="text-sm mb-4" style={{ color: '#6B7280', fontFamily: 'var(--font-body)' }}>
               Add previous work to show clients what you can do.
             </p>
             <Link href="/dashboard?edit=true" className="text-sm font-semibold hover:opacity-80 transition-opacity" style={{ color: '#00267F' }}>
@@ -1359,7 +1359,7 @@ export default function FreelancerProfile() {
           <div className="px-7 py-6">
             {reviews.filter(r => r.type === activeTab).length === 0 ? (
               <div className="text-center py-8 flex flex-col items-center gap-4">
-                <p className="text-sm leading-relaxed max-w-sm" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
+                <p className="text-sm leading-relaxed max-w-sm" style={{ color: '#6B7280', fontFamily: 'var(--font-body)' }}>
                   No reviews yet. Be the first: send {freelancer.name.split(' ')[0]} a message to get started.
                 </p>
                 <button

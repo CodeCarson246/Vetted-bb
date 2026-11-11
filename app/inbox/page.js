@@ -1051,7 +1051,7 @@ export default function Inbox() {
           <div className="bg-white rounded-2xl p-12 border border-gray-100 text-center flex flex-col items-center">
             <EnvelopeIcon className="w-10 h-10 text-gray-300 mx-auto mb-4" />
             <p className="font-semibold text-gray-900 mb-2">No messages yet</p>
-            <p className="text-sm mb-6 max-w-xs" style={{ color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>
+            <p className="text-sm mb-6 max-w-xs" style={{ color: '#6B7280', fontFamily: 'var(--font-body)' }}>
               No messages yet. Share your profile to start receiving enquiries.
             </p>
             {profile && (() => {

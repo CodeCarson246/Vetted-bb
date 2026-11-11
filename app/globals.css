@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
 :root {
+  /* Type. Change a typeface here and the whole site follows. The logo
+     wordmark keeps its own face, the way a logo normally does. */
+  --font-display: 'Barlow Semi Condensed', 'Arial Narrow', Arial, sans-serif;
+  --font-body: 'Barlow', Arial, Helvetica, sans-serif;
+  --font-logo: 'Sora', sans-serif;
   --background: #ffffff;
   --foreground: #171717;
   --navy: #00267F;
@@ -216,11 +221,11 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
 }
 
 h1, h2, h3, h4 {
-  font-family: 'Sora', sans-serif;
+  font-family: var(--font-display);
 }
 
 /* Brand text selection */

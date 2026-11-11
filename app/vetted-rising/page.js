@@ -93,7 +93,7 @@ export default function VettedRising() {
           <p className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-4" style={{ color: '#F9C000' }}>
             A Vetted.bb programme
           </p>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 leading-tight" style={{ letterSpacing: '-1px' }}>
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 leading-tight" style={{ letterSpacing: '-0.005em' }}>
             Vetted Rising
           </h1>
           <p className="text-lg sm:text-xl font-semibold mb-5" style={{ color: '#F9C000' }}>
@@ -131,7 +131,7 @@ export default function VettedRising() {
       {/* 2. The problem */}
       <section className="px-4 sm:px-8 py-16 sm:py-20">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 text-center" style={{ letterSpacing: '-0.5px' }}>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 text-center" style={{ letterSpacing: '-0.005em' }}>
             The problem
           </h2>
           <p className="text-base text-gray-600 text-center mb-10 max-w-2xl mx-auto leading-relaxed">
@@ -151,7 +151,7 @@ export default function VettedRising() {
       {/* 3. What participants get */}
       <section className="px-4 sm:px-8 py-16 sm:py-20" style={{ backgroundColor: 'var(--surface-card)' }}>
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.5px' }}>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.005em' }}>
             What you get
           </h2>
           {/* Equal-height tinted cards. The heading sits in a fixed-height box
@@ -167,7 +167,7 @@ export default function VettedRising() {
               >
                 <span
                   className="inline-flex items-center justify-center rounded-full text-sm font-extrabold mb-4 flex-shrink-0"
-                  style={{ width: 40, height: 40, backgroundColor: '#00267F', color: '#F9C000', fontFamily: "'Sora', sans-serif" }}
+                  style={{ width: 40, height: 40, backgroundColor: '#00267F', color: '#F9C000', fontFamily: 'var(--font-display)' }}
                   aria-hidden="true"
                 >
                   {b.n}
@@ -183,7 +183,7 @@ export default function VettedRising() {
       {/* 4. How the programme works */}
       <section id="how-it-works" className="px-4 sm:px-8 py-16 sm:py-20" style={{ scrollMarginTop: 80 }}>
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.5px' }}>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-10 text-center" style={{ letterSpacing: '-0.005em' }}>
             How it works
           </h2>
           <ol className="grid grid-cols-1 md:grid-cols-4 gap-5">
@@ -207,7 +207,7 @@ export default function VettedRising() {
       <section className="px-4 sm:px-8 pb-16 sm:pb-20">
         <div className="max-w-3xl mx-auto">
           <div className="bg-white px-6 py-8 sm:px-10 sm:py-10" style={CARD}>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6" style={{ letterSpacing: '-0.5px' }}>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6" style={{ letterSpacing: '-0.005em' }}>
               Who it&apos;s for
             </h2>
             <ul className="flex flex-col gap-4">
@@ -233,7 +233,7 @@ export default function VettedRising() {
       {/* 6. Application form */}
       <section id="apply" className="px-4 sm:px-8 pb-16 sm:pb-20" style={{ scrollMarginTop: 80 }}>
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center" style={{ letterSpacing: '-0.5px' }}>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center" style={{ letterSpacing: '-0.005em' }}>
             Apply to join Vetted Rising
           </h2>
           <p className="text-base text-gray-600 mb-8 text-center">Six questions. Takes two minutes.</p>

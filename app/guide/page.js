@@ -375,7 +375,7 @@ export default function GuidePage() {
                 under it does the work a box used to. */}
             <div className="flex items-center gap-2.5 pb-2.5" style={{ color: 'var(--accent)', borderBottom: '2px solid var(--accent)' }}>
               <Icon name={section.icon} size={19} />
-              <h2 className="text-lg font-bold" style={{ fontFamily: "'Sora', sans-serif", letterSpacing: '-0.01em' }}>{section.title}</h2>
+              <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>{section.title}</h2>
             </div>
             <p className="text-sm text-gray-500 mt-3 mb-2 leading-relaxed">{section.intro}</p>
 
