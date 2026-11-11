@@ -350,3 +350,17 @@ h1, h2, h3, h4 {
 }
 .guide-nav a { box-shadow: 0 2px 0 transparent; transition: box-shadow .15s ease, color .15s ease; }
 .guide-nav a:hover { box-shadow: 0 2px 0 #F9C000; color: var(--accent) !important; }
+
+/* ── Apparent size after the move to Barlow ──
+   Barlow's lowercase is shorter than the faces it replaced (x-height 0.51 of
+   the font size, against 0.56 for Sora and 0.545 for Inter, measured in the
+   browser), so the same px size read as smaller text. font-size-adjust scales
+   the glyphs so the lowercase is the height it was before; the computed font
+   size, and so every line height and layout box, is unchanged. Barlow is
+   narrower, so even enlarged it takes less room than the old faces did.
+   Browsers without support simply show the text slightly smaller. */
+body { font-size-adjust: 0.545; }
+h1, h2, h3, h4, [style*="--font-display"] { font-size-adjust: 0.56; }
+/* The logo and fixed-width codes keep their own natural size. */
+[style*="--font-logo"], [style*="--font-logo"] *,
+code, pre, kbd, samp, [style*="monospace"] { font-size-adjust: none; }
