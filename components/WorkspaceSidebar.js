@@ -22,6 +22,7 @@ const ICONS = {
   sent: <path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />,
   rising: <path strokeLinecap="round" strokeLinejoin="round" d="M23 6l-9.5 9.5-5-5L1 18M17 6h6v6" />,
   badges: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" /></>,
+  logout: <path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />,
 }
 
 const NAV = [
@@ -148,6 +149,16 @@ export default function WorkspaceSidebar({ open, onClose }) {
           <Link href="/badges" onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
             <NavIcon name="badges" /> <span className="flex-1">What badges mean</span>
           </Link>
+          {/* Log out, without the detour through Settings. This device only:
+              other phones and computers stay signed in. */}
+          <button
+            type="button"
+            onClick={() => supabase.auth.signOut({ scope: 'local' }).then(() => { window.location.href = '/login' })}
+            className={`${linkSub} w-full text-left`}
+            style={{ color: 'rgba(255,255,255,0.72)', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <NavIcon name="logout" /> <span className="flex-1">Log out</span>
+          </button>
         </nav>
 
         {/* Legal. The installed app has no site footer, so these are the only
