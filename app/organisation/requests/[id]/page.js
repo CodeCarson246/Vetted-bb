@@ -177,10 +177,14 @@ export default function QuoteRequestDetail() {
                       <p className="text-xs text-gray-500 mt-2">The invoice arrives in the conversation as soon as you accept.</p>
                     )}
                     {q.status === 'accepted' && !q.invoice_number && (
-                      <p className="text-xs text-gray-500">Accepted. {f.name} has been notified and will send the invoice in the conversation.</p>
+                      <p className="text-xs text-gray-500">
+                        {q.auto_invoice === true
+                          ? 'Accepted. The invoice is on its way and will appear in the conversation shortly.'
+                          : `Accepted. ${f.name} has been notified and will send the invoice in the conversation.`}
+                      </p>
                     )}
                     {q.invoice_number && q.status === 'invoiced' && (
-                      <p className="text-xs text-gray-500">Invoice {q.invoice_number} is in <Link href="/messages" className="font-semibold" style={{ color: '#00267F' }}>the conversation</Link>.</p>
+                      <p className="text-xs text-gray-500">{q.auto_invoice === true ? 'Accepted, and the invoice has been sent: ' : ''}Invoice {q.invoice_number} is in <Link href="/messages" className="font-semibold" style={{ color: '#00267F' }}>the conversation</Link>.</p>
                     )}
                   </>
                 )}

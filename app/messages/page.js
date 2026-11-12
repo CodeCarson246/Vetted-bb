@@ -8,6 +8,7 @@ import { getQuoteId, dedupeThreadReplies, conversationPreview, isReceiptBody } f
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import { fmtInvoiceDate } from '@/lib/invoicing'
+import { authedPost } from '@/lib/authedFetch'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
@@ -135,22 +136,17 @@ export default function ClientMessages() {
       // been sent, and the client should hear that rather than "they have
       // been notified". A failed request falls back to the plain wording;
       // the acceptance itself is already saved.
-      let invoice = null
-      try {
-        const { data } = await supabase.auth.getSession()
-        const token = data.session?.access_token
-        if (token) {
-          const res = await fetch('/api/notify-quote-event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ quote_id: quoteId, event: status === 'accepted' ? 'accepted' : 'declined' }),
-          })
-          if (status === 'accepted' && res.ok) invoice = (await res.json())?.invoice || null
-        }
-      } catch { /* notified or not, the quote's new status stands */ }
+      const autoInvoice = quotes[quoteId]?.auto_invoice === true
+      const res = await authedPost('/api/notify-quote-event', { quote_id: quoteId, event: status === 'accepted' ? 'accepted' : 'declined' })
+      const invoice = status === 'accepted' && res.ok ? (res.data?.invoice || null) : null
+      // Show the invoice at once rather than waiting for the reload below.
+      if (invoice) {
+        setQuotes(prev => ({ ...prev, [quoteId]: { ...prev[quoteId], status: 'invoiced', invoice_number: invoice.invoice_number, invoice_due_date: invoice.invoice_due_date } }))
+      }
       setToast({
         message: status !== 'accepted' ? 'Quote declined.'
-          : invoice ? `Quote accepted. Invoice ${invoice.invoice_number} is in this conversation, due ${fmtInvoiceDate(invoice.invoice_due_date)}.`
+          : invoice ? `Quote accepted. Your invoice ${invoice.invoice_number} has been sent to you, due ${fmtInvoiceDate(invoice.invoice_due_date)}.`
+          : autoInvoice ? 'Quote accepted. Your invoice is on its way and will appear here shortly.'
           : 'Quote accepted. They have been notified and will send your invoice.',
         type: 'success',
       })
@@ -443,7 +439,14 @@ export default function ClientMessages() {
                     <p className="px-4 py-2.5 text-xs text-gray-500 border-t border-gray-100">Your invoice arrives here as soon as you accept.</p>
                   )}
                   {!asInvoice && quoteData.status === 'accepted' && !quoteData.invoice_number && (
-                    <p className="px-4 py-2.5 text-xs text-gray-500 border-t border-gray-100">You accepted this quote. {f?.name || 'They'} has been notified and will send your invoice here.</p>
+                    <p className="px-4 py-2.5 text-xs text-gray-500 border-t border-gray-100">
+                      {quoteData.auto_invoice === true
+                        ? 'You accepted this quote. Your invoice is on its way and will appear here shortly.'
+                        : `You accepted this quote. ${f?.name || 'They'} has been notified and will send your invoice here.`}
+                    </p>
+                  )}
+                  {!asInvoice && quoteData.auto_invoice === true && quoteData.status === 'invoiced' && quoteData.invoice_number && (
+                    <p className="px-4 py-2.5 text-xs text-gray-500 border-t border-gray-100">You accepted this quote and your invoice {quoteData.invoice_number} has been sent. You will find it in this conversation.</p>
                   )}
                 </div>
               )
