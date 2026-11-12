@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
+import { serviceEnquiryLine } from '@/lib/enquiryLines'
 import { formatResponseTime } from '@/lib/formatResponseTime'
 import { useSaved } from '@/lib/useSaved'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
@@ -1652,11 +1653,9 @@ export default function FreelancerProfile() {
                 <p className="text-xs text-gray-400 mb-3">Final prices are agreed directly with the freelancer.</p>
                 <button
                   onClick={() => {
-                    const serviceList = cart.map(i => {
-                      const n = parsePrice(i.price)
-                      const priceText = n !== null ? `Bds$${Number.isInteger(n) ? n : n.toFixed(2)}` : i.price
-                      return `• ${i.name}: ${priceText}`
-                    }).join('\n')
+                    // Written by the same module the inbox reads it with, so the
+                    // professional's "Quote this service" button keeps working.
+                    const serviceList = cart.map(i => serviceEnquiryLine(i.name, i.price)).join('\n')
                     const total = cartTotal() > 0 ? `\n\nEstimated total: $${cartTotal().toFixed(0)}` : ''
                     const msg = `Hi ${freelancer.name.split(' ')[0]}, I am interested in the following services:\n\n${serviceList}${total}\n\nCould you confirm availability and pricing?`
                     setSenderName(senderName || '')

@@ -142,7 +142,7 @@ function Section({ title, items, busyId, onCancel, muted }) {
                     </p>
                   )}
                   {b.rental && b.status === 'confirmed' && (
-                    <p className="text-xs mt-1" style={{ color: '#16a34a', fontWeight: 600 }}>Confirmed. Look for the quote in your messages.</p>
+                    <p className="text-xs mt-1" style={{ color: '#16a34a', fontWeight: 600 }}>Confirmed. <Link href="/messages" style={{ color: 'inherit', textDecoration: 'underline' }}>Your quote is in your messages</Link>: accept it there to go ahead.</p>
                   )}
                   {b.notes && <p className="text-xs text-gray-400 mt-1 italic">“{b.notes}”</p>}
                   {b.status === 'pending' && (

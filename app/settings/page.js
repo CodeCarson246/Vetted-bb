@@ -168,7 +168,7 @@ export default function SettingsPage() {
               <span className="text-sm font-medium text-gray-900">{profile ? 'Freelancer' : 'Client'}</span>
             </div>
             <div className="pt-3 border-t border-gray-100 mt-1">
-              <button onClick={() => supabase.auth.signOut().then(() => { window.location.href = '/login' })} className="text-sm font-semibold px-4 py-2 rounded-full border border-gray-200 text-gray-700 hover:border-gray-400 transition-colors">
+              <button onClick={() => supabase.auth.signOut({ scope: 'local' }).then(() => { window.location.href = '/login' })} className="text-sm font-semibold px-4 py-2 rounded-full border border-gray-200 text-gray-700 hover:border-gray-400 transition-colors">
                 Sign out
               </button>
             </div>

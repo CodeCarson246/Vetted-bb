@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { authedPost } from '@/lib/authedFetch'
 import Link from 'next/link'
 import { addDays, daysBetween, isRangeFree, customerEnd, fmtDay, unitLabel, MAX_RENTAL_UNITS } from '@/lib/rentals'
 
@@ -133,27 +134,26 @@ export default function CalendarPage() {
   async function respondBooking(action) {
     if (!form.id) return
     setSaving(true)
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch('/api/booking-respond', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ appointment_id: form.id, action }),
-    })
+    // authedPost retries once with a fresh sign-in token, and turns a dead
+    // session into a sentence instead of a bare "Unauthorized".
+    const res = await authedPost('/api/booking-respond', { appointment_id: form.id, action })
     setSaving(false)
     if (!res.ok) {
-      const out = await res.json().catch(() => ({}))
-      setToast({ msg: out.error || 'Could not update. Try again.', err: true })
+      setToast({ msg: res.data.error || 'Could not update. Try again.', err: true })
       setTimeout(() => setToast(null), 6000)
       return
     }
     const newStatus = action === 'confirm' ? 'confirmed' : 'declined'
     const wasRental = !!form.rental
-    setAppts(prev => prev.map(a => a.id === form.id ? { ...a, status: newStatus } : a))
+    // Confirming a rental sends its quote; the server says which one.
+    const quote = res.data.quote || null
+    setAppts(prev => prev.map(a => a.id === form.id ? { ...a, status: newStatus, ...(quote ? { quote_id: quote.id } : {}) } : a))
     setForm(null)
     setToast({
-      msg: action === 'confirm'
-        ? (wasRental ? 'Confirmed, and those dates are now marked as taken. Send the quote from your inbox.' : 'Booking confirmed. The client has been notified.')
-        : 'Booking declined. The client has been notified.',
+      msg: action !== 'confirm' ? 'Booking declined. The client has been notified.'
+        : quote ? `Confirmed. Quote ${quote.quote_number} for Bds$${Number(quote.total).toFixed(2)} has been sent to ${quote.client_name}.`
+        : wasRental ? 'Confirmed, and those dates are now marked as taken. Send the quote from your inbox.'
+        : 'Booking confirmed. The client has been notified.',
     })
     setTimeout(() => setToast(null), wasRental && action === 'confirm' ? 6000 : 3000)
   }
@@ -449,8 +449,11 @@ export default function CalendarPage() {
                   {form.rental.discountPct > 0 && (
                     <p className="text-xs mt-0.5" style={{ color: '#16a34a', fontWeight: 600 }}>Your {form.rental.discountPct}% discount for {form.rental.discountMin}+ {unitLabel(form.rental.unit, 2)} is included.</p>
                   )}
-                  {form.message_id && (
-                    <Link href="/inbox" className="inline-block text-xs font-semibold mt-2" style={{ color: 'var(--accent)' }}>Open the conversation to send the quote →</Link>
+                  {form.message_id && form.status === 'pending' && !form.quote_id && (
+                    <p className="text-xs text-gray-500 mt-2">Confirming sends them the quote for this amount. To change the price first, <Link href="/inbox" className="font-semibold" style={{ color: 'var(--accent)' }}>quote it yourself in the conversation</Link>.</p>
+                  )}
+                  {form.message_id && (form.status !== 'pending' || form.quote_id) && (
+                    <Link href="/inbox" className="inline-block text-xs font-semibold mt-2" style={{ color: 'var(--accent)' }}>{form.quote_id ? 'The quote is in the conversation →' : 'Open the conversation →'}</Link>
                   )}
                 </div>
               )}
@@ -500,7 +503,7 @@ export default function CalendarPage() {
               <div className="flex items-center gap-2 mt-4 p-3 rounded-xl" style={{ backgroundColor: 'rgba(249,192,0,0.12)' }}>
                 <span className="text-xs font-medium flex-1" style={{ color: '#B45309' }}>Client booking request. Confirm or decline.</span>
                 <button onClick={() => respondBooking('decline')} disabled={saving} className="text-xs font-semibold px-3.5 py-2 rounded-full border border-gray-300 text-gray-600 hover:border-gray-500 disabled:opacity-50">Decline</button>
-                <button onClick={() => respondBooking('confirm')} disabled={saving} className="text-xs font-semibold px-3.5 py-2 rounded-full text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#16a34a' }}>Confirm</button>
+                <button onClick={() => respondBooking('confirm')} disabled={saving} className="text-xs font-semibold px-3.5 py-2 rounded-full text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#16a34a' }}>{form.rental && form.message_id && !form.quote_id ? 'Confirm and send quote' : 'Confirm'}</button>
               </div>
             )}
 

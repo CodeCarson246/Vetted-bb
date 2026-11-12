@@ -438,7 +438,7 @@ export default function SiteNav() {
                     <button
                       onClick={() => {
                         setDropdownOpen(false)
-                        supabase.auth.signOut().then(() => { window.location.href = '/login' })
+                        supabase.auth.signOut({ scope: 'local' }).then(() => { window.location.href = '/login' })
                       }}
                       style={{
                         display: 'block',
@@ -650,7 +650,7 @@ export default function SiteNav() {
               <Link href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</Link>
               <Link href="/for-organisations" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>For organisations</Link>
               <button
-                onClick={() => supabase.auth.signOut().then(() => { window.location.href = '/login' })}
+                onClick={() => supabase.auth.signOut({ scope: 'local' }).then(() => { window.location.href = '/login' })}
                 style={{ textAlign: 'left', color: '#ef4444', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}
               >
                 Log out

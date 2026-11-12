@@ -8,6 +8,7 @@ import { formatParish } from '@/lib/formatParish'
 import { getQuoteId, dedupeThreadReplies, conversationPreview, quoteReplyKind, isReceiptBody } from '@/lib/quoteReply'
 import { parsePrice } from '@/lib/price'
 import { parseRentalLine } from '@/lib/rentals'
+import { parseServiceEnquiryLine } from '@/lib/enquiryLines'
 import { SITE_URL } from '@/lib/siteUrl'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
@@ -334,13 +335,13 @@ export default function Inbox() {
       // the quote line is taken as written rather than re-priced here.
       const rental = parseRentalLine(line)
       if (rental) { items.push(rental); continue }
-      const m = line.match(/^\s*[•\-\*]\s*(.+?):\s*\$?([\d.,]+)\s*$/)
-      if (!m) continue
-      const name = m[1].trim()
+      const parsed = parseServiceEnquiryLine(line)
+      if (!parsed) continue
+      const name = parsed.name
       // Prefer the live service (current price + description) over the
       // snapshot in the message
       const svc = freelancerServices.find(s => s.name?.toLowerCase() === name.toLowerCase())
-      const price = svc ? (parsePrice(svc.price) ?? parsePrice(m[2])) : parsePrice(m[2])
+      const price = svc ? (parsePrice(svc.price) ?? parsed.price) : parsed.price
       items.push({
         description: svc
           ? svc.name + (svc.description ? ' - ' + svc.description : '')

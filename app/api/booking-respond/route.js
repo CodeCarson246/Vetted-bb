@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createNotification } from '@/lib/serverNotify'
 import { sendPushToUser } from '@/lib/serverPush'
 import { isRangeFree, fmtDay, customerEnd, todayKeyBarbados, addDays, MAX_RENTAL_UNITS } from '@/lib/rentals'
+import { sendRentalQuoteOnConfirm } from '@/lib/serverQuote'
 
 // The freelancer confirms or declines a pending client booking request. Updates
 // the appointment status and notifies the client (service role — the client
@@ -54,6 +55,20 @@ export async function POST(request) {
     const { error: upErr } = await admin.from('appointments').update({ status: newStatus }).eq('id', appointment_id)
     if (upErr) return Response.json({ error: upErr.message }, { status: 500 })
 
+    // Confirming a rental sends its quote. The customer saw the price when
+    // they picked the dates, so there is nothing for the professional to
+    // type: making them go to the inbox to send it only keeps the customer
+    // waiting. A failure here never undoes the confirmation; the quote can
+    // still be sent by hand from the conversation.
+    let quote = null
+    if (action === 'confirm' && isRental) {
+      try {
+        quote = await sendRentalQuoteOnConfirm(admin, appt)
+      } catch (err) {
+        console.error('rental quote on confirm failed:', err.message)
+      }
+    }
+
     if (appt.client_user_id) {
       const fname = appt.freelancers?.company_name?.trim().length > 3 ? appt.freelancers.company_name : appt.freelancers?.name || 'The professional'
       const when = isRental
@@ -62,8 +77,8 @@ export async function POST(request) {
       await createNotification(appt.client_user_id, {
         type: action === 'confirm' ? 'booking_confirmed' : 'booking_declined',
         title: action === 'confirm' ? `${fname} confirmed your booking` : `${fname} declined your booking`,
-        body: `${appt.title} · ${when}${appt.start_time ? ` · ${appt.start_time}` : ''}`,
-        link: '/bookings',
+        body: `${appt.title} · ${when}${appt.start_time ? ` · ${appt.start_time}` : ''}${quote ? '. Your quote is in your messages.' : ''}`,
+        link: quote ? '/messages' : '/bookings',
       })
       sendPushToUser(appt.client_user_id, {
         title: action === 'confirm' ? 'Booking confirmed' : 'Booking declined',
@@ -72,7 +87,7 @@ export async function POST(request) {
       }).catch(() => {})
     }
 
-    return Response.json({ success: true })
+    return Response.json({ success: true, quote })
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 })
   }

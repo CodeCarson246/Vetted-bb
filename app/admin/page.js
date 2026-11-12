@@ -211,7 +211,7 @@ export default function AdminPanel() {
           <div className="hidden sm:flex gap-4 items-center">
             <span className="text-sm text-gray-500">{user?.email}</span>
             <button
-              onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
+              onClick={() => supabase.auth.signOut({ scope: 'local' }).then(() => router.push('/login'))}
               className="text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-opacity"
               style={{ backgroundColor: '#00267F' }}
             >
@@ -227,7 +227,7 @@ export default function AdminPanel() {
         {menuOpen && (
           <div className="sm:hidden border-t border-gray-100 px-8 py-4 flex flex-col gap-4">
             <span className="text-sm text-gray-500">{user?.email}</span>
-            <button onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} className="text-left text-red-500 font-medium">Log out</button>
+            <button onClick={() => supabase.auth.signOut({ scope: 'local' }).then(() => router.push('/login'))} className="text-left text-red-500 font-medium">Log out</button>
           </div>
         )}
       </nav>
