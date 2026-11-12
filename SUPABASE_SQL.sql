@@ -1616,3 +1616,135 @@ CREATE INDEX IF NOT EXISTS idx_appointments_service_date
 --   WHERE table_name = 'services' AND column_name IN ('rental','price_unit','length_discounts');
 --   SELECT column_name FROM information_schema.columns
 --   WHERE table_name = 'appointments' AND column_name IN ('end_date','message_id','rental');
+
+-- ============================================================
+-- SECTION 37 — INVOICE ON ACCEPTANCE (2026-11-12)
+-- A client who has accepted a quote is waiting for the invoice, and a
+-- missed notification used to leave them waiting. Three small columns:
+--
+--   quotes.auto_invoice              the professional ticked "send the invoice
+--                                    automatically when this is accepted" on
+--                                    this quote; /api/notify-quote-event then
+--                                    issues it the moment the client accepts
+--   quotes.accepted_at               when the client accepted; shown as
+--                                    "accepted 2 days ago" under Waiting on you,
+--                                    and what stops a repeated request from
+--                                    emailing the professional twice
+--   freelancers.auto_invoice_default their last choice, so the tick box on the
+--                                    next quote starts where they left it
+--
+-- Additive and safe to re-run. Until it runs the rest of the site works as
+-- before: the acceptance email, the Send invoice button on the notification
+-- and the Waiting on you list all work without it. Only a quote sent with
+-- the automatic box ticked will fail to send.
+-- ============================================================
+
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS auto_invoice boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS accepted_at  timestamptz;
+
+ALTER TABLE freelancers
+  ADD COLUMN IF NOT EXISTS auto_invoice_default boolean DEFAULT false;
+
+-- Verify: should list auto_invoice and accepted_at.
+--   SELECT column_name FROM information_schema.columns
+--   WHERE table_name = 'quotes' AND column_name IN ('auto_invoice','accepted_at');
+
+-- ============================================================
+-- SECTION 38 — CLIENTS CAN ONLY RESPOND TO A QUOTE (2026-11-12)
+-- The "Clients can respond to quotes" policy lets the client a quote is
+-- addressed to (or a member of the organisation it is addressed to) UPDATE
+-- that row, and row-level security cannot say WHICH columns. So with the
+-- public key a client could rewrite the total or the line items, or set
+-- completed_at, paid_at and status = 'paid' themselves, which unlocks a
+-- review for a job that was never done or paid ("Reviews only from paid
+-- jobs"). They could also flip auto_invoice (section 37).
+--
+-- This trigger narrows a client's update to the two things a client really
+-- does, whatever else the request contains:
+--
+--   1. answer a quote that is waiting:   sent -> accepted | declined
+--   2. tick or untick "job completed" on their side (client_completed_at),
+--      once it is accepted. Status then follows from both sides' ticks,
+--      worked out here rather than taken from the request, and a job
+--      marked paid stays paid.
+--
+-- Every other column keeps its stored value. Nothing is refused with an
+-- error: the pages keep working, and a tampered request simply changes
+-- nothing it should not.
+--
+-- Not affected: the professional who owns the quote, the service role (the
+-- API routes), and the SQL editor (no signed-in user at all).
+--
+-- Safe to re-run. To undo:
+--   DROP TRIGGER IF EXISTS quotes_guard_client_update ON public.quotes;
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.quotes_guard_client_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  claims      jsonb;
+  want_status text        := NEW.status;
+  want_done   timestamptz := NEW.client_completed_at;
+  keep_status text        := OLD.status;
+  keep_done   timestamptz := OLD.client_completed_at;
+BEGIN
+  claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+
+  -- The SQL editor or a direct connection (no signed-in user), and the
+  -- service role used by the API routes: unrestricted.
+  IF claims IS NULL OR coalesce(claims ->> 'role', '') = 'service_role' THEN
+    RETURN NEW;
+  END IF;
+
+  -- The professional the quote belongs to: unrestricted.
+  IF EXISTS (
+    SELECT 1 FROM freelancers f
+    WHERE f.id = OLD.freelancer_id AND f.user_id = auth.uid()
+  ) THEN
+    RETURN NEW;
+  END IF;
+
+  -- Anyone else who got this far is on the client side of the quote.
+
+  -- 1. Answering a quote that is waiting for an answer.
+  IF OLD.status = 'sent' AND want_status IN ('accepted', 'declined') THEN
+    keep_status := want_status;
+  END IF;
+
+  -- 2. Their own "job completed" tick, once the quote has been accepted.
+  --    The time is ours, not theirs: now when ticked, cleared when unticked.
+  IF OLD.status IN ('accepted', 'invoiced', 'completed', 'paid') THEN
+    IF want_done IS NULL THEN
+      keep_done := NULL;
+    ELSIF OLD.client_completed_at IS NULL THEN
+      keep_done := now();
+    END IF;
+  END IF;
+
+  -- Status between invoiced and completed follows the two ticks.
+  IF OLD.status IN ('invoiced', 'completed') THEN
+    keep_status := CASE
+      WHEN OLD.completed_at IS NOT NULL AND keep_done IS NOT NULL THEN 'completed'
+      ELSE 'invoiced'
+    END;
+  END IF;
+
+  NEW := OLD;
+  NEW.status := keep_status;
+  NEW.client_completed_at := keep_done;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS quotes_guard_client_update ON public.quotes;
+CREATE TRIGGER quotes_guard_client_update
+  BEFORE UPDATE ON public.quotes
+  FOR EACH ROW EXECUTE FUNCTION public.quotes_guard_client_update();
+
+-- Verify: should return one row.
+--   SELECT tgname FROM pg_trigger WHERE tgname = 'quotes_guard_client_update';

@@ -57,9 +57,13 @@ export default function JobsPage() {
   async function setClientCompleted(job, done) {
     setBusyId(job.id)
     const client_completed_at = done ? new Date().toISOString() : null
-    // Status reflects mutual completion; never override a paid job.
+    // Status reflects mutual completion, between invoiced and completed only:
+    // a paid job stays paid, and a quote that is accepted but not yet
+    // invoiced stays accepted (ticking this must not make it look invoiced).
+    // The database works the status out the same way (SQL section 38), so
+    // what is shown here is what gets stored.
     let status = job.status
-    if (job.status !== 'paid') {
+    if (job.status === 'invoiced' || job.status === 'completed') {
       status = (client_completed_at && job.completed_at) ? 'completed' : 'invoiced'
     }
     const { error } = await supabase

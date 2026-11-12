@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { getQuoteId, dedupeThreadReplies, conversationPreview, isReceiptBody } from '@/lib/quoteReply'
 import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
+import { fmtInvoiceDate } from '@/lib/invoicing'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
@@ -129,19 +130,32 @@ export default function ClientMessages() {
       setToast({ message: 'Could not update the quote. Please try again.', type: 'error' })
     } else {
       setQuotes(prev => ({ ...prev, [quoteId]: { ...prev[quoteId], status } }))
-      // Notify the freelancer (fire-and-forget)
-      supabase.auth.getSession().then(({ data }) => {
+      // Tell the professional. For an acceptance we wait for the answer: if
+      // they set this quote to invoice automatically, the invoice has just
+      // been sent, and the client should hear that rather than "they have
+      // been notified". A failed request falls back to the plain wording;
+      // the acceptance itself is already saved.
+      let invoice = null
+      try {
+        const { data } = await supabase.auth.getSession()
         const token = data.session?.access_token
-        if (token) fetch('/api/notify-quote-event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ quote_id: quoteId, event: status === 'accepted' ? 'accepted' : 'declined' }),
-        }).catch(() => {})
-      })
+        if (token) {
+          const res = await fetch('/api/notify-quote-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ quote_id: quoteId, event: status === 'accepted' ? 'accepted' : 'declined' }),
+          })
+          if (status === 'accepted' && res.ok) invoice = (await res.json())?.invoice || null
+        }
+      } catch { /* notified or not, the quote's new status stands */ }
       setToast({
-        message: status === 'accepted' ? 'Quote accepted. The freelancer has been notified.' : 'Quote declined.',
+        message: status !== 'accepted' ? 'Quote declined.'
+          : invoice ? `Quote accepted. Invoice ${invoice.invoice_number} is in this conversation, due ${fmtInvoiceDate(invoice.invoice_due_date)}.`
+          : 'Quote accepted. They have been notified and will send your invoice.',
         type: 'success',
       })
+      // Bring the invoice card into the open conversation straight away.
+      if (invoice) refresh()
     }
     setRespondingQuoteId(null)
     setTimeout(() => setToast(null), 4000)
@@ -424,6 +438,13 @@ export default function ClientMessages() {
                       </span>
                     )}
                   </div>
+                  {/* What happens next, so nobody is left wondering whose move it is. */}
+                  {!asInvoice && quoteData.status === 'sent' && quoteData.auto_invoice === true && (
+                    <p className="px-4 py-2.5 text-xs text-gray-500 border-t border-gray-100">Your invoice arrives here as soon as you accept.</p>
+                  )}
+                  {!asInvoice && quoteData.status === 'accepted' && !quoteData.invoice_number && (
+                    <p className="px-4 py-2.5 text-xs text-gray-500 border-t border-gray-100">You accepted this quote. {f?.name || 'They'} has been notified and will send your invoice here.</p>
+                  )}
                 </div>
               )
             }

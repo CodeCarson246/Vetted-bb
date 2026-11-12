@@ -15,7 +15,8 @@ import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { getMyFreelancer } from '@/lib/myFreelancer'
 import { readPageCache, writePageCache } from '@/lib/dashboardCache'
 import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
-import { PAYMENT_TERMS, termDays } from '@/lib/paymentTerms'
+import { PAYMENT_TERMS, termDays, termLabel } from '@/lib/paymentTerms'
+import { clearInvoicePrompt } from '@/lib/invoicing'
 import { addDaysToDateOnly } from '@/lib/formatDate'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
 import ReceiptLineCard from '@/components/ReceiptLineCard'
@@ -59,6 +60,8 @@ export default function Inbox() {
     return ast.toISOString().split('T')[0]
   })
   const [quotePaymentTerms, setQuotePaymentTerms] = useState('net14')
+  // Send the invoice by itself the moment the client accepts this quote.
+  const [quoteAutoInvoice, setQuoteAutoInvoice] = useState(false)
   const [quoteNotes, setQuoteNotes] = useState('')
   // Which venture this quote belongs to, for pros running several businesses.
   // '' = not tied to one, which is what single-business pros always send.
@@ -313,6 +316,8 @@ export default function Inbox() {
     const astDate = ast.toISOString().split('T')[0]
     setQuoteDate(astDate)
     setQuotePaymentTerms(msg.organisations?.default_payment_terms || 'net14')
+    // Starts as they left it on their last quote.
+    setQuoteAutoInvoice(profile?.auto_invoice_default === true)
     setQuoteNotes('')
     setQuoteVenture('')
     setQuoteNumber(`QT-${astDate.replace(/-/g, '').slice(0, 8)}-${Math.floor(Math.random()*900)+100}`)
@@ -481,14 +486,25 @@ export default function Inbox() {
         bill_to_division: quoteMsg.organisations?.division || null,
         bill_to_address: formatAddressBlock(quoteMsg.organisations) || null,
         status: 'sent',
+        // Only sent when ticked, so an ordinary quote never depends on the
+        // column existing.
+        ...(quoteAutoInvoice ? { auto_invoice: true } : {}),
       })
       .select()
       .single()
 
     if (error) {
-      alert('Could not send quote. Please try again.')
+      alert(/auto_invoice/.test(error.message || '')
+        ? 'Automatic invoices are still being switched on for the site. Untick that box to send this quote now.'
+        : 'Could not send quote. Please try again.')
       setQuoteSaving(false)
       return
+    }
+
+    // Remember the choice for their next quote (on every device).
+    if ((profile?.auto_invoice_default === true) !== quoteAutoInvoice) {
+      setProfile(prev => prev ? { ...prev, auto_invoice_default: quoteAutoInvoice } : prev)
+      supabase.from('freelancers').update({ auto_invoice_default: quoteAutoInvoice }).eq('id', profile.id).then(() => {})
     }
 
     // quote_id is the real link; the body is a readable fallback for
@@ -552,6 +568,7 @@ export default function Inbox() {
     }
     setThreadQuotes(prev => ({ ...prev, [quote.id]: { ...prev[quote.id], ...patch } }))
     setInvoicingQuoteId(null)
+    clearInvoicePrompt(supabase, quote.id)
 
     const { data: invReply } = await supabase.from('message_replies').insert({
       message_id: replyMsgId,
@@ -879,6 +896,9 @@ export default function Inbox() {
                       )}
                     </div>
                   </div>
+                  {kind === 'quote' && quoteData.status === 'sent' && quoteData.auto_invoice === true && (
+                    <p className="px-4 py-2.5 text-xs text-gray-500 border-t border-gray-100">The invoice sends automatically when they accept.</p>
+                  )}
                   {invoicingQuoteId === quoteData.id && quoteData.status === 'accepted' && (
                     <div className="px-4 py-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-end gap-3">
                       <div className="flex-1">
@@ -1324,6 +1344,24 @@ export default function Inbox() {
                       {PAYMENT_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </div>
+                  <label className="flex items-start gap-3 rounded-xl px-3.5 py-3 cursor-pointer" style={{ border: `1.5px solid ${quoteAutoInvoice ? 'var(--accent)' : 'var(--border-card)'}`, backgroundColor: quoteAutoInvoice ? 'var(--selected-fill)' : 'transparent' }}>
+                    <input
+                      type="checkbox"
+                      id="quote-auto-invoice"
+                      checked={quoteAutoInvoice}
+                      onChange={e => setQuoteAutoInvoice(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 flex-shrink-0"
+                      style={{ accentColor: '#00267F' }}
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-gray-900">Send the invoice automatically when this is accepted</span>
+                      <span className="block text-xs text-gray-500 mt-0.5 leading-relaxed">
+                        {quoteAutoInvoice
+                          ? `The moment they accept, your invoice goes to them, ${quotePaymentTerms === 'due_receipt' ? 'due on receipt' : `due ${termDays(quotePaymentTerms)} days from that day (${termLabel(quotePaymentTerms).toLowerCase()})`}. You get an email to say it has gone.`
+                          : 'Leave this off if you invoice after the work is done. You will get an email when they accept, with a button to send it.'}
+                      </span>
+                    </span>
+                  </label>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Valid for (days)</label>
                     <input type="number" min={1} max={365} value={quoteValidDays} onChange={e => setQuoteValidDays(e.target.value)}

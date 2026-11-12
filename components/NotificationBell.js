@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import Icon from '@/components/Icon'
 import { notificationIcon } from '@/lib/notificationIcons'
+import { invoicePromptQuoteId } from '@/lib/invoicing'
 
 function timeAgo(iso) {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
@@ -155,20 +156,37 @@ export default function NotificationBell() {
               <p className="text-gray-400" style={{ fontSize: 13, textAlign: 'center', padding: '28px 16px' }}>No notifications yet.</p>
             ) : (
               items.slice(0, 8).map(n => (
-                <button
+                <div
                   key={n.id}
-                  onClick={() => openItem(n)}
-                  className="hover:bg-gray-50 border-b border-gray-50"
-                  style={{ display: 'flex', gap: 10, width: '100%', textAlign: 'left', padding: '12px 16px', background: n.read ? 'transparent' : 'rgba(0,38,127,0.04)', border: 'none', borderBottom: '1px solid var(--row-stripe, #f3f4f6)', cursor: 'pointer' }}
+                  className="hover:bg-gray-50"
+                  style={{ background: n.read ? 'transparent' : 'rgba(0,38,127,0.04)', borderBottom: '1px solid var(--row-stripe, #f3f4f6)' }}
                 >
-                  <span style={{ flexShrink: 0, marginTop: 2, color: 'var(--accent)' }}><Icon name={notificationIcon(n.type)} size={17} /></span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span className="text-gray-900" style={{ display: 'block', fontSize: 13, fontWeight: n.read ? 400 : 600, lineHeight: 1.4 }}>{n.title}</span>
-                    {n.body && <span className="text-gray-500" style={{ display: 'block', fontSize: 12, lineHeight: 1.4, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</span>}
-                    <span className="text-gray-400" style={{ display: 'block', fontSize: 11, marginTop: 3 }}>{timeAgo(n.created_at)}</span>
-                  </span>
-                  {!n.read && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#00267F', flexShrink: 0, marginTop: 5 }} />}
-                </button>
+                  <button
+                    onClick={() => openItem(n)}
+                    style={{ display: 'flex', gap: 10, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    <span style={{ flexShrink: 0, marginTop: 2, color: 'var(--accent)' }}><Icon name={notificationIcon(n.type)} size={17} /></span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span className="text-gray-900" style={{ display: 'block', fontSize: 13, fontWeight: n.read ? 400 : 600, lineHeight: 1.4 }}>{n.title}</span>
+                      {n.body && <span className="text-gray-500" style={{ display: 'block', fontSize: 12, lineHeight: 1.4, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</span>}
+                      <span className="text-gray-400" style={{ display: 'block', fontSize: 11, marginTop: 3 }}>{timeAgo(n.created_at)}</span>
+                    </span>
+                    {!n.read && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#00267F', flexShrink: 0, marginTop: 5 }} />}
+                  </button>
+                  {/* An accepted quote that still needs its invoice: say what
+                      the tap does, and take them straight to sending it. */}
+                  {invoicePromptQuoteId(n.link) && (
+                    <div style={{ padding: '0 16px 12px 43px' }}>
+                      <button
+                        onClick={() => openItem(n)}
+                        className="hover:opacity-90"
+                        style={{ fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', backgroundColor: '#F9C000', color: '#00267F' }}
+                      >
+                        Send invoice
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))
             )}
           </div>

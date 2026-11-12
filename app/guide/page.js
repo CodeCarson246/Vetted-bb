@@ -57,6 +57,15 @@ const SECTIONS = [
         tip: 'Quotes with clear line items get accepted more often than a single lump sum. Clients like seeing what they\'re paying for.',
       },
       {
+        title: 'Sending the invoice when a quote is accepted',
+        steps: [
+          'On the quote builder, under the payment terms, tick "Send the invoice automatically when this is accepted". The moment the client accepts, your invoice goes to them with those terms, and you get an email to say it has gone. Your choice is remembered for the next quote.',
+          'Leave it unticked if you invoice after the work is done. When they accept you get a notification and an email, each with a "Send invoice" button: tap it, check the amount and due date, and press Send.',
+          'Until the invoice is sent, the accepted quote sits under "Waiting on you" at the top of your dashboard, so a missed notification cannot leave a client hanging.',
+        ],
+        tip: 'Automatic suits work that is paid up front, such as a rental or a deposit. It is still your invoice: your quote, your terms, your name on it.',
+      },
+      {
         title: 'From accepted quote to paid job',
         steps: [
           'Do the work. When you\'re done, open the quote and hit "Mark completed". The client confirms completion from their side too, so both of you agree the job is done.',

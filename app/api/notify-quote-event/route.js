@@ -1,6 +1,53 @@
 import { createClient } from '@supabase/supabase-js'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { isOrganisationMember, fanOut } from '@/lib/serverOrgRecipients'
+import { issueInvoiceOnAcceptance } from '@/lib/serverInvoice'
+import { sendEmail } from '@/lib/serverEmail'
+import { escapeHtml } from '@/lib/escapeHtml'
+import { fmtInvoiceDate, invoicePromptLink } from '@/lib/invoicing'
+import { SITE_URL, SITE_HOST } from '@/lib/siteUrl'
+
+// The email a professional gets when a client accepts their quote. A bell
+// notification and a push are easy to miss; this is the one that waits in an
+// inbox. It says plainly whose move it is: either the invoice has already
+// gone, or it is theirs to send, with a button that goes straight there.
+function acceptedEmail({ freelancerName, clientName, ref, total, invoice, quoteId }) {
+  const safeName = escapeHtml(freelancerName)
+  const safeClient = escapeHtml(clientName)
+  const safeRef = escapeHtml(ref)
+  const amount = `Bds$${Number(total || 0).toFixed(2)}`
+  const next = invoice
+    ? `Invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> was sent to them automatically, as you chose on the quote. Payment is due ${escapeHtml(fmtInvoiceDate(invoice.invoice_due_date))}. They are now expecting the work to go ahead.`
+    : `They are waiting for your invoice. It takes two taps.`
+  const cta = invoice
+    ? { href: `${SITE_URL}/quotes`, label: 'Open Quotes & earnings →' }
+    : { href: `${SITE_URL}${invoicePromptLink(quoteId)}`, label: 'Send the invoice →' }
+  return `
+    <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #f9fafb;">
+      <div style="background: white; border-radius: 16px; overflow: hidden; border: 1px solid #e5e7eb;">
+        <div style="background: #00267F; padding: 24px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 700;">Vetted.bb</h1>
+          <p style="color: #93b8ff; margin: 6px 0 0; font-size: 14px;">Your quote was accepted</p>
+        </div>
+        <div style="padding: 28px 24px;">
+          <p style="color: #374151; font-size: 15px; margin: 0 0 20px;">Hi ${safeName},</p>
+          <p style="color: #374151; font-size: 15px; margin: 0 0 20px;">
+            <strong>${safeClient}</strong> accepted your quote${safeRef ? ` <strong>${safeRef}</strong>` : ''} for <strong>${amount}</strong>.
+          </p>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">${next}</p>
+          <a href="${cta.href}" style="display: block; background: #00267F; color: white; text-align: center; padding: 14px 24px; border-radius: 100px; text-decoration: none; font-weight: 600; font-size: 14px;">
+            ${cta.label}
+          </a>
+        </div>
+        <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; text-align: center;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+            Vetted.bb · Connecting Barbados · <a href="${SITE_URL}" style="color: #00267F;">${SITE_HOST}</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  `
+}
 
 // Cross-party quote-lifecycle notifications. The caller (JWT) must be a
 // participant in the quote; the recipient (the OTHER party) is resolved
@@ -8,6 +55,11 @@ import { isOrganisationMember, fanOut } from '@/lib/serverOrgRecipients'
 //   accepted | declined  → client acted   → notify freelancer
 //   paid                 → freelancer acted → notify client
 //   completed            → either acted    → notify the other side
+//
+// An acceptance does two more things. If the professional ticked "send the
+// invoice automatically" on the quote, the invoice goes out here and the
+// response says so, so the client's page can tell them it has arrived. And
+// the professional is emailed, because a client who has accepted is waiting.
 export async function POST(request) {
   try {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -30,9 +82,11 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid request' }, { status: 400 })
     }
 
+    // '*' so this keeps working on a database without the newer quote columns
+    // (auto_invoice, accepted_at): they simply read as undefined.
     const { data: quote } = await admin
       .from('quotes')
-      .select('id, message_id, organisation_id, client_email, client_name, quote_number, invoice_number, freelancer_id, freelancers(user_id, name, company_name)')
+      .select('*, freelancers(user_id, name, company_name, email)')
       .eq('id', quote_id)
       .maybeSingle()
     if (!quote) return Response.json({ error: 'Quote not found' }, { status: 404 })
@@ -71,9 +125,72 @@ export async function POST(request) {
 
     let recipients = []
     let payload = null
-    if (event === 'accepted' || event === 'declined') {
+    let invoice = null
+
+    if (event === 'accepted') {
       recipients = freelancerUserId ? [freelancerUserId] : []
-      payload = { type: `quote_${event}`, title: `${clientName} ${event} your quote ${ref}`.trim(), link: '/quotes' }
+      const quoteRef = quote.quote_number || ''
+      // Everything beyond the plain notification needs the quote to really be
+      // accepted right now, not merely a request saying so.
+      const reallyAccepted = quote.status === 'accepted'
+
+      // Stamp when it was accepted, once. The stamp doubles as "is this the
+      // first time we have heard about this acceptance?", which is what stops
+      // a repeated request from emailing the professional again. If the
+      // column is not there yet the update errors, and we carry on.
+      let firstTime = reallyAccepted
+      if (reallyAccepted) {
+        const { data: stamped, error: stampErr } = await admin
+          .from('quotes')
+          .update({ accepted_at: new Date().toISOString() })
+          .eq('id', quote.id)
+          .is('accepted_at', null)
+          .select('id')
+        if (!stampErr) firstTime = (stamped || []).length > 0
+      }
+
+      if (reallyAccepted && quote.auto_invoice === true && !quote.invoice_number) {
+        invoice = await issueInvoiceOnAcceptance(admin, quote, quote.freelancers)
+      }
+
+      payload = invoice
+        ? {
+            type: 'quote_accepted',
+            title: `${clientName} accepted your quote ${quoteRef}`.trim(),
+            body: `Invoice ${invoice.invoice_number} was sent automatically, due ${fmtInvoiceDate(invoice.invoice_due_date)}.`,
+            link: '/quotes',
+          }
+        : {
+            type: 'quote_accepted',
+            title: `${clientName} accepted your quote ${quoteRef}`.trim(),
+            body: reallyAccepted ? 'They are waiting for your invoice.' : null,
+            // Opens the short "send this invoice" confirmation for this quote.
+            link: reallyAccepted ? invoicePromptLink(quote.id) : '/quotes',
+          }
+
+      if (reallyAccepted && firstTime && quote.freelancers?.email) {
+        try {
+          await sendEmail({
+            to: quote.freelancers.email,
+            subject: invoice
+              ? `${clientName} accepted your quote ${quoteRef}: invoice sent`.replace(/\s+:/, ':')
+              : `${clientName} accepted your quote ${quoteRef}: send your invoice`.replace(/\s+:/, ':'),
+            html: acceptedEmail({
+              freelancerName: quote.freelancers.name || freelancerName,
+              clientName,
+              ref: quoteRef,
+              total: quote.total,
+              invoice,
+              quoteId: quote.id,
+            }),
+          })
+        } catch (err) {
+          console.error('accepted email failed:', err.message)
+        }
+      }
+    } else if (event === 'declined') {
+      recipients = freelancerUserId ? [freelancerUserId] : []
+      payload = { type: 'quote_declined', title: `${clientName} declined your quote ${ref}`.trim(), link: '/quotes' }
     } else if (event === 'paid') {
       recipients = clientUserIds
       payload = { type: 'job_paid', title: `${freelancerName} marked your job as paid`, body: ref ? `Receipt for ${ref}` : null, link: '/jobs' }
@@ -91,7 +208,7 @@ export async function POST(request) {
       await fanOut(recipients, payload)
     }
 
-    return Response.json({ success: true })
+    return Response.json({ success: true, invoice })
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 })
   }

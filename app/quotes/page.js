@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { printSavedQuote } from '@/lib/printQuote'
@@ -10,6 +10,8 @@ import { formatDocDate } from '@/lib/formatDate'
 import { PAYMENT_TERMS, reminderThreshold, daysUntil, termLabel } from '@/lib/paymentTerms'
 import { getMyFreelancer } from '@/lib/myFreelancer'
 import { readPageCache, writePageCache } from '@/lib/dashboardCache'
+import { clearInvoicePrompt } from '@/lib/invoicing'
+import QuickInvoiceDialog from '@/components/QuickInvoiceDialog'
 
 // Lifecycle: sent → accepted → invoiced → completed → paid (declined terminal)
 const STATUS_STYLES = {
@@ -175,7 +177,7 @@ function fmtDate(str) {
   return formatDocDate(str) || ''
 }
 
-export default function QuotesPage() {
+function QuotesInner() {
   const router = useRouter()
   const { user: authUser, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState(null)
@@ -187,6 +189,10 @@ export default function QuotesPage() {
   const [quoteYear, setQuoteYear] = useState('all')
   const [quoteMonth, setQuoteMonth] = useState('all')
   const [invoicingId, setInvoicingId] = useState(null)
+  // The short "send this invoice?" confirmation, opened by a notification,
+  // a push or the acceptance email (/quotes?invoice=<quote id>).
+  const [quickInvoiceId, setQuickInvoiceId] = useState(null)
+  const invoiceParam = useSearchParams().get('invoice')
   const [invoiceTerms, setInvoiceTerms] = useState('net14')
   const [invoiceClientPhone, setInvoiceClientPhone] = useState('')
   const [invoiceClientAddress, setInvoiceClientAddress] = useState('')
@@ -292,6 +298,36 @@ export default function QuotesPage() {
     setBusyId(null)
   }
 
+  // Fill the invoice form from the quote: the invoice carries the terms and
+  // client details promised on it, each still editable before sending.
+  function prepareInvoice(q) {
+    setInvoiceTerms(INVOICE_TERMS.some(t => t.value === q.payment_terms) ? q.payment_terms : 'net14')
+    setInvoiceClientPhone(q.client_phone || '')
+    setInvoiceClientAddress(q.client_address || '')
+    setInvoiceTermsText(q.terms || profile?.default_terms || '')
+  }
+
+  // Arriving from "Send invoice" on a notification: open the confirmation
+  // for that quote. Waits for fresh data, so a quote that has since been
+  // invoiced (on another device, or automatically) is never invoiced twice.
+  useEffect(() => {
+    if (!invoiceParam || loading || !freshRef.current) return
+    const q = quotes.find(x => x.id === invoiceParam)
+    router.replace('/quotes')
+    if (!q) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reacting to the URL, once the quotes have loaded
+    setExpandedId(q.id)
+    if (q.status === 'accepted' && !q.invoice_number) {
+      prepareInvoice(q)
+      setQuickInvoiceId(q.id)
+    } else if (q.invoice_number) {
+      clearInvoicePrompt(supabase, q.id)
+      setToast({ msg: `Invoice ${q.invoice_number} has already been sent.`, err: false })
+      setTimeout(() => setToast(null), 3600)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- prepareInvoice only reads the quote and profile
+  }, [invoiceParam, loading, quotes, router])
+
   // Send the accepted quote as a formal invoice with its own number,
   // issue date and payment terms.
   async function sendInvoice(q) {
@@ -322,6 +358,10 @@ export default function QuotesPage() {
     }
     setQuotes(prev => prev.map(x => x.id === q.id ? { ...x, ...patch } : x))
     setInvoicingId(null)
+    setQuickInvoiceId(null)
+    clearInvoicePrompt(supabase, q.id)
+    setToast({ msg: `Invoice ${invoiceNumber} sent to ${q.client_name || 'your client'}`, err: false })
+    setTimeout(() => setToast(null), 3600)
 
     // Note it in the conversation and notify the client
     if (q.message_id) {
@@ -1098,6 +1138,9 @@ export default function QuotesPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm" style={{ color: '#00267F' }}>{q.quote_number}</span>
                       <StatusChip status={q.status} />
+                      {q.status === 'sent' && q.auto_invoice === true && (
+                        <span className="text-xs text-gray-400">Invoice sends when accepted</span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600 mt-1 truncate">
                       {q.client_name || 'Client'} · {fmtDate(q.quote_date)}
@@ -1306,14 +1349,7 @@ export default function QuotesPage() {
 
                         {q.status === 'accepted' && invoicingId !== q.id && (
                           <button
-                            onClick={() => {
-                              setInvoicingId(q.id)
-                              // The invoice carries the terms promised on the quote.
-                              setInvoiceTerms(INVOICE_TERMS.some(t => t.value === q.payment_terms) ? q.payment_terms : 'net14')
-                              setInvoiceClientPhone(q.client_phone || '')
-                              setInvoiceClientAddress(q.client_address || '')
-                              setInvoiceTermsText(q.terms || profile?.default_terms || '')
-                            }}
+                            onClick={() => { setInvoicingId(q.id); prepareInvoice(q) }}
                             className="text-xs font-semibold px-3.5 py-1.5 rounded-full hover:opacity-90 transition-opacity"
                             style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                           >
@@ -1388,11 +1424,36 @@ export default function QuotesPage() {
         </div>
       )}
 
+      {/* Two taps from a notification: this, then Send. */}
+      {(() => {
+        const q = quickInvoiceId ? quotes.find(x => x.id === quickInvoiceId) : null
+        if (!q || q.status !== 'accepted') return null
+        return (
+          <QuickInvoiceDialog
+            quote={q}
+            terms={invoiceTerms}
+            onTermsChange={setInvoiceTerms}
+            busy={busyId === q.id}
+            onSend={() => sendInvoice(q)}
+            onClose={() => setQuickInvoiceId(null)}
+            onMoreOptions={() => { setQuickInvoiceId(null); setInvoicingId(q.id) }}
+          />
+        )
+      })()}
+
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] px-5 py-3 rounded-full text-sm font-semibold text-white shadow-lg" style={{ backgroundColor: toast.err ? '#dc2626' : '#00267F' }}>
           {toast.msg}
         </div>
       )}
     </main>
+  )
+}
+
+export default function QuotesPage() {
+  return (
+    <Suspense>
+      <QuotesInner />
+    </Suspense>
   )
 }

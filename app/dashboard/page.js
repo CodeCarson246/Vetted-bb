@@ -23,6 +23,8 @@ import ProfileHandleCard from '@/components/ProfileHandleCard'
 import { getMyFreelancer, primeMyFreelancer } from '@/lib/myFreelancer'
 import { readDashboardCache, writeDashboardCache, clearDashboardCache } from '@/lib/dashboardCache'
 import { lowestPaidPrice } from '@/lib/price'
+import { awaitingInvoice } from '@/lib/invoicing'
+import WaitingOnYou from '@/components/WaitingOnYou'
 import { normaliseDiscounts, perLabel, unitLabel, MAX_DISCOUNT_TIERS } from '@/lib/rentals'
 import ProfileSetup from '@/components/ProfileSetup'
 import { profileRequirements, isProfileComplete, completionPercent, isPricedService } from '@/lib/profileCompleteness'
@@ -176,6 +178,8 @@ function DashboardInner() {
   // Client review form state
   const [clientName, setClientName] = useState('')
   const [threadClients, setThreadClients] = useState([])
+  // Accepted quotes with no invoice sent yet: the professional's move.
+  const [awaitingInvoices, setAwaitingInvoices] = useState([])
   const [selectedClientId, setSelectedClientId] = useState('')
   const [clientRating, setClientRating] = useState(0)
   const [clientRatingHover, setClientRatingHover] = useState(0)
@@ -346,6 +350,13 @@ function DashboardInner() {
         if (!seen.has(snd.sender_user_id)) seen.set(snd.sender_user_id, snd.sender_name)
       }
       setThreadClients([...seen.entries()].map(([id, name]) => ({ id, name })))
+
+      // Its own request, after the main batch: '*' because accepted_at may
+      // not exist yet, and nothing above should wait on it.
+      const { data: accepted } = await supabase.from('quotes').select('*')
+        .eq('freelancer_id', p.id).eq('status', 'accepted').order('created_at', { ascending: false }).limit(10)
+      if (cancelled) return
+      setAwaitingInvoices(awaitingInvoice(accepted))
     }
     init()
     return () => { cancelled = true }
@@ -1558,6 +1569,8 @@ function DashboardInner() {
           </div>
         ) : profile ? (
           <>
+            <WaitingOnYou quotes={awaitingInvoices} />
+
             {/* Unfinished setup. Takes the place of the profile-strength card
                 below until the essentials are in: one ask at a time beats two
                 checklists, and these are the ones a client actually needs. */}

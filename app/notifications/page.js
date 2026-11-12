@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import Icon from '@/components/Icon'
 import { notificationIcon } from '@/lib/notificationIcons'
+import { invoicePromptQuoteId } from '@/lib/invoicing'
 
 const FILTERS = [
   ['all', 'All'],
@@ -177,6 +178,15 @@ export default function NotificationsPage() {
                         </span>
                       </button>
                       <div className="flex items-center gap-1 flex-shrink-0">
+                        {invoicePromptQuoteId(n.link) && (
+                          <button
+                            onClick={() => openItem(n)}
+                            className="hover:opacity-90 mr-1"
+                            style={{ fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', backgroundColor: '#F9C000', color: '#00267F', whiteSpace: 'nowrap' }}
+                          >
+                            Send invoice
+                          </button>
+                        )}
                         <button
                           onClick={() => toggleRead(n)}
                           title={n.read ? 'Mark as unread' : 'Mark as read'}

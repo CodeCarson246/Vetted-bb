@@ -64,8 +64,10 @@ export default function QuoteRequestDetail() {
     if (status === 'accepted') {
       await supabase.from('quote_requests').update({ status: 'awarded', updated_at: new Date().toISOString() }).eq('id', id)
     }
+    // Awaited, so that if the professional set this quote to invoice
+    // automatically, the reload below already shows it as invoiced.
     const { data: { session } } = await supabase.auth.getSession()
-    fetch('/api/notify-quote-event', {
+    await fetch('/api/notify-quote-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
       body: JSON.stringify({ quote_id: quote.id, event: status }),
@@ -170,6 +172,15 @@ export default function QuoteRequestDetail() {
                         <button onClick={() => respond(q, 'accepted')} disabled={busyId === q.id} className="flex-1 text-sm font-semibold py-2 rounded-full text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#16a34a' }}>Accept</button>
                         <button onClick={() => respond(q, 'declined')} disabled={busyId === q.id} className="flex-1 text-sm font-semibold py-2 rounded-full border border-gray-200 text-gray-600 hover:border-gray-400 disabled:opacity-50">Decline</button>
                       </div>
+                    )}
+                    {q.status === 'sent' && req.status !== 'closed' && q.auto_invoice === true && (
+                      <p className="text-xs text-gray-500 mt-2">The invoice arrives in the conversation as soon as you accept.</p>
+                    )}
+                    {q.status === 'accepted' && !q.invoice_number && (
+                      <p className="text-xs text-gray-500">Accepted. {f.name} has been notified and will send the invoice in the conversation.</p>
+                    )}
+                    {q.invoice_number && q.status === 'invoiced' && (
+                      <p className="text-xs text-gray-500">Invoice {q.invoice_number} is in <Link href="/messages" className="font-semibold" style={{ color: '#00267F' }}>the conversation</Link>.</p>
                     )}
                   </>
                 )}
