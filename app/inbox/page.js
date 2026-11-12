@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
-import { getQuoteId, dedupeThreadReplies, conversationPreview, quoteReplyKind, isReceiptBody } from '@/lib/quoteReply'
+import { getQuoteId, dedupeThreadReplies, conversationPreview, quoteReplyKind, isReceiptBody, quotedSince } from '@/lib/quoteReply'
 import { parsePrice } from '@/lib/price'
 import { parseRentalLine } from '@/lib/rentals'
 import { parseServiceEnquiryLine } from '@/lib/enquiryLines'
@@ -807,7 +807,11 @@ export default function Inbox() {
   function renderConversation(msg) {
     const clientName = clientProfiles[msg.sender_user_id]?.display_name || msg.sender_name
     const clientAvatar = clientProfiles[msg.sender_user_id]?.avatar_url
-    const prefillTop = quoteItemsFromEnquiry(msg.message)
+    const threadReplies = replies[msg.id] || []
+    // Once a quote has gone out, the enquiry's quote button goes too, so the
+    // same services cannot be quoted twice by mistake. The $ button below
+    // is still there for a deliberate second quote.
+    const prefillTop = quotedSince(threadReplies, msg.created_at) ? [] : quoteItemsFromEnquiry(msg.message)
     const fmtTime = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     return (
       <>
@@ -929,7 +933,7 @@ export default function Inbox() {
             // Skip empty stubs (e.g. quote replies whose card rendered above) —
             // an empty bubble shows as a stray thin line.
             if (!r.body?.trim() && !r.image_url) return null
-            const replyPrefill = !isOwnReply ? quoteItemsFromEnquiry(r.body) : []
+            const replyPrefill = !isOwnReply && !quotedSince(threadReplies, r.created_at) ? quoteItemsFromEnquiry(r.body) : []
             return (
               <div key={r.id} className={`flex ${isOwnReply ? 'justify-end' : 'justify-start'}`}>
                 <div className="max-w-[80%]">

@@ -97,3 +97,28 @@ test('parseReceiptLine degrades gracefully for unparseable receipt text', () => 
   // Not a receipt at all
   assert.equal(parseReceiptLine('hello there'), null)
 })
+
+test('an enquiry counts as quoted once a quote is sent after it', async () => {
+  const { quotedSince } = await import('../lib/quoteReply.js')
+  const enquiryAt = '2026-11-12T13:16:00+00:00'
+  const quote = { id: 'r1', quote_id: UUID, body: 'Sent quote QT-20261112-314', created_at: '2026-11-12T13:20:00+00:00' }
+
+  assert.equal(quotedSince([], enquiryAt), false)
+  assert.equal(quotedSince(undefined, enquiryAt), false)
+  assert.equal(quotedSince([quote], enquiryAt), true)
+  // with no enquiry time, any quote in the thread counts
+  assert.equal(quotedSince([quote], undefined), true)
+
+  // a quote sent BEFORE a later enquiry does not answer it
+  assert.equal(quotedSince([quote], '2026-11-12T13:30:00+00:00'), false)
+
+  // ordinary messages, invoices and receipts are not quotes
+  const chat = { id: 'r2', body: 'See you Friday', created_at: '2026-11-12T13:21:00+00:00' }
+  const invoice = { id: 'r3', quote_id: UUID, body: 'Sent invoice INV-20261112-550, payment due 26 Nov 2026 (net 14 days)', created_at: '2026-11-12T13:22:00+00:00' }
+  const receipt = { id: 'r4', quote_id: UUID, body: 'Sent receipt for INV-1 - paid in full on 1 Dec 2026. Total $40.00', created_at: '2026-11-12T13:23:00+00:00' }
+  assert.equal(quotedSince([chat, invoice, receipt], enquiryAt), false)
+
+  // a deleted quote stops counting: optimistically flagged, or reloaded without its quote_id
+  assert.equal(quotedSince([{ ...quote, _deleted: true }], enquiryAt), false)
+  assert.equal(quotedSince([{ ...quote, quote_id: null }], enquiryAt), false)
+})
