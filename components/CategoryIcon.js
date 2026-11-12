@@ -24,7 +24,27 @@ const PATHS = {
   'other': 'M11.56 22.06C11.5 21.98 11.46 21.66 11.44 21.18C11.26 17.46 9.62 14.64 6.94 13.49C5.98 13.07 5.07 12.87 3.67 12.78C2.65 12.71 2.64 12.71 2.64 12.21C2.64 11.68 2.65 11.67 3.67 11.59C8.61 11.17 11.13 8.34 11.43 2.85C11.49 1.8 11.52 1.74 12.02 1.74C12.44 1.74 12.55 1.83 12.58 2.19C12.71 4.06 12.83 4.89 13.12 5.91C14.14 9.47 16.42 11.25 20.4 11.58C21.35 11.66 21.42 11.7 21.42 12.18C21.42 12.66 21.35 12.71 20.4 12.78C15.54 13.14 12.89 16.02 12.62 21.27C12.58 22.16 12.55 22.2 12.02 22.2C11.69 22.2 11.63 22.18 11.56 22.06ZM12.52 16.56C13.45 14.44 15.06 12.91 17.03 12.27L17.36 12.16L16.91 12C15.02 11.31 13.6 10 12.72 8.14C12.43 7.54 12.06 6.51 12.06 6.31C12.06 6.26 11.94 6.56 11.8 6.99C10.95 9.55 9.47 11.14 7.13 12.03C6.83 12.14 6.78 12.18 6.87 12.21C8.82 12.87 10.19 14.01 11.16 15.75C11.45 16.28 11.91 17.4 11.98 17.77C12.01 17.94 12.03 17.92 12.18 17.45C12.27 17.18 12.43 16.77 12.52 16.56Z',
 }
 
+// Categories added after the designer's set was traced. These are drawn as
+// strokes (a key, for Rentals & Stays) at a weight chosen to sit beside the
+// traced icons. When the designer supplies the real artwork, trace it into
+// PATHS above and delete the entry here.
+const STROKES = {
+  'rentals-stays': 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4',
+}
+
 export default function CategoryIcon({ slug, size = 28, color = 'currentColor', style, className }) {
+  if (STROKES[slug]) {
+    return (
+      <svg
+        width={size} height={size} viewBox="0 0 24 24"
+        fill="none" stroke={color} strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round"
+        aria-hidden="true" focusable="false" className={className}
+        style={{ flexShrink: 0, ...style }}
+      >
+        <path d={STROKES[slug]} />
+      </svg>
+    )
+  }
   const d = PATHS[slug] || PATHS.other
   return (
     <svg

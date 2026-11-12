@@ -1568,3 +1568,51 @@ WHERE  f.min_price IS NOT NULL
 
 -- Verify: every row should show the lowest price above zero, or NULL.
 --   SELECT name, min_price FROM freelancers ORDER BY name;
+
+-- ============================================================
+-- SECTION 36 — RENTALS & STAYS (2026-11-11)
+-- Things one customer has at a time, for a run of days: a hire car,
+-- a holiday apartment, a marquee, a boat. Three differences from
+-- every other service, each needing somewhere to live:
+--
+--   services.rental            this item is hired out, one customer at a time
+--   services.price_unit        'day' or 'night': what the price is per
+--   services.length_discounts  optional tiers, e.g. [{"min":7,"percent":10}]
+--                              applied automatically to longer rentals
+--
+--   appointments.end_date      last OCCUPIED day of a multi-day booking or
+--                              block (null = the single day in `date`)
+--   appointments.message_id    the conversation a booking request opened,
+--                              where the quote is then sent
+--   appointments.rental        snapshot of the price the customer was shown
+--                              {unit, units, rate, discountPct, unitPrice, total}
+--
+-- appointments.service_id (section 20) already says WHICH item. A
+-- confirmed booking, or a block with a service_id, takes that one
+-- item off the market for its dates; a block with no service_id is
+-- still time off for the whole profile.
+--
+-- Everything here is additive and safe to re-run. Until it runs,
+-- the rest of the site works as before; only saving a service as a
+-- rental, and requesting a rental, will fail.
+-- ============================================================
+
+ALTER TABLE services
+  ADD COLUMN IF NOT EXISTS rental           boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS price_unit       text,
+  ADD COLUMN IF NOT EXISTS length_discounts jsonb   DEFAULT '[]'::jsonb;
+
+ALTER TABLE appointments
+  ADD COLUMN IF NOT EXISTS end_date   date,
+  ADD COLUMN IF NOT EXISTS message_id uuid REFERENCES messages(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS rental     jsonb;
+
+-- "What is booked on this item from today?" is asked on every profile view.
+CREATE INDEX IF NOT EXISTS idx_appointments_service_date
+  ON appointments (service_id, date) WHERE service_id IS NOT NULL;
+
+-- Verify: both should list the new columns.
+--   SELECT column_name FROM information_schema.columns
+--   WHERE table_name = 'services' AND column_name IN ('rental','price_unit','length_discounts');
+--   SELECT column_name FROM information_schema.columns
+--   WHERE table_name = 'appointments' AND column_name IN ('end_date','message_id','rental');

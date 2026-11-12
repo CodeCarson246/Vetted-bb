@@ -3,6 +3,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import Link from 'next/link'
+import { addDays, daysBetween, isRangeFree, customerEnd, fmtDay, unitLabel, MAX_RENTAL_UNITS } from '@/lib/rentals'
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -11,6 +13,7 @@ const STATUS = {
   confirmed: { label: 'Confirmed', dot: '#16a34a', bg: 'rgba(22,163,74,0.12)', text: '#16a34a', border: 'rgba(22,163,74,0.45)' },
   pending: { label: 'Pending', dot: '#F9C000', bg: 'rgba(249,192,0,0.16)', text: '#B45309', border: 'rgba(249,192,0,0.55)' },
   blocked: { label: 'Time off', dot: '#9CA3AF', bg: 'rgba(107,114,128,0.14)', text: '#6B7280', border: 'rgba(107,114,128,0.4)' },
+  declined: { label: 'Declined', dot: '#D1D5DB', bg: 'rgba(107,114,128,0.08)', text: '#9CA3AF', border: 'rgba(107,114,128,0.25)' },
 }
 const STATUS_KEYS = ['confirmed', 'pending', 'blocked']
 
@@ -40,7 +43,10 @@ function weekDays(cursor) {
   return Array.from({ length: 7 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i))
 }
 
-const EMPTY_FORM = { id: null, title: '', client_name: '', client_email: '', date: '', start_time: '09:00', duration_min: 60, status: 'confirmed', notes: '', quote_id: '' }
+const EMPTY_FORM = { id: null, title: '', client_name: '', client_email: '', date: '', end_date: '', service_id: '', start_time: '09:00', duration_min: 60, status: 'confirmed', notes: '', quote_id: '' }
+
+// Last day an entry covers (the same day unless it spans several).
+const endOf = a => (a.end_date && a.end_date >= a.date ? a.end_date : a.date)
 
 export default function CalendarPage() {
   const router = useRouter()
@@ -48,6 +54,7 @@ export default function CalendarPage() {
   const [profile, setProfile] = useState(null)
   const [appts, setAppts] = useState([])
   const [quotes, setQuotes] = useState([])
+  const [rentals, setRentals] = useState([]) // services hired out one customer at a time
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('month')
   const [cursor, setCursor] = useState(() => new Date())
@@ -56,14 +63,16 @@ export default function CalendarPage() {
   const [toast, setToast] = useState(null)
 
   const load = useCallback(async (freelancerId) => {
-    const [{ data: a }, { data: q }] = await Promise.all([
+    const [{ data: a }, { data: q }, { data: sv }] = await Promise.all([
       supabase.from('appointments').select('*').eq('freelancer_id', freelancerId).order('date', { ascending: true }),
       supabase.from('quotes').select('id, quote_number, invoice_number, client_name, client_email, total, status')
         .eq('freelancer_id', freelancerId).in('status', ['accepted', 'invoiced', 'completed', 'paid'])
         .order('created_at', { ascending: false }).limit(50),
+      supabase.from('services').select('*').eq('freelancer_id', freelancerId).order('created_at', { ascending: true }),
     ])
     setAppts(a || [])
     setQuotes(q || [])
+    setRentals((sv || []).filter(x => x.rental))
   }, [])
 
   useEffect(() => {
@@ -84,7 +93,11 @@ export default function CalendarPage() {
   // ── Derived ──
   const byDate = {}
   for (const a of appts) {
-    (byDate[a.date] = byDate[a.date] || []).push(a)
+    const span = Math.min(daysBetween(a.date, endOf(a)), MAX_RENTAL_UNITS)
+    for (let i = 0; i <= span; i++) {
+      const k = addDays(a.date, i)
+      ;(byDate[k] = byDate[k] || []).push(a)
+    }
   }
   for (const k in byDate) byDate[k].sort((x, y) => (x.start_time || '99').localeCompare(y.start_time || '99'))
 
@@ -92,7 +105,7 @@ export default function CalendarPage() {
   const todayKey = toKey(today)
   const todays = (byDate[todayKey] || [])
   const upcoming = appts
-    .filter(a => a.date >= todayKey)
+    .filter(a => endOf(a) >= todayKey && a.status !== 'declined')
     .sort((a, b) => (a.date + (a.start_time || '99')).localeCompare(b.date + (b.start_time || '99')))
     .slice(0, 6)
 
@@ -114,7 +127,7 @@ export default function CalendarPage() {
     setForm({ ...EMPTY_FORM, date: toKey(dateObj || cursor), status: 'blocked', start_time: '' })
   }
   function openEdit(a) {
-    setForm({ id: a.id, title: a.title, client_name: a.client_name || '', client_email: a.client_email || '', date: a.date, start_time: a.start_time || '', duration_min: a.duration_min || 60, status: a.status, notes: a.notes || '', quote_id: a.quote_id || '', client_user_id: a.client_user_id || null })
+    setForm({ id: a.id, title: a.title, client_name: a.client_name || '', client_email: a.client_email || '', date: a.date, end_date: a.end_date || '', service_id: a.service_id || '', start_time: a.start_time || '', duration_min: a.duration_min || 60, status: a.status, notes: a.notes || '', quote_id: a.quote_id || '', client_user_id: a.client_user_id || null, rental: a.rental || null, message_id: a.message_id || null, hadSpan: !!(a.end_date || a.service_id) })
   }
 
   async function respondBooking(action) {
@@ -127,12 +140,22 @@ export default function CalendarPage() {
       body: JSON.stringify({ appointment_id: form.id, action }),
     })
     setSaving(false)
-    if (!res.ok) { setToast({ msg: 'Could not update. Try again.', err: true }); return }
+    if (!res.ok) {
+      const out = await res.json().catch(() => ({}))
+      setToast({ msg: out.error || 'Could not update. Try again.', err: true })
+      setTimeout(() => setToast(null), 6000)
+      return
+    }
     const newStatus = action === 'confirm' ? 'confirmed' : 'declined'
+    const wasRental = !!form.rental
     setAppts(prev => prev.map(a => a.id === form.id ? { ...a, status: newStatus } : a))
     setForm(null)
-    setToast({ msg: action === 'confirm' ? 'Booking confirmed. The client has been notified.' : 'Booking declined. The client has been notified.' })
-    setTimeout(() => setToast(null), 3000)
+    setToast({
+      msg: action === 'confirm'
+        ? (wasRental ? 'Confirmed, and those dates are now marked as taken. Send the quote from your inbox.' : 'Booking confirmed. The client has been notified.')
+        : 'Booking declined. The client has been notified.',
+    })
+    setTimeout(() => setToast(null), wasRental && action === 'confirm' ? 6000 : 3000)
   }
   function pickQuote(qid) {
     const q = quotes.find(x => x.id === qid)
@@ -146,16 +169,37 @@ export default function CalendarPage() {
   }
   async function saveAppt() {
     const isBlock = form.status === 'blocked'
-    if (!isBlock && !form.title.trim()) { setToast({ msg: 'Add a title for the booking.', err: true }); return }
+    const item = rentals.find(r => r.id === form.service_id) || null
+    if (!isBlock && !item && !form.title.trim()) { setToast({ msg: 'Add a title for the booking.', err: true }); return }
+    if (form.end_date && form.end_date < form.date) { setToast({ msg: 'The end date is before the start date.', err: true }); return }
+    const lastDay = form.end_date || form.date
+    // One customer at a time: an item cannot be booked or blocked twice
+    // over the same days.
+    if (item && ['confirmed', 'blocked'].includes(form.status)) {
+      const taken = appts
+        .filter(a => a.id !== form.id && ((a.service_id === item.id && ['confirmed', 'blocked'].includes(a.status)) || (a.status === 'blocked' && !a.service_id)))
+        .map(a => ({ start: a.date, end: endOf(a) }))
+      if (!isRangeFree(form.date, lastDay, taken)) {
+        setToast({ msg: `${item.name} is already booked or blocked on some of those days.`, err: true })
+        setTimeout(() => setToast(null), 5000)
+        return
+      }
+    }
     setSaving(true)
     const payload = {
       freelancer_id: profile.id,
       quote_id: isBlock ? null : (form.quote_id || null),
-      title: form.title.trim() || (isBlock ? 'Time off' : ''),
+      title: form.title.trim() || (item ? item.name : isBlock ? 'Time off' : ''),
+      // Only sent when used, so an ordinary entry never depends on these
+      // columns existing.
+      ...((form.end_date || form.service_id || form.hadSpan) ? {
+        end_date: form.end_date && form.end_date > form.date ? form.end_date : null,
+        service_id: form.service_id || null,
+      } : {}),
       client_name: form.client_name.trim() || null,
       client_email: form.client_email.trim() || null,
       date: form.date,
-      start_time: form.status === 'blocked' ? (form.start_time || null) : (form.start_time || null),
+      start_time: (item || form.end_date) ? null : (form.start_time || null),
       duration_min: Number(form.duration_min) || 60,
       status: form.status,
       notes: form.notes.trim() || null,
@@ -171,7 +215,7 @@ export default function CalendarPage() {
     }
     setSaving(false)
     setForm(null)
-    setToast({ msg: isBlock ? 'Time off saved.' : 'Booking saved.' })
+    setToast({ msg: isBlock ? (item ? `${item.name} blocked for those dates.` : 'Time off saved.') : 'Booking saved.' })
     setTimeout(() => setToast(null), 3000)
   }
   async function deleteAppt() {
@@ -365,7 +409,7 @@ export default function CalendarPage() {
                         <span className="mt-1.5 flex-shrink-0" style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: s.dot }} />
                         <span className="flex-1 min-w-0">
                           <span className="block text-sm font-medium text-gray-900 truncate">{a.title}</span>
-                          <span className="block text-xs text-gray-400">{d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}{a.start_time ? ` · ${fmtTime(a.start_time)}` : ''}{a.client_name ? ` · ${a.client_name}` : ''}</span>
+                          <span className="block text-xs text-gray-400">{d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}{endOf(a) !== a.date ? ` to ${fmtDay(endOf(a))}` : ''}{a.start_time ? ` · ${fmtTime(a.start_time)}` : ''}{a.client_name ? ` · ${a.client_name}` : ''}</span>
                         </span>
                       </button>
                     )
@@ -394,7 +438,36 @@ export default function CalendarPage() {
                   <p className="text-xs text-gray-400 mt-1">Linking a job is just for your records. It doesn&apos;t change your public availability.</p>
                 </div>
               )}
-              <Field label={isBlock ? 'Label (optional)' : 'Title'}>
+              {form.rental && (
+                <div className="rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--row-stripe)' }}>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {fmtDay(form.date)} to {fmtDay(customerEnd(form.rental.unit, form.end_date || form.date))}
+                  </p>
+                  <p className="text-sm text-gray-600 tabular-nums">
+                    {form.rental.units} {unitLabel(form.rental.unit, form.rental.units)} × Bds${Number(form.rental.unitPrice).toFixed(2)} = <strong>Bds${Number(form.rental.total).toFixed(2)}</strong>
+                  </p>
+                  {form.rental.discountPct > 0 && (
+                    <p className="text-xs mt-0.5" style={{ color: '#16a34a', fontWeight: 600 }}>Your {form.rental.discountPct}% discount for {form.rental.discountMin}+ {unitLabel(form.rental.unit, 2)} is included.</p>
+                  )}
+                  {form.message_id && (
+                    <Link href="/inbox" className="inline-block text-xs font-semibold mt-2" style={{ color: 'var(--accent)' }}>Open the conversation to send the quote →</Link>
+                  )}
+                </div>
+              )}
+              {rentals.length > 0 && !form.rental && (
+                <Field label={isBlock ? 'Applies to' : 'Rental item (optional)'}>
+                  <select value={form.service_id} onChange={e => setForm(f => ({ ...f, service_id: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400">
+                    <option value="">{isBlock ? 'Everything (time off)' : 'None'}</option>
+                    {rentals.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {isBlock
+                      ? 'Pick one item to take just that off the market, for servicing or your own use. Everything else stays bookable.'
+                      : 'Choosing an item marks it as taken on your profile for these dates, for a booking you took by phone or WhatsApp.'}
+                  </p>
+                </Field>
+              )}
+              <Field label={isBlock ? 'Label (optional)' : (form.service_id ? 'Title (optional)' : 'Title')}>
                 <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder={isBlock ? 'e.g. Vacation (optional)' : 'e.g. Panel upgrade'} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" />
               </Field>
               <div className="grid grid-cols-2 gap-3">
@@ -405,7 +478,13 @@ export default function CalendarPage() {
                   </select>
                 </Field>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              {!form.rental && (isBlock || form.service_id) && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="From"><input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" /></Field>
+                  <Field label="Until (optional)"><input type="date" min={form.date} value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" /></Field>
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-3" style={(form.rental || isBlock || form.service_id) ? { display: 'none' } : undefined}>
                 <Field label="Date"><input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" /></Field>
                 <Field label="Time"><input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white outline-none focus:border-gray-400" /></Field>
                 <Field label="Duration">

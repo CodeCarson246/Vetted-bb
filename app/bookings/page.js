@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { profileUrl } from '@/lib/handles'
+import { customerEnd, fmtDay, unitLabel } from '@/lib/rentals'
 
 const STATUS = {
   pending: { label: 'Awaiting confirmation', dot: '#F9C000', bg: 'rgba(249,192,0,0.15)', text: '#B45309' },
@@ -30,7 +31,7 @@ export default function BookingsPage() {
     if (!user) return
     const { data } = await supabase
       .from('appointments')
-      .select('id, title, date, start_time, duration_min, status, notes, freelancer_id, freelancers(id, name, company_name, trade, avatar_url)')
+      .select('*, freelancers(id, name, company_name, trade, avatar_url)')
       .eq('client_user_id', user.id)
       .order('date', { ascending: false })
     setBookings(data || [])
@@ -62,8 +63,9 @@ export default function BookingsPage() {
   }
 
   const todayKey = new Date().toISOString().slice(0, 10)
-  const upcoming = bookings.filter(b => b.date >= todayKey && b.status !== 'declined')
-  const rest = bookings.filter(b => !(b.date >= todayKey && b.status !== 'declined'))
+  const lastDay = b => b.end_date || b.date
+  const upcoming = bookings.filter(b => lastDay(b) >= todayKey && b.status !== 'declined')
+  const rest = bookings.filter(b => !(lastDay(b) >= todayKey && b.status !== 'declined'))
 
   return (
     <main className="min-h-screen page-bg">
@@ -126,11 +128,22 @@ function Section({ title, items, busyId, onCancel, muted }) {
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: s.bg, color: s.text }}>{s.label}</span>
                   </div>
                   <p className="text-sm text-gray-700 mt-0.5">{b.title}{f?.trade ? ` · ${f.trade}` : ''}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
-                    {b.start_time ? ` · ${fmtTime(b.start_time)}` : ''}
-                    {b.duration_min ? ` · ${b.duration_min >= 60 ? `${b.duration_min / 60}h` : `${b.duration_min}m`}` : ''}
-                  </p>
+                  {b.rental ? (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {fmtDay(b.date)} to {fmtDay(customerEnd(b.rental.unit, b.end_date || b.date))}
+                      {` · ${b.rental.units} ${unitLabel(b.rental.unit, b.rental.units)} · Bds$${Number(b.rental.total).toFixed(2)}`}
+                      {b.rental.discountPct > 0 ? ` (${b.rental.discountPct}% off included)` : ''}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+                      {b.start_time ? ` · ${fmtTime(b.start_time)}` : ''}
+                      {b.duration_min ? ` · ${b.duration_min >= 60 ? `${b.duration_min / 60}h` : `${b.duration_min}m`}` : ''}
+                    </p>
+                  )}
+                  {b.rental && b.status === 'confirmed' && (
+                    <p className="text-xs mt-1" style={{ color: '#16a34a', fontWeight: 600 }}>Confirmed. Look for the quote in your messages.</p>
+                  )}
                   {b.notes && <p className="text-xs text-gray-400 mt-1 italic">“{b.notes}”</p>}
                   {b.status === 'pending' && (
                     <button onClick={() => onCancel(b.id)} disabled={busyId === b.id} className="text-xs font-medium text-red-500 hover:text-red-700 mt-2 disabled:opacity-50">

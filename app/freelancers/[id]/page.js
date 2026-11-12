@@ -20,6 +20,8 @@ import { nowAST, getWeekStart, getWeekDays, MONTHS } from '@/components/calendar
 import { isOrganisationUser, fetchMyOrganisation } from '@/lib/organisations'
 import { HANDLE_RE, isUuid } from '@/lib/handles'
 import Icon from '@/components/Icon'
+import { useAvailability, openBookingFor } from '@/lib/useAvailability'
+import { rentalStatusOn, normaliseDiscounts, perLabel, unitLabel, fmtDay, todayKeyBarbados } from '@/lib/rentals'
 
 function StarRating({ rating, light = false }) {
   return (
@@ -117,6 +119,8 @@ export default function FreelancerProfile() {
 
   const { user: authUser, session, loading: authLoading } = useAuth()
   const { savedIds, toggleSaved } = useSaved()
+  // Shared with the booking panel: one request serves both.
+  const availability = useAvailability(freelancer?.id)
 
   useEffect(() => {
     if (authLoading) return
@@ -1091,13 +1095,48 @@ export default function FreelancerProfile() {
                             </span>
                           )
                         }
-                        return <span className="text-lg font-bold" style={{ color: '#00267F' }}>{fmt}</span>
+                        return (
+                          <span className="text-lg font-bold" style={{ color: '#00267F' }}>
+                            {fmt}
+                            {s.rental && <span className="text-xs font-medium text-gray-500"> {perLabel(s.price_unit)}</span>}
+                          </span>
+                        )
                       })()}
                       {s.duration && (
                         <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full"><Icon name="clock" size={12} inline />{s.duration}</span>
                       )}
                     </div>
-                    {user && user.id !== freelancer.user_id && (
+                    {/* A rental is one item, out with one customer at a time:
+                        say whether it is free today, and when it is back. */}
+                    {s.rental && (() => {
+                      const tiers = normaliseDiscounts(s.length_discounts)
+                      const taken = availability?.enabled ? availability.rentalTaken?.[s.id] : null
+                      const status = taken ? rentalStatusOn(taken, availability.today || todayKeyBarbados()) : null
+                      return (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                          {status && (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold" style={{ color: status.available ? '#16a34a' : '#B45309' }}>
+                              <span style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: status.available ? '#16a34a' : '#F59E0B' }} />
+                              {status.available ? 'Available today' : `Booked, free from ${fmtDay(status.freeFrom)}`}
+                            </span>
+                          )}
+                          {tiers.length > 0 && (
+                            <span className="text-xs text-gray-500">
+                              {tiers.map(t => `${t.percent}% off ${t.min}+ ${unitLabel(s.price_unit, 2)}`).join(' · ')}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
+                    {s.rental && availability?.enabled && user?.id !== freelancer.user_id ? (
+                      <button
+                        onClick={e => { e.stopPropagation(); openBookingFor(s.id) }}
+                        className="w-full mt-3 py-2 rounded-lg text-xs font-semibold text-white"
+                        style={{ backgroundColor: '#00267F' }}
+                      >
+                        Check dates
+                      </button>
+                    ) : user && user.id !== freelancer.user_id && (
                       <button
                         onClick={e => { e.stopPropagation(); addToCart(s) }}
                         disabled={!!cart.find(i => i.id === s.id)}

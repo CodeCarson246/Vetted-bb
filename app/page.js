@@ -450,7 +450,7 @@ export default function Home() {
       {/* Browse by category */}
       <section className="max-w-5xl mx-auto px-4 sm:px-8 pb-16">
         <SectionHeading align="center" eyebrow="Categories" title="Browse by category" sub="Every kind of professional on the island, from trades to tutoring." />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 category-grid">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 category-grid">
           {categories.map((cat) => {
             const count = categoryCounts[cat.name]
             const isEmpty = count === 0

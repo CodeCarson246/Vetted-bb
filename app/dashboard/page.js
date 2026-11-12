@@ -23,6 +23,7 @@ import ProfileHandleCard from '@/components/ProfileHandleCard'
 import { getMyFreelancer, primeMyFreelancer } from '@/lib/myFreelancer'
 import { readDashboardCache, writeDashboardCache, clearDashboardCache } from '@/lib/dashboardCache'
 import { lowestPaidPrice } from '@/lib/price'
+import { normaliseDiscounts, perLabel, unitLabel, MAX_DISCOUNT_TIERS } from '@/lib/rentals'
 import ProfileSetup from '@/components/ProfileSetup'
 import { profileRequirements, isProfileComplete, completionPercent, isPricedService } from '@/lib/profileCompleteness'
 import Icon from '@/components/Icon'
@@ -119,6 +120,10 @@ function DashboardInner() {
   const [serviceDuration, setServiceDuration] = useState('')
   const [serviceDurationMinutes, setServiceDurationMinutes] = useState(null)
   const [serviceBusinessGroup, setServiceBusinessGroup] = useState('')
+  // Rentals and stays: one customer at a time, priced per day or night.
+  const [serviceRental, setServiceRental] = useState(false)
+  const [servicePriceUnit, setServicePriceUnit] = useState('day')
+  const [serviceDiscounts, setServiceDiscounts] = useState([])
   const [serviceSaving, setServiceSaving] = useState(false)
   const [serviceError, setServiceError] = useState(null)
   const [serviceImages, setServiceImages] = useState([])
@@ -705,6 +710,9 @@ function DashboardInner() {
     setServiceDuration(svc?.duration || '')
     setServiceDurationMinutes(svc?.duration_minutes ?? null)
     setServiceBusinessGroup(svc?.business_group || '')
+    setServiceRental(!!svc?.rental)
+    setServicePriceUnit(svc?.price_unit === 'night' ? 'night' : 'day')
+    setServiceDiscounts(normaliseDiscounts(svc?.length_discounts).map(t => ({ min: String(t.min), percent: String(t.percent) })))
     setServiceError(null)
     setServiceImages([])
     setExistingServiceImages([])
@@ -817,6 +825,14 @@ function DashboardInner() {
       duration: serviceDuration || null,
       duration_minutes: serviceDurationMinutes,
       business_group: serviceBusinessGroup.trim() || null,
+      // The rental columns are only sent when there is something to say, so
+      // saving an ordinary service never depends on them existing.
+      ...((serviceRental || editingService?.rental) ? {
+        rental: serviceRental,
+        price_unit: serviceRental ? servicePriceUnit : null,
+        length_discounts: serviceRental ? normaliseDiscounts(serviceDiscounts) : [],
+        ...(serviceRental ? { price_type: 'fixed', bookable: true, duration: null, duration_minutes: null } : {}),
+      } : {}),
     }
 
     let error
@@ -836,9 +852,22 @@ function DashboardInner() {
     }
 
     if (error) {
-      setServiceError(error.message)
+      setServiceError(/rental|price_unit|length_discounts/.test(error.message)
+        ? 'Rentals are still being switched on for the site. Please try again a little later.'
+        : error.message)
       setServiceSaving(false)
       return
+    }
+    // A rental can only be booked through the calendar on the profile, so
+    // listing one turns booking requests on (other settings are left alone).
+    if (serviceRental) {
+      const { data: av } = await supabase.from('availability_settings').select('bookings_enabled').eq('freelancer_id', profile.id).maybeSingle()
+      if (!av?.bookings_enabled) {
+        await supabase.from('availability_settings').upsert(
+          { freelancer_id: profile.id, bookings_enabled: true, show_on_profile: true },
+          { onConflict: 'freelancer_id' },
+        )
+      }
     }
     let savedServiceId = editingService?.id
     if (!savedServiceId) {
@@ -2154,7 +2183,110 @@ function DashboardInner() {
                         </p>
                       </div>
                     )}
-                    <div>
+                    {/* Rental or stay: one customer at a time, booked by date. */}
+                    <label className="flex items-start gap-3 rounded-xl px-4 py-3 cursor-pointer" style={{ border: `1.5px solid ${serviceRental ? 'var(--accent)' : 'var(--border-card)'}`, backgroundColor: serviceRental ? 'var(--selected-fill)' : 'transparent' }}>
+                      <input
+                        type="checkbox"
+                        id="svc-rental"
+                        checked={serviceRental}
+                        onChange={e => setServiceRental(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 flex-shrink-0"
+                        style={{ accentColor: '#00267F' }}
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-gray-900">This is a rental or a place to stay</span>
+                        <span className="block text-xs text-gray-500 mt-0.5 leading-relaxed">A vehicle, an apartment, equipment: anything one customer has at a time. Customers pick dates on a calendar on your profile, and a confirmed booking marks it as taken for those dates.</span>
+                      </span>
+                    </label>
+
+                    {serviceRental && (
+                      <div className="flex flex-col gap-4">
+                        <div>
+                          <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-3">
+                            {['day', 'night'].map((u, i) => (
+                              <button
+                                key={u}
+                                type="button"
+                                onClick={() => setServicePriceUnit(u)}
+                                className={`flex-1 py-2.5 text-sm font-medium transition-colors${i ? ' border-l border-gray-200' : ''}`}
+                                style={servicePriceUnit === u
+                                  ? { backgroundColor: '#00267F', color: 'white' }
+                                  : { backgroundColor: 'var(--surface-card)', color: '#6b7280' }}
+                              >
+                                {u === 'day' ? 'Charged per day' : 'Charged per night'}
+                              </button>
+                            ))}
+                          </div>
+                          <label htmlFor="svc-rate" className="block text-sm font-medium text-gray-700 mb-1">Price {perLabel(servicePriceUnit)} (BBD $)</label>
+                          <input
+                            id="svc-rate"
+                            type="number"
+                            required
+                            min="1"
+                            step="0.01"
+                            value={servicePrice}
+                            onChange={e => setServicePrice(e.target.value)}
+                            placeholder="0.00"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                          />
+                          <p className="text-xs text-gray-500 mt-1.5">
+                            {servicePriceUnit === 'day'
+                              ? 'Days are counted from the first day to the last, both included.'
+                              : 'Nights are counted from check-in to check-out. The check-out day is free for your next guest.'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Discount for longer bookings <span className="text-gray-400 font-normal">(optional)</span></p>
+                          <p className="text-xs text-gray-500 mt-0.5 mb-2.5">Set it once. It is applied automatically to the price a customer sees and to the quote.</p>
+                          <div className="flex flex-col gap-2">
+                            {serviceDiscounts.map((t, i) => (
+                              <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
+                                <input
+                                  type="number" min="2" max="365" step="1" inputMode="numeric"
+                                  aria-label={`Minimum ${unitLabel(servicePriceUnit, 2)}`}
+                                  value={t.min}
+                                  onChange={e => setServiceDiscounts(prev => prev.map((x, j) => j === i ? { ...x, min: e.target.value } : x))}
+                                  placeholder="7"
+                                  className="w-16 px-2.5 py-2 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-400 bg-white text-center"
+                                />
+                                <span className="flex-shrink-0">or more {unitLabel(servicePriceUnit, 2)}:</span>
+                                <input
+                                  type="number" min="1" max="90" step="0.5" inputMode="decimal"
+                                  aria-label="Percent off"
+                                  value={t.percent}
+                                  onChange={e => setServiceDiscounts(prev => prev.map((x, j) => j === i ? { ...x, percent: e.target.value } : x))}
+                                  placeholder="10"
+                                  className="w-16 px-2.5 py-2 border border-gray-200 rounded-lg text-gray-900 outline-none focus:border-gray-400 bg-white text-center"
+                                />
+                                <span className="flex-shrink-0">% off</span>
+                                <button type="button" aria-label="Remove this discount" onClick={() => setServiceDiscounts(prev => prev.filter((_, j) => j !== i))} className="ml-auto w-7 h-7 rounded-full text-gray-400 hover:text-red-500 flex items-center justify-center">✕</button>
+                              </div>
+                            ))}
+                          </div>
+                          {serviceDiscounts.length < MAX_DISCOUNT_TIERS && (
+                            <button type="button" onClick={() => setServiceDiscounts(prev => [...prev, { min: '', percent: '' }])} className="mt-2.5 text-sm font-semibold hover:opacity-80" style={{ color: 'var(--accent)' }}>
+                              + Add a discount
+                            </button>
+                          )}
+                          {(() => {
+                            const rate = parseFloat(servicePrice)
+                            const tiers = normaliseDiscounts(serviceDiscounts)
+                            if (!tiers.length || !(rate > 0)) return null
+                            return (
+                              <p className="text-xs mt-2.5 rounded-lg px-3 py-2 leading-relaxed" style={{ backgroundColor: 'var(--row-stripe)', color: 'var(--muted)' }}>
+                                {tiers.map(t => {
+                                  const each = Math.round(rate * (1 - t.percent / 100) * 100) / 100
+                                  return `${t.min} ${unitLabel(servicePriceUnit, t.min)} at Bds$${each.toFixed(2)} each = Bds$${(each * t.min).toFixed(2)}`
+                                }).join(' · ')}
+                              </p>
+                            )
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={serviceRental ? { display: 'none' } : undefined}>
                       {/* Price type toggle */}
                       <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-3">
                         <button
@@ -2183,7 +2315,7 @@ function DashboardInner() {
                       </label>
                       <input
                         type="number"
-                        required
+                        required={!serviceRental}
                         min="0"
                         step="0.01"
                         value={servicePrice}
@@ -2207,7 +2339,7 @@ function DashboardInner() {
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white resize-none"
                       />
                     </div>
-                    <div>
+                    <div style={serviceRental ? { display: 'none' } : undefined}>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Duration <span className="text-gray-400 font-normal">(optional)</span></label>
                       <select
                         value={serviceDuration}
@@ -2297,6 +2429,7 @@ function DashboardInner() {
                               const fmt = `Bds$${Number.isInteger(n) ? n : n.toFixed(2)}`
                               return svc.price_type === 'starting_from' ? `${fmt}+` : fmt
                             })()}
+                            {svc.rental && <span className="text-xs font-medium text-gray-500"> {perLabel(svc.price_unit)}</span>}
                           </span>
                           {svc.duration && <span className="text-xs text-gray-400">{svc.duration}</span>}
                         </div>

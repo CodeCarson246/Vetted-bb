@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createNotification } from '@/lib/serverNotify'
 import { sendPushToUser } from '@/lib/serverPush'
+import { isRangeFree, fmtDay, customerEnd, todayKeyBarbados, addDays, MAX_RENTAL_UNITS } from '@/lib/rentals'
 
 // The freelancer confirms or declines a pending client booking request. Updates
 // the appointment status and notifies the client (service role — the client
@@ -22,10 +23,32 @@ export async function POST(request) {
 
     const { data: appt } = await admin
       .from('appointments')
-      .select('id, date, start_time, title, freelancer_id, client_user_id, freelancers(user_id, name, company_name)')
+      .select('*, freelancers(user_id, name, company_name)')
       .eq('id', appointment_id).maybeSingle()
     if (!appt) return Response.json({ error: 'Booking not found' }, { status: 404 })
     if (appt.freelancers?.user_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 })
+
+    // A rental item can only be out with one customer at a time. Several
+    // people may have asked for overlapping dates; confirming one must not
+    // be possible once another is confirmed (or the item has been blocked).
+    const isRental = !!appt.rental && !!appt.service_id
+    const apptEnd = appt.end_date && appt.end_date >= appt.date ? appt.end_date : appt.date
+    if (action === 'confirm' && isRental) {
+      const { data: others } = await admin
+        .from('appointments')
+        .select('*')
+        .eq('freelancer_id', appt.freelancer_id)
+        .neq('id', appt.id)
+        .gte('date', addDays(todayKeyBarbados(), -MAX_RENTAL_UNITS))
+      const taken = (others || [])
+        .filter(a => (a.service_id === appt.service_id && ['confirmed', 'blocked'].includes(a.status)) || (a.status === 'blocked' && !a.service_id))
+        .map(a => ({ start: a.date, end: a.end_date && a.end_date >= a.date ? a.end_date : a.date }))
+      if (!isRangeFree(appt.date, apptEnd, taken)) {
+        return Response.json({
+          error: `${appt.title} is already booked or blocked for some of those dates. Decline this request, or free the dates first.`,
+        }, { status: 409 })
+      }
+    }
 
     const newStatus = action === 'confirm' ? 'confirmed' : 'declined'
     const { error: upErr } = await admin.from('appointments').update({ status: newStatus }).eq('id', appointment_id)
@@ -33,7 +56,9 @@ export async function POST(request) {
 
     if (appt.client_user_id) {
       const fname = appt.freelancers?.company_name?.trim().length > 3 ? appt.freelancers.company_name : appt.freelancers?.name || 'The professional'
-      const when = new Date(appt.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+      const when = isRental
+        ? `${fmtDay(appt.date)} to ${fmtDay(customerEnd(appt.rental.unit, apptEnd))}`
+        : new Date(appt.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
       await createNotification(appt.client_user_id, {
         type: action === 'confirm' ? 'booking_confirmed' : 'booking_declined',
         title: action === 'confirm' ? `${fname} confirmed your booking` : `${fname} declined your booking`,
