@@ -223,7 +223,6 @@ function DashboardInner() {
         return
       }
       setUser(user)
-      setCreateName(user.user_metadata?.full_name || '')
       setNewEmail(user.email || '')
       const userRole = user.user_metadata?.role || 'freelancer'
       setRole(userRole)
