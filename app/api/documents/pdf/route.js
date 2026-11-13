@@ -41,6 +41,19 @@ function cleanDraft(d) {
   }
 }
 
+// The professional a document is from. Their email, phone and payment
+// details are printed on it but are not public columns (SQL Section 41), so
+// this read uses the service role, and only ever after the caller has been
+// shown to be entitled: they can read the quote, or the row is their own.
+// Without the service key (local development against a database that has
+// not had Section 41 run) the caller's session is used, as before.
+async function readIssuer(db, column, value) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const client = serviceKey ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey) : db
+  const { data } = await client.from('freelancers').select(ISSUER_COLS).eq(column, value).maybeSingle()
+  return data || null
+}
+
 export async function POST(request) {
   try {
     const token = (request.headers.get('authorization') || '').replace(/^Bearer /, '')
@@ -60,29 +73,41 @@ export async function POST(request) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const type = TYPES.includes(body?.type) ? body.type : 'quote'
+    let type = TYPES.includes(body?.type) ? body.type : 'quote'
 
     let quote, issuer
     if (body?.quoteId) {
       const { data } = await db.from('quotes').select('*').eq('id', body.quoteId).maybeSingle()
       if (!data) return Response.json({ error: 'Document not found' }, { status: 404 })
       quote = data
-      const { data: f } = await db.from('freelancers').select(ISSUER_COLS).eq('id', quote.freelancer_id).maybeSingle()
-      issuer = f
+      // The request asks for a kind of document; the saved quote decides
+      // whether that document exists. A receipt (the PAID stamp) is only
+      // for a job marked paid, and an invoice only once one was issued.
+      // Otherwise anyone who can open a quote could print themselves a
+      // receipt for money that was never paid.
+      if (type === 'receipt' && !quote.paid_at) {
+        return Response.json({ error: 'There is no receipt yet: this job has not been marked as paid.' }, { status: 409 })
+      }
+      if (type === 'invoice' && !quote.invoice_number) {
+        return Response.json({ error: 'There is no invoice yet for this quote.' }, { status: 409 })
+      }
+      // The caller's own session has just proved they may read this quote.
+      issuer = await readIssuer(db, 'id', quote.freelancer_id)
     } else if (body?.draft) {
-      const { data: f } = await db.from('freelancers').select(ISSUER_COLS).eq('user_id', user.id).maybeSingle()
+      const f = await readIssuer(db, 'user_id', user.id)
       if (!f) return Response.json({ error: 'Forbidden' }, { status: 403 })
       issuer = f
       quote = cleanDraft(body.draft)
+      type = 'quote' // an unsaved draft is only ever a quote
     } else {
       return Response.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    const html = buildDocumentHtml(quote, issuer, { type: body?.draft ? 'quote' : type, forPdf: true })
+    const html = buildDocumentHtml(quote, issuer, { type, forPdf: true })
     const { pdf, pages, scale } = await renderDocumentPdf(html)
 
     const label = type === 'receipt' ? 'Receipt' : type === 'invoice' ? 'Invoice' : 'Quote'
-    const number = (type === 'quote' || body?.draft ? quote.quote_number : quote.invoice_number || quote.quote_number) || 'document'
+    const number = (type === 'quote' ? quote.quote_number : quote.invoice_number || quote.quote_number) || 'document'
     const filename = `${label}-${number}`.replace(/[^A-Za-z0-9._-]+/g, '-') + '.pdf'
 
     return new Response(pdf, {

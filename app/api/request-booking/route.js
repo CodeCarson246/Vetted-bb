@@ -35,7 +35,7 @@ export async function POST(request) {
     const { freelancer_id, service_id, date, end_date, start_time, note } = await request.json()
     if (!freelancer_id || !service_id || !date) return Response.json({ error: 'Missing required fields.' }, { status: 400 })
 
-    const { data: settings } = await admin.from('availability_settings').select('bookings_enabled, booking_mode, lead_time_days').eq('freelancer_id', freelancer_id).maybeSingle()
+    const { data: settings } = await admin.from('availability_settings').select('bookings_enabled, booking_mode, lead_time_days, work_days').eq('freelancer_id', freelancer_id).maybeSingle()
     if (!settings?.bookings_enabled) return Response.json({ error: 'This professional is not accepting bookings.' }, { status: 400 })
 
     // '*' so this keeps working on a database without the rental columns.
@@ -60,6 +60,39 @@ export async function POST(request) {
 
     const slotMode = settings.booking_mode === 'slot'
 
+    // The same rules the booking form applies, checked again here, because a
+    // request does not have to come from the form: a real date, no sooner
+    // than the professional's notice period, not a day they have blocked,
+    // and in slot mode a working day and a time that is still free.
+    if (!isDateKey(date)) return Response.json({ error: 'Please pick a date.' }, { status: 400 })
+    const today = todayKeyBarbados()
+    const earliest = addDays(today, Math.max(0, Number(settings.lead_time_days ?? 1)))
+    if (date < earliest) return Response.json({ error: `The earliest date is ${fmtDay(earliest)}.` }, { status: 400 })
+
+    const time = slotMode && start_time != null && start_time !== '' ? String(start_time) : null
+    if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+      return Response.json({ error: 'Please pick one of the times shown.' }, { status: 400 })
+    }
+    if (slotMode) {
+      const workDays = Array.isArray(settings.work_days) && settings.work_days.length ? settings.work_days : [1, 2, 3, 4, 5]
+      if (!workDays.includes(new Date(`${date}T12:00:00Z`).getUTCDay())) {
+        return Response.json({ error: 'This professional does not take bookings on that day.' }, { status: 400 })
+      }
+    }
+
+    const { data: dayAppts } = await admin
+      .from('appointments')
+      .select('*')
+      .eq('freelancer_id', freelancer_id)
+      .gte('date', addDays(today, -MAX_RENTAL_UNITS))
+    const live = (dayAppts || []).map(a => ({ ...a, end: a.end_date && a.end_date >= a.date ? a.end_date : a.date }))
+    if (live.some(a => a.status === 'blocked' && !a.service_id && a.date <= date && date <= a.end)) {
+      return Response.json({ error: 'This professional is not available on that day. Please pick another.' }, { status: 409 })
+    }
+    if (time && live.some(a => a.date === date && a.start_time === time && ['confirmed', 'pending'].includes(a.status))) {
+      return Response.json({ error: 'That time has just been taken. Please pick another.' }, { status: 409 })
+    }
+
     const { error: insErr } = await admin.from('appointments').insert({
       freelancer_id,
       service_id,
@@ -69,7 +102,7 @@ export async function POST(request) {
       client_email: user.email,
       client_user_id: user.id,
       date,
-      start_time: slotMode ? (start_time || null) : null,
+      start_time: time,
       duration_min: svc.duration_minutes || 60,
       status: 'pending',
       notes: cleanNote,
@@ -81,7 +114,7 @@ export async function POST(request) {
       await createNotification(freelancer.user_id, {
         type: 'booking_request',
         title: `New booking request from ${clientName}`,
-        body: `${svc.name} · ${when}${slotMode && start_time ? ` · ${start_time}` : ''}`,
+        body: `${svc.name} · ${when}${time ? ` · ${time}` : ''}`,
         link: '/calendar',
       })
       sendPushToUser(freelancer.user_id, { title: `Booking request from ${clientName}`, body: `${svc.name} · ${when}`, url: '/calendar' }).catch(() => {})

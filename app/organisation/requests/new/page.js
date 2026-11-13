@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { authedPost } from '@/lib/authedFetch'
+import { newId } from '@/lib/newId'
 import { useOrganisation } from '@/lib/useOrganisation'
 import { formatParish } from '@/lib/formatParish'
 import { isVerified } from '@/components/VerifiedBadge'
@@ -72,8 +74,12 @@ export default function NewQuoteRequest() {
     const message = `${details.trim()}\n\nSent on behalf of ${org.name}${org.division ? `, ${org.division}` : ''}. Please reply with a quote when you can.`
 
     const ids = [...chosen]
-    const results = await Promise.all(ids.map(fid =>
+    // Each enquiry's id is chosen here, so its notification can be asked for
+    // by id once it is saved. created_at is left to the database's clock.
+    const messageIds = ids.map(() => newId())
+    const results = await Promise.all(ids.map((fid, i) =>
       supabase.from('messages').insert({
+        id: messageIds[i],
         freelancer_id: fid,
         sender_name: senderName,
         sender_email: user.email,
@@ -82,20 +88,16 @@ export default function NewQuoteRequest() {
         quote_request_id: req.id,
         subject,
         message,
-        created_at: new Date().toISOString(),
         read: false,
       })
     ))
     const failed = results.filter(r => r.error).length
 
-    // Email + push to each professional (fire-and-forget)
-    for (const fid of ids) {
-      fetch('/api/notify-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ freelancer_id: fid, senderName: `${senderName} (${org.name})`, senderEmail: user.email, subject, message }),
-      }).catch(() => {})
-    }
+    // Email + push to each professional (fire-and-forget). The route reads
+    // the sender, the organisation's name and the text from the saved row.
+    results.forEach((r, i) => {
+      if (!r.error) authedPost('/api/notify-message', { messageId: messageIds[i] }).catch(() => {})
+    })
 
     if (failed > 0 && failed === ids.length) {
       setError('The request was created but the enquiries could not be sent. Please try again from the request page.')

@@ -6,6 +6,9 @@ import { SITE_URL } from '@/lib/siteUrl'
 import { effectiveCategories } from '@/lib/categories'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { authedPost } from '@/lib/authedFetch'
+import { newId } from '@/lib/newId'
+import { FREELANCER_PUBLIC_COLS } from '@/lib/freelancerColumns'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
 import { parsePrice } from '@/lib/price'
@@ -176,10 +179,10 @@ export default function FreelancerProfile() {
       // to its new one; a uuid link redirects to the handle once set.
       let f = null
       if (isUuid(id)) {
-        ({ data: f } = await supabase.from('freelancers').select('*').eq('id', id).maybeSingle())
+        ({ data: f } = await supabase.from('freelancers').select(FREELANCER_PUBLIC_COLS).eq('id', id).maybeSingle())
         if (f?.handle) { router.replace(`/freelancers/${f.handle}`); return }
       } else if (HANDLE_RE.test(id)) {
-        ({ data: f } = await supabase.from('freelancers').select('*').ilike('handle', id).maybeSingle())
+        ({ data: f } = await supabase.from('freelancers').select(FREELANCER_PUBLIC_COLS).ilike('handle', id).maybeSingle())
         if (!f) {
           const { data: moved } = await supabase.from('freelancers').select('handle')
             .ilike('previous_handle', id).gt('previous_handle_until', new Date().toISOString()).maybeSingle()
@@ -286,6 +289,11 @@ export default function FreelancerProfile() {
 
   async function submitContact(e) {
     e.preventDefault()
+    // Enquiries are sent from an account, so the professional always knows
+    // who is writing and the client can read the reply.
+    if (!user) { window.location.href = '/login'; return }
+    // The address on the account, never one typed into the form.
+    const accountEmail = user.email
     setContactSubmitting(true)
     setContactError(null)
 
@@ -301,7 +309,7 @@ export default function FreelancerProfile() {
       .eq('freelancer_id', freelancer.id)
     // An organisation shares one thread per freelancer across its whole
     // team; an individual is matched by email as before.
-    threadQuery = orgContext ? threadQuery.eq('organisation_id', orgContext.id) : threadQuery.eq('sender_email', senderEmail)
+    threadQuery = orgContext ? threadQuery.eq('organisation_id', orgContext.id) : threadQuery.eq('sender_email', accountEmail)
     const { data: existingThreads } = await threadQuery
       .order('created_at', { ascending: true })
       .limit(1)
@@ -309,6 +317,8 @@ export default function FreelancerProfile() {
     const existingThread = existingThreads?.[0] || null
 
     let error
+    // The id of the row just saved: all the notification route is given.
+    let notify = null
 
     if (existingThread) {
       // Step 2 — Thread exists: append as a reply with an inquiry-type label.
@@ -318,13 +328,16 @@ export default function FreelancerProfile() {
         ? '--- New service enquiry ---'
         : '--- New message ---'
 
+      const replyId = newId()
       const { error: replyError } = await supabase.from('message_replies').insert({
+        id: replyId,
         message_id: existingThread.id,
         sender_name: senderName,
-        sender_user_id: user?.id ?? null,
+        sender_user_id: user.id,
         body: `${inquiryLabel}\n\n${contactMessage}`,
       })
       error = replyError
+      notify = { replyId }
 
       if (!replyError) {
         // Mark thread as unread so the freelancer is notified of the new inquiry
@@ -332,34 +345,30 @@ export default function FreelancerProfile() {
       }
     } else {
       // Step 3 — No existing thread: create a new message row as normal (first contact)
+      // created_at is left to the database, so its clock (not this device's)
+      // dates the message.
+      const messageId = newId()
       const { error: insertError } = await supabase.from('messages').insert({
+        id: messageId,
         freelancer_id: freelancer.id,
         sender_name: senderName,
-        sender_email: senderEmail,
-        sender_user_id: user?.id ?? null,
+        sender_email: accountEmail,
+        sender_user_id: user.id,
         organisation_id: orgContext?.id ?? null,
         subject,
         message: contactMessage,
-        created_at: new Date().toISOString(),
         read: false,
       })
       error = insertError
+      notify = { messageId }
     }
 
     if (error) {
       setContactError(error.message)
     } else {
-      fetch('/api/notify-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          freelancer_id: freelancer.id,
-          senderName,
-          senderEmail,
-          subject,
-          message: contactMessage,
-        }),
-      }).catch(() => {})
+      // Email + push to the professional (fire-and-forget). The route reads
+      // the sender, the recipient and the text from the saved row.
+      if (notify) authedPost('/api/notify-message', notify).catch(() => {})
       setContactSuccess(true)
       setTimeout(() => {
         setContactOpen(false)
@@ -1188,7 +1197,7 @@ export default function FreelancerProfile() {
                       Available for new projects. Contact me to discuss your requirements.
                     </p>
                     <button
-                      onClick={() => setContactOpen(true)}
+                      onClick={() => user ? setContactOpen(true) : window.location.href = '/login'}
                       style={{
                         marginTop: '12px', padding: '9px 20px', borderRadius: '8px',
                         backgroundColor: '#00267F', color: 'white',
@@ -1734,13 +1743,15 @@ export default function FreelancerProfile() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Your email</label>
+                      {/* The address on the account: replies and quotes go to
+                          it, so it is shown but cannot be changed here. */}
                       <input
                         type="email"
                         required
+                        readOnly
                         value={senderEmail}
-                        onChange={e => setSenderEmail(e.target.value)}
-                        placeholder="jane@example.com"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                        title="The email address on your account"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-500 outline-none bg-gray-50 cursor-default"
                       />
                     </div>
                   </div>

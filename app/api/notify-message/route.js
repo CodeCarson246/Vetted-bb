@@ -4,9 +4,11 @@ import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { sendPushToUser } from '@/lib/serverPush'
 import { createNotification } from '@/lib/serverNotify'
 import { SITE_URL, SITE_HOST } from '@/lib/siteUrl'
+import { isOrganisationMember } from '@/lib/serverOrgRecipients'
+import { signedInUser, isUuid, isFresh, claimNotification } from '@/lib/serverNotifyGuard'
+import { enquiryNoticeFromMessage, enquiryNoticeFromReply } from '@/lib/notifyContent'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 async function sendEmail({ to, subject, html }) {
   const res = await fetch('https://api.resend.com/emails', {
@@ -25,42 +27,94 @@ async function sendEmail({ to, subject, html }) {
   return res.json()
 }
 
-// The recipient is looked up server-side from freelancer_id — the
-// client never supplies a destination address, so this route can't be
-// used as an open relay. All interpolated fields are HTML-escaped.
+// Tells a professional that a client has written to them: an email, a push
+// and an in-app notification.
+//
+// The request carries the id of a saved row and nothing else:
+//   { messageId }  a new conversation (a row in messages)
+//   { replyId }    a client's reply in one (a row in message_replies)
+//
+// Who it is from, who it goes to and what it says are all read from that
+// row, so the request cannot invent a sender, pick a recipient or supply the
+// text. The caller must be signed in and must be the person who wrote the
+// row. A row is announced once, and only while it is new (see
+// lib/serverNotifyGuard). All interpolated fields are HTML-escaped.
 export async function POST(request) {
   try {
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!serviceKey) {
+      return Response.json({ error: 'Server is not configured for notifications.' }, { status: 500 })
+    }
+
     if (!rateLimit(`notify:${clientIp(request)}`, { limit: 5, windowMs: 10 * 60_000 })) {
       return Response.json({ error: 'Too many messages. Please try again later.' }, { status: 429 })
     }
 
-    const body = await request.json()
-    const freelancerId = body.freelancer_id
-    const senderName = String(body.senderName || '').slice(0, 100)
-    const senderEmail = String(body.senderEmail || '').slice(0, 200)
-    const subject = String(body.subject || '').slice(0, 200)
-    const message = String(body.message || '').slice(0, 5000)
+    const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
+    const user = await signedInUser(admin, request)
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!freelancerId || !senderName || !subject) {
-      return Response.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-    if (senderEmail && !EMAIL_RE.test(senderEmail)) {
-      return Response.json({ error: 'Invalid sender email' }, { status: 400 })
+    const body = await request.json().catch(() => null)
+    const messageId = body?.messageId
+    const replyId = body?.replyId
+    // Exactly one of the two, and it must look like an id.
+    if ((messageId == null) === (replyId == null) || !isUuid(messageId ?? replyId)) {
+      return Response.json({ error: 'A messageId or a replyId is required.' }, { status: 400 })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    )
-    const { data: freelancer } = await supabase
+    // select('*') so this keeps working before SQL Section 39 adds
+    // notified_at: the column simply reads as undefined.
+    let table, row, thread, notice
+    if (messageId) {
+      const { data } = await admin.from('messages').select('*').eq('id', messageId).maybeSingle()
+      if (!data) return Response.json({ error: 'Message not found' }, { status: 404 })
+      if (data.sender_user_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 })
+      table = 'messages'; row = data; thread = data
+      notice = enquiryNoticeFromMessage(data)
+    } else {
+      const { data: reply } = await admin.from('message_replies').select('*').eq('id', replyId).maybeSingle()
+      if (!reply) return Response.json({ error: 'Reply not found' }, { status: 404 })
+      if (reply.sender_user_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 })
+      const { data: parent } = await admin.from('messages').select('*').eq('id', reply.message_id).maybeSingle()
+      if (!parent) return Response.json({ error: 'Conversation not found' }, { status: 404 })
+      // Only the client side of a conversation notifies the professional
+      // here: the person who started it, or a colleague in the organisation
+      // it belongs to.
+      const sameEmail = !!parent.sender_email && !!user.email && parent.sender_email.toLowerCase() === user.email.toLowerCase()
+      const onClientSide = parent.sender_user_id === user.id || sameEmail
+        || await isOrganisationMember(admin, parent.organisation_id, user.id)
+      if (!onClientSide) return Response.json({ error: 'Forbidden' }, { status: 403 })
+      table = 'message_replies'; row = reply; thread = parent
+      notice = enquiryNoticeFromReply(reply, parent)
+    }
+
+    const { data: freelancer } = await admin
       .from('freelancers')
       .select('email, name, user_id')
-      .eq('id', freelancerId)
+      .eq('id', thread.freelancer_id)
       .maybeSingle()
 
     if (!freelancer?.email) {
       return Response.json({ error: 'Freelancer not found' }, { status: 404 })
     }
+
+    // Old rows are never announced, and no row is announced twice. Both
+    // answer 200: nothing is wrong, there is just nothing to send.
+    if (!isFresh(row.created_at)) return Response.json({ success: true, sent: false })
+    const claim = await claimNotification(admin, table, row.id)
+    if (claim === 'already') return Response.json({ success: true, sent: false })
+    if (claim === 'error') return Response.json({ error: 'Could not send the notification.' }, { status: 500 })
+
+    // The email address shown to the professional is the one on the
+    // sender's account, not one typed into a form.
+    const senderEmail = String(user.email || '').slice(0, 200)
+    let senderName = String(row.sender_name || '').trim().slice(0, 100) || senderEmail.split('@')[0] || 'A client'
+    // An organisation's request for quotes names the organisation too.
+    if (messageId && thread.organisation_id && thread.quote_request_id) {
+      const { data: org } = await admin.from('organisations').select('name').eq('id', thread.organisation_id).maybeSingle()
+      if (org?.name) senderName = `${senderName} (${org.name})`
+    }
+    const { subject, message } = notice
 
     // Browser push first (fire-and-forget) — the email below is the
     // reliable channel, push is the instant one.

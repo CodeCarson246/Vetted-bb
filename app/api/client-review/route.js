@@ -32,7 +32,12 @@ export async function POST(request) {
       return Response.json({ error: 'Too many reviews submitted. Please try again later.' }, { status: 429 })
     }
 
-    const { client_user_id, rating, comment } = await request.json()
+    const body = await request.json().catch(() => null) || {}
+    const client_user_id = typeof body.client_user_id === 'string' ? body.client_user_id : null
+    // A rating is one of five whole stars, and a comment is text. Anything
+    // else (4.7, "5", a list) is refused rather than stored.
+    const rating = Number.isInteger(body.rating) ? body.rating : null
+    const comment = typeof body.comment === 'string' ? body.comment : ''
 
     if (!client_user_id) {
       return Response.json({ error: 'Please choose which client you want to review.' }, { status: 400 })

@@ -1748,3 +1748,370 @@ CREATE TRIGGER quotes_guard_client_update
 
 -- Verify: should return one row.
 --   SELECT tgname FROM pg_trigger WHERE tgname = 'quotes_guard_client_update';
+
+-- ============================================================
+-- SECTION 39 — MESSAGES COME FROM AN ACCOUNT, AND ARE ANNOUNCED ONCE (2026-11-12)
+-- Two things, both for the notification routes (/api/notify-message and
+-- /api/notify-reply), which now accept only the id of a saved row.
+--
+-- 1. notified_at on messages and message_replies. The route stamps it when
+--    it sends the email and push for that row, and skips a row already
+--    stamped, so one row is announced once however often it is asked for.
+--
+-- 2. Who may write a row. Until now "Anyone can send a message" and
+--    "Anyone can reply" let any visitor, signed in or not, save a message or
+--    a reply under any name, any email address and any sender_user_id. Now a
+--    message or reply can only be saved by a signed-in user, as themselves:
+--
+--      messages          sender_user_id is the caller, and sender_email is
+--                        the address on the caller's account
+--      message_replies   sender_user_id is the caller
+--
+--    The API routes use the service role and are not affected (booking
+--    requests, the quote sent when a rental is confirmed, the invoice sent
+--    when a quote is accepted).
+--
+-- Safe to re-run. It can be run before or after the code that goes with it:
+-- before it runs the routes send without the once-only stamp, and the pages
+-- already save rows the way the new rules require.
+--
+-- To undo part 2 only (reopens writing to everyone, do not do this lightly):
+--   DROP POLICY IF EXISTS "Signed-in users send as themselves" ON messages;
+--   CREATE POLICY "Anyone can send a message" ON messages FOR INSERT WITH CHECK (true);
+--   DROP POLICY IF EXISTS "Signed-in users reply as themselves" ON message_replies;
+--   CREATE POLICY "Anyone can reply" ON message_replies FOR INSERT WITH CHECK (true);
+-- ============================================================
+
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS notified_at timestamptz;
+
+ALTER TABLE message_replies
+  ADD COLUMN IF NOT EXISTS notified_at timestamptz;
+
+DROP POLICY IF EXISTS "Anyone can send a message"          ON messages;
+DROP POLICY IF EXISTS "Signed-in users send as themselves" ON messages;
+CREATE POLICY "Signed-in users send as themselves"
+  ON messages FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    sender_user_id = auth.uid()
+    AND lower(sender_email) = lower(auth.jwt() ->> 'email')
+  );
+
+DROP POLICY IF EXISTS "Anyone can reply"                    ON message_replies;
+DROP POLICY IF EXISTS "Signed-in users reply as themselves" ON message_replies;
+CREATE POLICY "Signed-in users reply as themselves"
+  ON message_replies FOR INSERT
+  TO authenticated
+  WITH CHECK (sender_user_id = auth.uid());
+
+-- Verify: should return the two new policies and neither "Anyone can ...".
+--   SELECT tablename, policyname FROM pg_policies
+--   WHERE tablename IN ('messages', 'message_replies') AND cmd = 'INSERT';
+
+-- ============================================================
+-- SECTION 40 — WHAT EACH SIDE MAY WRITE (2026-11-12)
+-- Row level security says WHICH ROWS a person may change, never which
+-- columns. Four tables let someone who may touch a row rewrite parts of it
+-- that are not theirs to decide. Each gets a guard here. Like section 38,
+-- nothing is refused with an error: a column the caller may not set simply
+-- keeps its stored (or correct) value. The service role used by the API
+-- routes, and the SQL editor, are never restricted.
+--
+--   1. quotes     A professional could save a quote with ANY organisation_id
+--                 and it appeared in that organisation's dashboard and
+--                 records, e.g. an invoice in a ministry's records from
+--                 someone it never contacted. Now organisation_id and
+--                 quote_request_id are taken from the conversation the quote
+--                 belongs to, which must be one of the professional's own.
+--
+--   2. freelancers  A professional may edit their own profile, which until
+--                 now included verified, featured, rating, review_count,
+--                 client_rating, flagged, flag_reason, deactivated_at,
+--                 user_id, email and created_at. Those now change only
+--                 through the admin panel, the review routes and the
+--                 account route (service role).
+--
+--   3. messages   Either side of a conversation could rewrite any column of
+--                 its first message: the text, the subject, who it is from,
+--                 which professional it is to. Now only the two unread flags
+--                 (read, client_read) can be changed.
+--
+--   4. message_replies  Any signed-in user could add a reply to any
+--                 conversation whose id they knew. Now only someone who can
+--                 see the conversation can reply in it. The read rule is
+--                 restated the same way, which also lets every member of an
+--                 organisation read the replies in the organisation's
+--                 conversations (section 27 did this for messages and quotes
+--                 but not for replies).
+--
+-- Safe to re-run. Can be run before or after the code that goes with it.
+--
+-- To undo (reopens the gaps above, do not do this lightly):
+--   DROP TRIGGER IF EXISTS quotes_guard_organisation ON public.quotes;
+--   DROP TRIGGER IF EXISTS freelancers_guard_trust ON public.freelancers;
+--   DROP TRIGGER IF EXISTS messages_guard_update ON public.messages;
+-- ============================================================
+
+-- ── 1. quotes: the organisation comes from the conversation ──
+CREATE OR REPLACE FUNCTION public.quotes_guard_organisation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  claims     jsonb;
+  thread_org uuid;
+  thread_req uuid;
+  thread_ok  boolean := false;
+BEGIN
+  claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+  IF claims IS NULL OR coalesce(claims ->> 'role', '') = 'service_role' THEN
+    RETURN NEW;
+  END IF;
+
+  -- An update that leaves these four alone is none of this guard's business.
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.message_id       IS NOT DISTINCT FROM OLD.message_id
+       AND NEW.freelancer_id    IS NOT DISTINCT FROM OLD.freelancer_id
+       AND NEW.organisation_id  IS NOT DISTINCT FROM OLD.organisation_id
+       AND NEW.quote_request_id IS NOT DISTINCT FROM OLD.quote_request_id THEN
+      RETURN NEW;
+    END IF;
+  END IF;
+
+  -- The conversation the quote says it belongs to, if it really is one of
+  -- this professional's.
+  IF NEW.message_id IS NOT NULL THEN
+    SELECT m.organisation_id, m.quote_request_id, true
+      INTO thread_org, thread_req, thread_ok
+      FROM messages m
+     WHERE m.id = NEW.message_id AND m.freelancer_id = NEW.freelancer_id;
+  END IF;
+
+  IF coalesce(thread_ok, false) THEN
+    NEW.organisation_id := thread_org;
+    IF NEW.quote_request_id IS NOT NULL THEN
+      NEW.quote_request_id := thread_req;
+    END IF;
+  ELSE
+    NEW.message_id       := NULL;
+    NEW.organisation_id  := NULL;
+    NEW.quote_request_id := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS quotes_guard_organisation ON public.quotes;
+CREATE TRIGGER quotes_guard_organisation
+  BEFORE INSERT OR UPDATE ON public.quotes
+  FOR EACH ROW EXECUTE FUNCTION public.quotes_guard_organisation();
+
+-- ── 2. freelancers: trust columns are not the professional's to set ──
+CREATE OR REPLACE FUNCTION public.freelancers_guard_trust()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  claims jsonb;
+BEGIN
+  claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+  IF claims IS NULL OR coalesce(claims ->> 'role', '') = 'service_role' THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    -- A new profile belongs to the person creating it and starts with
+    -- nothing earned.
+    NEW.user_id        := coalesce(nullif(claims ->> 'sub', '')::uuid, NEW.user_id);
+    NEW.email          := coalesce(nullif(claims ->> 'email', ''), NEW.email);
+    NEW.rating         := 0;
+    NEW.client_rating  := 0;
+    NEW.review_count   := 0;
+    NEW.verified       := false;
+    NEW.featured       := false;
+    NEW.phone_verified := false;
+    NEW.phone          := NULL;
+    NEW.flagged        := false;
+    NEW.flag_reason    := NULL;
+    NEW.deactivated_at := NULL;
+  ELSE
+    NEW.user_id        := OLD.user_id;
+    NEW.email          := OLD.email;
+    NEW.created_at     := OLD.created_at;
+    NEW.rating         := OLD.rating;
+    NEW.client_rating  := OLD.client_rating;
+    NEW.review_count   := OLD.review_count;
+    NEW.verified       := OLD.verified;
+    NEW.featured       := OLD.featured;
+    NEW.flagged        := OLD.flagged;
+    NEW.flag_reason    := OLD.flag_reason;
+    NEW.deactivated_at := OLD.deactivated_at;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS freelancers_guard_trust ON public.freelancers;
+CREATE TRIGGER freelancers_guard_trust
+  BEFORE INSERT OR UPDATE ON public.freelancers
+  FOR EACH ROW EXECUTE FUNCTION public.freelancers_guard_trust();
+
+-- ── 3. messages: only the unread flags change ──
+CREATE OR REPLACE FUNCTION public.messages_guard_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  claims           jsonb;
+  want_read        boolean := NEW.read;
+  want_client_read boolean := NEW.client_read;
+BEGIN
+  claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+  IF claims IS NULL OR coalesce(claims ->> 'role', '') = 'service_role' THEN
+    RETURN NEW;
+  END IF;
+
+  NEW := OLD;
+  NEW.read        := coalesce(want_read, OLD.read);
+  NEW.client_read := coalesce(want_client_read, OLD.client_read);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS messages_guard_update ON public.messages;
+CREATE TRIGGER messages_guard_update
+  BEFORE UPDATE ON public.messages
+  FOR EACH ROW EXECUTE FUNCTION public.messages_guard_update();
+
+-- ── 4. message_replies: reply and read only where you can see the thread ──
+-- The inner SELECT runs as the person asking, so the messages read rule
+-- ("Participants can read messages": the professional, the sender, the
+-- sender's email, a member of the organisation) decides both.
+DROP POLICY IF EXISTS "Anyone can reply"                    ON message_replies;
+DROP POLICY IF EXISTS "Signed-in users reply as themselves" ON message_replies;
+CREATE POLICY "Signed-in users reply as themselves"
+  ON message_replies FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    sender_user_id = auth.uid()
+    AND EXISTS (SELECT 1 FROM messages m WHERE m.id = message_replies.message_id)
+  );
+
+DROP POLICY IF EXISTS "Participants can read replies" ON message_replies;
+CREATE POLICY "Participants can read replies"
+  ON message_replies FOR SELECT
+  USING (EXISTS (SELECT 1 FROM messages m WHERE m.id = message_replies.message_id));
+
+-- Verify: should return three rows.
+--   SELECT tgname FROM pg_trigger
+--   WHERE tgname IN ('quotes_guard_organisation', 'freelancers_guard_trust', 'messages_guard_update');
+
+-- ============================================================
+-- SECTION 41 — A PROFESSIONAL'S CONTACT DETAILS ARE NOT PUBLIC (2026-11-12)
+--
+--   >>> RUN THIS ONLY AFTER THE MATCHING CODE IS LIVE. <<<
+--   Older pages read whole rows of this table (select *), and after this
+--   runs that request is refused. Sections 39 and 40 have no such order.
+--
+-- Anyone holding the public key (it ships in every browser) could read
+-- every professional's email address, phone number, payment details,
+-- default terms and the admin's private flag note, for the whole table in
+-- one request. Row level security cannot hide columns, so this uses column
+-- privileges: the public roles may read the listed columns and no others.
+--
+-- Two functions give those details to the people who should have them:
+--
+--   my_freelancer()            the caller's own profile, complete
+--   freelancer_contact(id)     a professional's email, for someone who is in
+--                              a conversation with them or has a quote from
+--                              them; and their phone and payment details,
+--                              for someone who has a quote from them (those
+--                              appear on quotes, invoices and receipts)
+--
+-- IMPORTANT FOR LATER: a column added to freelancers after this is NOT
+-- readable by the site until it is granted. Add it to the GRANT below (or
+-- run GRANT SELECT (new_column) ON public.freelancers TO anon, authenticated).
+--
+-- Safe to re-run.
+--
+-- To undo:
+--   GRANT SELECT ON public.freelancers TO anon, authenticated;
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.my_freelancer()
+RETURNS SETOF public.freelancers
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT f.* FROM freelancers f
+  WHERE f.user_id = auth.uid()
+  ORDER BY f.created_at
+  LIMIT 1
+$$;
+
+REVOKE ALL ON FUNCTION public.my_freelancer() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.my_freelancer() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.freelancer_contact(p_freelancer_id uuid)
+RETURNS TABLE (freelancer_id uuid, email text, phone text, payment_details text)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH me AS (
+    SELECT auth.uid() AS uid, lower(nullif(auth.jwt() ->> 'email', '')) AS email
+  ), f AS (
+    SELECT fr.* FROM freelancers fr WHERE fr.id = p_freelancer_id
+  ), rel AS (
+    SELECT
+      EXISTS (SELECT 1 FROM f, me WHERE f.user_id = me.uid) AS is_owner,
+      EXISTS (
+        SELECT 1 FROM messages m, me
+        WHERE m.freelancer_id = p_freelancer_id
+          AND (m.sender_user_id = me.uid
+               OR (m.sender_email IS NOT NULL AND lower(m.sender_email) = me.email)
+               OR (m.organisation_id IS NOT NULL AND m.organisation_id IN (SELECT my_organisation_ids())))
+      ) AS in_thread,
+      EXISTS (
+        SELECT 1 FROM quotes q, me
+        WHERE q.freelancer_id = p_freelancer_id
+          AND ((q.client_email IS NOT NULL AND lower(q.client_email) = me.email)
+               OR (q.organisation_id IS NOT NULL AND q.organisation_id IN (SELECT my_organisation_ids())))
+      ) AS has_quote
+  )
+  SELECT f.id,
+         f.email,
+         CASE WHEN rel.is_owner OR rel.has_quote THEN f.phone END,
+         CASE WHEN rel.is_owner OR rel.has_quote THEN f.payment_details END
+  FROM f, rel, me
+  WHERE me.uid IS NOT NULL
+    AND (rel.is_owner OR rel.in_thread OR rel.has_quote)
+$$;
+
+REVOKE ALL ON FUNCTION public.freelancer_contact(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.freelancer_contact(uuid) TO authenticated;
+
+REVOKE SELECT ON public.freelancers FROM anon, authenticated;
+GRANT SELECT (
+  id, user_id, created_at, name, company_name, trade, category, extra_categories, ventures,
+  location, bio, skills, qualifications, years_experience, hourly_rate, min_price, avatar_url,
+  available, rating, client_rating, review_count, verified, featured, phone_verified,
+  hidden, deactivated_at, govt_vendor_status,
+  handle, handle_changed_at, previous_handle, previous_handle_until,
+  auto_invoice_default
+) ON public.freelancers TO anon, authenticated;
+
+-- Verify: should list the six private columns and nothing else.
+--   SELECT column_name FROM information_schema.columns c
+--   WHERE table_schema = 'public' AND table_name = 'freelancers'
+--     AND NOT has_column_privilege('anon', 'public.freelancers', column_name, 'SELECT');

@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { authedPost } from '@/lib/authedFetch'
+import { newId } from '@/lib/newId'
 import { useAuth } from '@/lib/auth-context'
 import { printSavedQuote } from '@/lib/printQuote'
 import QuoteAttachments from '@/components/QuoteAttachments'
@@ -368,22 +370,20 @@ function QuotesInner() {
       supabase.from('messages').update({ client_read: false }).eq('id', q.message_id).then(() => {})
       // quote_id makes the client see a downloadable invoice card, not
       // just a text line.
+      // The notification is asked for by the reply's id once it is saved; the
+      // route builds the "Invoice ... for $..., payment due ..." line from
+      // the saved invoice.
+      const replyId = newId()
       supabase.from('message_replies').insert({
+        id: replyId,
         message_id: q.message_id,
         sender_name: profile.name,
         sender_user_id: authUser?.id,
         quote_id: q.id,
         body: `Sent invoice ${invoiceNumber}, payment due ${fmtDate(dueStr)} (${terms.label.toLowerCase()})`,
-      }).then(() => {})
-      fetch('/api/notify-reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message_id: q.message_id,
-          kind: 'invoice',
-          message: `Invoice ${invoiceNumber} for $${Number(q.total).toFixed(2)}, payment due ${fmtDate(dueStr)}`,
-        }),
-      }).catch(() => {})
+      }).then(({ error }) => {
+        if (!error) authedPost('/api/notify-reply', { reply_id: replyId }).catch(() => {})
+      })
     }
     setBusyId(null)
   }
@@ -646,17 +646,15 @@ function QuotesInner() {
 
     if (q.message_id) {
       await supabase.from('messages').update({ client_read: false }).eq('id', q.message_id)
-      await supabase.from('message_replies').insert({
+      const replyId = newId()
+      const { error: replyErr } = await supabase.from('message_replies').insert({
+        id: replyId,
         message_id: q.message_id,
         sender_name: profile.name,
         sender_user_id: authUser?.id,
         body,
       })
-      fetch('/api/notify-reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message_id: q.message_id, kind: 'reminder', message: body }),
-      }).catch(() => {})
+      if (!replyErr) authedPost('/api/notify-reply', { reply_id: replyId }).catch(() => {})
     }
     setRemindedIds(prev => new Set(prev).add(q.id))
     setBusyId(null)
@@ -675,18 +673,16 @@ function QuotesInner() {
     if (q.message_id) {
       await supabase.from('messages').update({ client_read: false }).eq('id', q.message_id)
       // quote_id makes the client see a downloadable receipt card.
-      await supabase.from('message_replies').insert({
+      const replyId = newId()
+      const { error: replyErr } = await supabase.from('message_replies').insert({
+        id: replyId,
         message_id: q.message_id,
         sender_name: profile.name,
         sender_user_id: authUser?.id,
         quote_id: q.id,
         body,
       })
-      fetch('/api/notify-reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message_id: q.message_id, kind: 'receipt', message: body }),
-      }).catch(() => {})
+      if (!replyErr) authedPost('/api/notify-reply', { reply_id: replyId }).catch(() => {})
     }
     // Record when the receipt was sent so the workflow box can show it.
     await supabase.from('quotes').update({ receipt_sent_at: sentAt }).eq('id', q.id)

@@ -54,7 +54,9 @@ export default function OrganisationTeam() {
     setBusy(false)
     if (!res.ok) { setError(body.error || 'Could not send the invitation.'); return }
     setEmail('')
-    setNotice(`Invitation sent to ${email.trim()}.`)
+    setNotice(body.already
+      ? `${email.trim()} already has an invitation waiting. Its link is below if you want to send it yourself.`
+      : `Invitation sent to ${email.trim()}.`)
     setLastLink(body.link || '')
     load()
   }

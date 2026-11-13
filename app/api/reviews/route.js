@@ -34,7 +34,12 @@ export async function POST(request) {
     }
 
     // ── Validate input ──
-    const { freelancer_id, rating, comment, service_name, image_url } = await request.json()
+    const body = await request.json().catch(() => null) || {}
+    const { freelancer_id, service_name, image_url } = body
+    // A rating is one of five whole stars, and a comment is text. Anything
+    // else (4.7, "5", a list) is refused rather than stored.
+    const rating = Number.isInteger(body.rating) ? body.rating : null
+    const comment = typeof body.comment === 'string' ? body.comment : ''
 
     if (!freelancer_id) {
       return Response.json({ error: 'freelancer_id is required.' }, { status: 400 })

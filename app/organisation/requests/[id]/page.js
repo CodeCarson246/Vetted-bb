@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { withFreelancerContacts } from '@/lib/freelancerContact'
 import { useOrganisation } from '@/lib/useOrganisation'
 import { formatParish } from '@/lib/formatParish'
 import { termLabel } from '@/lib/paymentTerms'
@@ -39,12 +40,15 @@ export default function QuoteRequestDetail() {
 
   const load = useCallback(async () => {
     if (!org || !id) return
-    const [{ data: r }, { data: msgs }, { data: quotes }] = await Promise.all([
+    const [{ data: r }, { data: rawMsgs }, { data: quotes }] = await Promise.all([
       supabase.from('quote_requests').select('*').eq('id', id).eq('organisation_id', org.id).maybeSingle(),
-      supabase.from('messages').select('id, freelancer_id, created_at, freelancers(id, name, company_name, trade, location, email, avatar_url, verified, phone, phone_verified, govt_vendor_status, payment_details)').eq('quote_request_id', id).order('created_at', { ascending: true }),
+      supabase.from('messages').select('id, freelancer_id, created_at, freelancers(id, name, company_name, trade, location, avatar_url, verified, phone_verified, govt_vendor_status)').eq('quote_request_id', id).order('created_at', { ascending: true }),
       supabase.from('quotes').select('*').eq('quote_request_id', id).order('created_at', { ascending: false }),
     ])
     setReq(r || null)
+    // Email, phone and payment details are not public columns: filled in for
+    // the professionals this organisation asked.
+    const msgs = await withFreelancerContacts(rawMsgs)
     const latestByFreelancer = {}
     for (const q of quotes || []) if (!latestByFreelancer[q.freelancer_id]) latestByFreelancer[q.freelancer_id] = q
     setRows((msgs || []).filter(m => m.freelancers).map(m => ({ message: m, freelancer: m.freelancers, quote: latestByFreelancer[m.freelancer_id] || null })))

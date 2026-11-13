@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { FREELANCER_PUBLIC_COLS } from '@/lib/freelancerColumns'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
@@ -33,12 +34,12 @@ export default function SavedProfessionals() {
     if (authLoading) return
     if (!authUser) { router.push('/login'); return }
 
-    // freelancers(*) rather than an explicit column list — survives schema
-    // differences (naming a column that doesn't exist 400s the whole query)
+    // The public columns by name: the table also holds contact details that
+    // are not public, so asking for the whole row is refused (lib/freelancerColumns).
     Promise.all([
       supabase
         .from('saved_professionals')
-        .select('id, freelancer_id, created_at, freelancers(*)')
+        .select(`id, freelancer_id, created_at, freelancers(${FREELANCER_PUBLIC_COLS})`)
         .eq('user_id', authUser.id)
         .order('created_at', { ascending: false }),
       supabase

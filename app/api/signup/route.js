@@ -3,6 +3,7 @@ import { validatePassword } from '@/lib/passwordPolicy'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { createNotification } from '@/lib/serverNotify'
 import { TERMS_VERSION } from '@/lib/terms'
+import { safeDisplayName } from '@/lib/displayName'
 
 // All signups go through here so the password policy is enforced
 // server-side, not just in the form. The route validates against the same
@@ -15,9 +16,11 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const email = String(body.email || '').trim()
+    const email = String(body.email || '').trim().slice(0, 254)
     const password = String(body.password || '')
-    const fullName = String(body.fullName || '').trim()
+    // The name is shown to other people (in notifications and emails), so it
+    // is stored as a name: one line, no links, a sensible length.
+    const fullName = safeDisplayName(body.fullName, '')
     const role = ['freelancer', 'organisation'].includes(body.role) ? body.role : 'client'
     // Organisation sign-ups capture the organisation's name up front. It is
     // stashed in metadata so the organisation can be created the first time
@@ -28,6 +31,12 @@ export async function POST(request) {
 
     if (!email || !password) {
       return Response.json({ error: 'Email and password are required.' }, { status: 400 })
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return Response.json({ error: 'Please enter a valid email address.' }, { status: 400 })
+    }
+    if (password.length > 200) {
+      return Response.json({ error: 'That password is too long.' }, { status: 400 })
     }
     if (role === 'organisation' && organisationName.length < 2) {
       return Response.json({ error: 'Please enter your organisation’s name.' }, { status: 400 })

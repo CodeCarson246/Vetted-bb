@@ -4,6 +4,9 @@ import imageCompression from 'browser-image-compression'
 import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { authedPost } from '@/lib/authedFetch'
+import { withFreelancerContacts } from '@/lib/freelancerContact'
+import { FREELANCER_PUBLIC_COLS } from '@/lib/freelancerColumns'
 import { useAuth } from '@/lib/auth-context'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatParish } from '@/lib/formatParish'
@@ -260,7 +263,10 @@ function DashboardInner() {
       // 2. Fresh data, in as few round trips as possible.
       if (userRole === 'client') {
         const [{ data: msgs }, { data: rLeft }, { data: topF }, { data: cp }] = await Promise.all([
-          supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, phone, phone_verified, payment_details)').eq('sender_email', user.email).order('created_at', { ascending: false }),
+          // The professional's email, phone and payment details are not public
+          // columns: they are filled in below for the ones this client deals with.
+          supabase.from('messages').select('*, freelancers(id, name, avatar_url, trade, company_name, location, phone_verified)').eq('sender_email', user.email).order('created_at', { ascending: false })
+            .then(async res => ({ ...res, data: await withFreelancerContacts(res.data) })),
           supabase.from('reviews').select('*').eq('author_user_id', user.id).order('date', { ascending: false }),
           // services(price) rather than the stored min_price: that column is
           // only recalculated when a service is saved, so it can be stale.
@@ -488,7 +494,9 @@ function DashboardInner() {
         client_rating: 0,
         min_price: answers.service ? lowestPaidPrice([answers.service]) : null,
       })
-      .select()
+      // By name: reading the whole row back is refused, since it holds
+      // columns that are not public (lib/freelancerColumns).
+      .select(FREELANCER_PUBLIC_COLS)
       .single()
 
     if (error) {
@@ -512,11 +520,7 @@ function DashboardInner() {
     }
 
     // Alert clients whose saved search matches the new profile (fire-and-forget)
-    fetch('/api/match-saved-searches', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ freelancer_id: data.id }),
-    }).catch(() => {})
+    authedPost('/api/match-saved-searches', { freelancer_id: data.id }).catch(() => {})
 
     router.push(`/freelancers/${data.id}`)
   }

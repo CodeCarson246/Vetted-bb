@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { withFreelancerContacts } from '@/lib/freelancerContact'
 import { useAuth } from '@/lib/auth-context'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { printSavedQuote } from '@/lib/printQuote'
@@ -32,14 +33,16 @@ export default function JobsPage() {
     const orgId = isOrganisationUser(authUser) ? (await fetchMyOrganisation())?.organisation?.id : null
     let q = supabase
       .from('quotes')
-      .select('*, freelancers(id, name, company_name, trade, location, email, avatar_url, phone, phone_verified, payment_details)')
+      .select('*, freelancers(id, name, company_name, trade, location, avatar_url, phone_verified)')
     q = orgId
       ? q.or(`organisation_id.eq.${orgId},client_email.eq."${authUser.email}"`)
       : q.eq('client_email', authUser.email)
     const { data } = await q
       .in('status', ['accepted', 'invoiced', 'completed', 'paid'])
       .order('created_at', { ascending: false })
-    setJobs(data || [])
+    // Email, phone and payment details (printed on the invoice and receipt)
+    // are not public columns: filled in for the professionals these jobs are with.
+    setJobs(await withFreelancerContacts(data))
     setLoading(false)
   }, [authUser])
 

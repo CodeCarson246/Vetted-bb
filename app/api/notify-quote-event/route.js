@@ -127,12 +127,23 @@ export async function POST(request) {
     let payload = null
     let invoice = null
 
+    // The request names an event; it does not get to decide that the event
+    // happened. Each one is announced only by the side that performs it, and
+    // only when the saved quote agrees. Anything else answers 200 and sends
+    // nothing, so a participant cannot send the other side a false "declined",
+    // "marked paid" or "marked complete".
+    const nothingToSend = () => Response.json({ success: true, sent: false, invoice: null })
+    if ((event === 'accepted' || event === 'declined') && !isClient) return nothingToSend()
+    if (event === 'paid' && !isFreelancer) return nothingToSend()
+    if (event === 'accepted' && quote.status !== 'accepted') return nothingToSend()
+    if (event === 'declined' && quote.status !== 'declined') return nothingToSend()
+    if (event === 'paid' && !quote.paid_at) return nothingToSend()
+    if (event === 'completed' && !(isFreelancer ? quote.completed_at : quote.client_completed_at)) return nothingToSend()
+
     if (event === 'accepted') {
       recipients = freelancerUserId ? [freelancerUserId] : []
       const quoteRef = quote.quote_number || ''
-      // Everything beyond the plain notification needs the quote to really be
-      // accepted right now, not merely a request saying so.
-      const reallyAccepted = quote.status === 'accepted'
+      const reallyAccepted = true
 
       // Stamp when it was accepted, once. The stamp doubles as "is this the
       // first time we have heard about this acceptance?", which is what stops
@@ -152,6 +163,10 @@ export async function POST(request) {
       if (reallyAccepted && quote.auto_invoice === true && !quote.invoice_number) {
         invoice = await issueInvoiceOnAcceptance(admin, quote, quote.freelancers)
       }
+
+      // An acceptance is announced once. A repeat of the same request finds
+      // the stamp already there and no invoice left to issue.
+      if (!firstTime && !invoice) return nothingToSend()
 
       payload = invoice
         ? {
@@ -190,17 +205,19 @@ export async function POST(request) {
       }
     } else if (event === 'declined') {
       recipients = freelancerUserId ? [freelancerUserId] : []
-      payload = { type: 'quote_declined', title: `${clientName} declined your quote ${ref}`.trim(), link: '/quotes' }
+      payload = { type: 'quote_declined', title: `${clientName} declined your quote ${ref}`.trim(), link: '/quotes', dedupeKey: `quote:${quote.id}:declined` }
     } else if (event === 'paid') {
       recipients = clientUserIds
-      payload = { type: 'job_paid', title: `${freelancerName} marked your job as paid`, body: ref ? `Receipt for ${ref}` : null, link: '/jobs' }
+      // Keyed on the time it was marked paid: the same mark is announced
+      // once, and a job un-marked and marked again is announced again.
+      payload = { type: 'job_paid', title: `${freelancerName} marked your job as paid`, body: ref ? `Receipt for ${ref}` : null, link: '/jobs', dedupeKey: `quote:${quote.id}:paid:${quote.paid_at}` }
     } else if (event === 'completed') {
       if (isFreelancer) {
         recipients = clientUserIds
-        payload = { type: 'job_completed', title: `${freelancerName} marked the job complete`, link: '/jobs' }
+        payload = { type: 'job_completed', title: `${freelancerName} marked the job complete`, link: '/jobs', dedupeKey: `quote:${quote.id}:done:pro:${quote.completed_at}` }
       } else {
         recipients = freelancerUserId ? [freelancerUserId] : []
-        payload = { type: 'job_completed', title: `${clientName} marked the job complete`, link: '/quotes' }
+        payload = { type: 'job_completed', title: `${clientName} marked the job complete`, link: '/quotes', dedupeKey: `quote:${quote.id}:done:client:${quote.client_completed_at}` }
       }
     }
 

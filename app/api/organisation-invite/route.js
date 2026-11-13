@@ -3,6 +3,14 @@ import { randomBytes } from 'crypto'
 import { escapeHtml } from '@/lib/escapeHtml'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { SITE_URL, SITE_HOST } from '@/lib/siteUrl'
+import { safeDisplayName } from '@/lib/displayName'
+
+// An invitation is an email from Vetted.bb to an address the inviter chose,
+// and anyone can create an organisation. So the number an organisation, and
+// a person, can send in a day is counted in the database (the per-address
+// limit above lives in one server's memory and is only a speed bump).
+const MAX_INVITES_PER_ORG_PER_DAY = 20
+const MAX_INVITES_PER_PERSON_PER_DAY = 30
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -49,7 +57,9 @@ export async function POST(request) {
     if (!me || me.role !== 'owner') {
       return Response.json({ error: 'Only an owner can invite people.' }, { status: 403 })
     }
-    const orgName = me.organisations?.name || 'the organisation'
+    // Both names go into the email, so both are kept looking like names:
+    // one line, no links, a sensible length.
+    const orgName = safeDisplayName(me.organisations?.name, 'the organisation')
 
     // Already on the team?
     const { data: existing } = await supabase
@@ -60,6 +70,38 @@ export async function POST(request) {
       .maybeSingle()
     if (existing) return Response.json({ error: 'That person is already a member.' }, { status: 400 })
 
+    // Someone already invited and still waiting is not emailed again: the
+    // same address cannot be mailed over and over. The Team page shows the
+    // link, which is the way to send it on.
+    const nowIso = new Date().toISOString()
+    const { data: pending } = await supabase
+      .from('organisation_invites')
+      .select('token')
+      .eq('organisation_id', organisationId)
+      .ilike('email', email)
+      .is('accepted_at', null)
+      .gt('expires_at', nowIso)
+      .limit(1)
+      .maybeSingle()
+    if (pending?.token) {
+      return Response.json({
+        success: true,
+        already: true,
+        link: `${SITE_URL}/organisation/accept?token=${pending.token}`,
+      })
+    }
+
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const [{ count: orgCount }, { count: myCount }] = await Promise.all([
+      supabase.from('organisation_invites').select('id', { count: 'exact', head: true })
+        .eq('organisation_id', organisationId).gte('created_at', dayAgo),
+      supabase.from('organisation_invites').select('id', { count: 'exact', head: true })
+        .eq('invited_by', user.id).gte('created_at', dayAgo),
+    ])
+    if ((orgCount || 0) >= MAX_INVITES_PER_ORG_PER_DAY || (myCount || 0) >= MAX_INVITES_PER_PERSON_PER_DAY) {
+      return Response.json({ error: 'That is the limit for invitations in one day. Please try again tomorrow.' }, { status: 429 })
+    }
+
     const inviteToken = randomBytes(24).toString('hex')
     const { error: insertError } = await supabase
       .from('organisation_invites')
@@ -69,7 +111,7 @@ export async function POST(request) {
     }
 
     const link = `${SITE_URL}/organisation/accept?token=${inviteToken}`
-    const inviterName = user.user_metadata?.full_name || user.email
+    const inviterName = safeDisplayName(user.user_metadata?.full_name, user.email)
 
     // Best-effort email. The invite exists regardless, and the Team page
     // shows the link so it can be shared by hand if mail is not configured.

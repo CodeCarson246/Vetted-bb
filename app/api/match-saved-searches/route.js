@@ -2,26 +2,37 @@ import { createClient } from '@supabase/supabase-js'
 import { createNotification } from '@/lib/serverNotify'
 import { sendPushToUser } from '@/lib/serverPush'
 import { matchesSavedSearch } from '@/lib/savedSearchMatch'
+import { signedInUser, isUuid } from '@/lib/serverNotifyGuard'
 
 // Called (fire-and-forget) when a freelancer profile is created. Scans saved
 // searches and notifies each owner whose search matches the new freelancer.
 // One notification per user per freelancer (dedupe_key).
+//
+// The caller must be signed in and must own the profile: this route reads
+// every saved search with the service role, so it is not left open.
 export async function POST(request) {
   try {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!serviceKey) return Response.json({ ok: false })
 
-    const { freelancer_id } = await request.json()
-    if (!freelancer_id) return Response.json({ error: 'freelancer_id required' }, { status: 400 })
-
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
+    const user = await signedInUser(admin, request)
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const body = await request.json().catch(() => null)
+    const freelancer_id = body?.freelancer_id
+    if (!isUuid(freelancer_id)) return Response.json({ error: 'freelancer_id required' }, { status: 400 })
+
     const { data: f } = await admin
       .from('freelancers')
       .select('id, user_id, name, trade, category, extra_categories, location, skills, hidden, deactivated_at')
       .eq('id', freelancer_id)
       .maybeSingle()
+    if (!f) return Response.json({ ok: true })
+    // Only the professional whose profile this is can announce it.
+    if (f.user_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 })
     // Never announce a profile its owner has hidden or deactivated
-    if (!f || f.hidden || f.deactivated_at) return Response.json({ ok: true })
+    if (f.hidden || f.deactivated_at) return Response.json({ ok: true })
 
     const { data: searches } = await admin.from('saved_searches').select('id, user_id, query, category, location')
     if (!searches?.length) return Response.json({ ok: true })

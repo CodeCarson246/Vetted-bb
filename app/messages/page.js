@@ -9,6 +9,7 @@ import { printSavedQuote } from '@/lib/printQuote'
 import { formatDocDate } from '@/lib/formatDate'
 import { fmtInvoiceDate } from '@/lib/invoicing'
 import { authedPost } from '@/lib/authedFetch'
+import { withFreelancerContacts } from '@/lib/freelancerContact'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
@@ -107,18 +108,9 @@ export default function ClientMessages() {
       setReplyPhoto(null)
       // Resurface the thread as unread in the freelancer's inbox
       supabase.from('messages').update({ read: false }).eq('id', msg.id).then(() => {})
-      // Email + push notification to the freelancer (fire-and-forget)
-      fetch('/api/notify-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          freelancer_id: msg.freelancers?.id || msg.freelancer_id,
-          senderName,
-          senderEmail: user.email,
-          subject: `Re: ${msg.subject || 'your conversation'}`,
-          message: text || 'Photo',
-        }),
-      }).catch(() => {})
+      // Email + push notification to the freelancer (fire-and-forget). The
+      // route reads the sender, the recipient and the text from the saved reply.
+      authedPost('/api/notify-message', { replyId: data.id }).catch(() => {})
     }
     setReplySending(false)
     setTimeout(() => setToast(null), 4000)
@@ -167,13 +159,15 @@ export default function ClientMessages() {
     const orgId = isOrganisationUser(u) ? (await fetchMyOrganisation())?.organisation?.id : null
     let query = supabase
       .from('messages')
-      .select('*, freelancers(id, name, avatar_url, trade, company_name, email, location, verified, phone, phone_verified, payment_details)')
+      .select('*, freelancers(id, name, avatar_url, trade, company_name, location, verified, phone_verified)')
     query = orgId
       ? query.or(`organisation_id.eq.${orgId},sender_email.eq."${u.email}"`)
       : query.eq('sender_email', u.email)
     const { data: msgs } = await query.order('created_at', { ascending: false })
 
-    const list = msgs || []
+    // Email, phone and payment details are not public columns: filled in for
+    // the professionals this person is in a conversation with.
+    const list = await withFreelancerContacts(msgs)
     const byThread = {}
     if (list.length > 0) {
       const { data: allReplies } = await supabase

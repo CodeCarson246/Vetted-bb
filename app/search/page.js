@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { FREELANCER_PUBLIC_COLS } from '@/lib/freelancerColumns'
 import { useSaved, HeartButton } from '@/lib/useSaved'
 import { useAuth } from '@/lib/auth-context'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
@@ -278,7 +279,7 @@ function SearchPage() {
   useEffect(() => {
     async function fetchFreelancers() {
       setLoading(true)
-      const { data } = await supabase.from('freelancers').select('*, services(*)')
+      const { data } = await supabase.from('freelancers').select(`${FREELANCER_PUBLIC_COLS}, services(*)`)
         .eq('hidden', false).is('deactivated_at', null)
       setAllFreelancers(data || [])
       setLoading(false)

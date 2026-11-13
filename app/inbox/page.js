@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { authedPost } from '@/lib/authedFetch'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
 import { getQuoteId, dedupeThreadReplies, conversationPreview, quoteReplyKind, isReceiptBody, quotedSince } from '@/lib/quoteReply'
@@ -527,11 +528,7 @@ export default function Inbox() {
 
     // Flag unread for the client and notify them (fire-and-forget)
     supabase.from('messages').update({ client_read: false }).eq('id', quoteMsg.id).then(() => {})
-    fetch('/api/notify-reply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message_id: quoteMsg.id, kind: 'quote' }),
-    }).catch(() => {})
+    if (quoteReply?.id) authedPost('/api/notify-reply', { reply_id: quoteReply.id }).catch(() => {})
 
     const recipientName = quoteClientName
     setQuoteMsg(null)
@@ -581,15 +578,9 @@ export default function Inbox() {
     if (invReply) setReplies(prev => ({ ...prev, [replyMsgId]: [...(prev[replyMsgId] || []), invReply] }))
 
     supabase.from('messages').update({ client_read: false }).eq('id', replyMsgId).then(() => {})
-    fetch('/api/notify-reply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message_id: replyMsgId,
-        kind: 'invoice',
-        message: `Invoice ${invoiceNumber} for $${Number(quote.total).toFixed(2)}, payment due ${fmt(dueStr)}`,
-      }),
-    }).catch(() => {})
+    // The route builds the same "Invoice ... for $..., payment due ..." line
+    // from the saved invoice.
+    if (invReply?.id) authedPost('/api/notify-reply', { reply_id: invReply.id }).catch(() => {})
 
     setInvoiceBusy(false)
     setQuoteToast(`Invoice sent`)
@@ -656,11 +647,7 @@ export default function Inbox() {
       // Flag the thread unread for the client's header badge
       supabase.from('messages').update({ client_read: false }).eq('id', msg.id).then(() => {})
       // Email + push the client (fire-and-forget)
-      fetch('/api/notify-reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message_id: msg.id, message: text || 'Photo' }),
-      }).catch(() => {})
+      authedPost('/api/notify-reply', { reply_id: data.id }).catch(() => {})
     }
     setReplySending(false)
   }

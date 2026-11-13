@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { createNotification } from '@/lib/serverNotify'
 import { sendPushToUser } from '@/lib/serverPush'
+import { safeDisplayName } from '@/lib/displayName'
 
 // A client saved/favourited a freelancer → notify the freelancer, once per
 // client+freelancer pair (dedupe_key) so toggling save off/on doesn't spam.
@@ -33,19 +34,34 @@ export async function POST(request) {
       return Response.json({ success: true }) // self-save or missing → no-op
     }
 
-    const saverName = user.user_metadata?.full_name || 'Someone'
-    await createNotification(freelancer.user_id, {
+    // Only announce a save that is really there. Without this, a signed-in
+    // user could name any professional and set off the notice at will.
+    const { data: saved } = await admin
+      .from('saved_professionals')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('freelancer_id', freelancer_id)
+      .limit(1)
+      .maybeSingle()
+    if (!saved) return Response.json({ success: true })
+
+    const saverName = safeDisplayName(user.user_metadata?.full_name)
+    const outcome = await createNotification(freelancer.user_id, {
       type: 'saved',
       title: `${saverName} saved your profile`,
       body: 'A client added you to their saved professionals.',
       link: '/dashboard',
       dedupeKey: `saved:${user.id}:${freelancer_id}`,
     })
-    sendPushToUser(freelancer.user_id, {
-      title: `${saverName} saved your profile`,
-      body: 'A client added you to their saved professionals.',
-      url: '/dashboard',
-    }).catch(() => {})
+    // One push per saver per professional, like the notification itself:
+    // saving, removing and saving again does not buzz their phone each time.
+    if (outcome !== 'duplicate') {
+      sendPushToUser(freelancer.user_id, {
+        title: `${saverName} saved your profile`,
+        body: 'A client added you to their saved professionals.',
+        url: '/dashboard',
+      }).catch(() => {})
+    }
 
     return Response.json({ success: true })
   } catch (err) {
