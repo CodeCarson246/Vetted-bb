@@ -6,6 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { authedPost } from '@/lib/authedFetch'
 import { saveErrorMessage } from '@/lib/saveErrorMessage'
+import OutstandingCard from '@/components/OutstandingCard'
+import { outstandingSummary } from '@/lib/payments'
+import { todayKeyBarbados } from '@/lib/rentals'
 import { withFreelancerContacts } from '@/lib/freelancerContact'
 import { FREELANCER_PUBLIC_COLS } from '@/lib/freelancerColumns'
 import { useAuth } from '@/lib/auth-context'
@@ -184,6 +187,8 @@ function DashboardInner() {
   const [threadClients, setThreadClients] = useState([])
   // Accepted quotes with no invoice sent yet: the professional's move.
   const [awaitingInvoices, setAwaitingInvoices] = useState([])
+  // What clients still owe, across unpaid and part-paid invoices.
+  const [owed, setOwed] = useState(null)
   const [selectedClientId, setSelectedClientId] = useState('')
   const [clientRating, setClientRating] = useState(0)
   const [clientRatingHover, setClientRatingHover] = useState(0)
@@ -359,11 +364,13 @@ function DashboardInner() {
       setThreadClients([...seen.entries()].map(([id, name]) => ({ id, name })))
 
       // Its own request, after the main batch: '*' because accepted_at may
-      // not exist yet, and nothing above should wait on it.
-      const { data: accepted } = await supabase.from('quotes').select('*')
-        .eq('freelancer_id', p.id).eq('status', 'accepted').order('created_at', { ascending: false }).limit(10)
+      // not exist yet, and nothing above should wait on it. Accepted quotes
+      // (waiting for an invoice) and open invoices (what is owed) together.
+      const { data: open } = await supabase.from('quotes').select('*')
+        .eq('freelancer_id', p.id).in('status', ['accepted', 'invoiced', 'completed']).order('created_at', { ascending: false })
       if (cancelled) return
-      setAwaitingInvoices(awaitingInvoice(accepted))
+      setAwaitingInvoices(awaitingInvoice((open || []).filter(q => q.status === 'accepted')).slice(0, 10))
+      setOwed(outstandingSummary(open || [], todayKeyBarbados()))
     }
     init()
     return () => { cancelled = true }
@@ -1576,6 +1583,8 @@ function DashboardInner() {
           </div>
         ) : profile ? (
           <>
+            <OutstandingCard label="Outstanding" summary={owed} loading={!owed} href="/quotes?view=outstanding" />
+
             <WaitingOnYou quotes={awaitingInvoices} />
 
             {/* Unfinished setup. Takes the place of the profile-strength card

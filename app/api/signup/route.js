@@ -11,7 +11,7 @@ import { safeDisplayName } from '@/lib/displayName'
 // confirmation email / returns a session as usual).
 export async function POST(request) {
   try {
-    if (!rateLimit(`signup:${clientIp(request)}`, { limit: 10, windowMs: 10 * 60_000 })) {
+    if (!(await rateLimit(`signup:${clientIp(request)}`, { limit: 10, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many attempts. Please try again in a few minutes.' }, { status: 429 })
     }
 

@@ -46,13 +46,18 @@ export async function POST(request) {
       return Response.json({ error: 'Server is not configured for notifications.' }, { status: 500 })
     }
 
-    if (!rateLimit(`notify:${clientIp(request)}`, { limit: 5, windowMs: 10 * 60_000 })) {
+    // A generous ceiling per connection, before anything else is looked up.
+    // The real limit is per person, below, once we know who is asking.
+    if (!(await rateLimit(`notify-ip:${clientIp(request)}`, { limit: 50, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many messages. Please try again later.' }, { status: 429 })
     }
 
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
     const user = await signedInUser(admin, request)
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!(await rateLimit(`notify:${user.id}`, { limit: 5, windowMs: 10 * 60_000 }))) {
+      return Response.json({ error: 'Too many messages. Please try again later.' }, { status: 429 })
+    }
 
     const body = await request.json().catch(() => null)
     const messageId = body?.messageId

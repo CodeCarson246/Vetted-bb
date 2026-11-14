@@ -3,6 +3,15 @@ import Link from 'next/link'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import ExportCsvDialog from '@/components/ExportCsvDialog'
+import PaymentsPanel from '@/components/PaymentsPanel'
+import ExpensesPanel from '@/components/ExpensesPanel'
+import { billedSnapshot, invoiceCarriesCosts, pendingBilledTotal, expenseRecords, EXPENSE_COLUMNS } from '@/lib/expenses'
+import RecordPaymentDialog from '@/components/RecordPaymentDialog'
+import { depositInvoiceColumns, invoicesOf, jobOutstanding, jobTotal, money2 } from '@/lib/payments'
+import { buildBalanceInvoicePatch, invoiceReplyBody } from '@/lib/invoicing'
+import { todayKeyBarbados } from '@/lib/rentals'
+import { freelancerRecords, FREELANCER_COLUMNS } from '@/lib/financialCsv'
 import { authedPost } from '@/lib/authedFetch'
 import { newId } from '@/lib/newId'
 import { useAuth } from '@/lib/auth-context'
@@ -194,15 +203,29 @@ function QuotesInner() {
   // The short "send this invoice?" confirmation, opened by a notification,
   // a push or the acceptance email (/quotes?invoice=<quote id>).
   const [quickInvoiceId, setQuickInvoiceId] = useState(null)
-  const invoiceParam = useSearchParams().get('invoice')
+  const params = useSearchParams()
+  const invoiceParam = params.get('invoice')
+  // ?view=outstanding (the Outstanding card on the dashboard) opens on the
+  // unpaid invoices.
+  const viewParam = params.get('view')
   const [invoiceTerms, setInvoiceTerms] = useState('net14')
   const [invoiceClientPhone, setInvoiceClientPhone] = useState('')
   const [invoiceClientAddress, setInvoiceClientAddress] = useState('')
   const [invoiceTermsText, setInvoiceTermsText] = useState('')
   const [busyId, setBusyId] = useState(null)
-  const [view, setView] = useState('quotes')
+  const [view, setView] = useState(() => (['quotes', 'outstanding', 'earnings'].includes(viewParam) ? viewParam : 'quotes'))
   const [confirmAction, setConfirmAction] = useState(null)
   const [toast, setToast] = useState(null)
+  const [exportOpen, setExportOpen] = useState(false)
+  // Part payments (SQL Section 44): quote id -> payment rows, oldest first.
+  const [payments, setPayments] = useState({})
+  const [removedPayments, setRemovedPayments] = useState({})
+  // Job expenses (SQL Section 47): quote id -> rows. Private to this
+  // professional; never sent anywhere a client can see (lib/expenses.js).
+  const [expenses, setExpenses] = useState({})
+  const [payingId, setPayingId] = useState(null)
+  const [paymentBusy, setPaymentBusy] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
   const [selYear, setSelYear] = useState('all')
   const [selMonth, setSelMonth] = useState('all')
   const [selService, setSelService] = useState('all')
@@ -254,6 +277,8 @@ function QuotesInner() {
         .order('created_at', { ascending: false })
       if (cancelled) return
       setQuotes(qs || [])
+      loadPayments((qs || []).filter(q => q.invoice_number).map(q => q.id))
+      loadExpenses(p.id)
       freshRef.current = true
       setLoading(false)
     }
@@ -277,6 +302,157 @@ function QuotesInner() {
         body: JSON.stringify({ quote_id: quoteId, event }),
       }).catch(() => {})
     })
+  }
+
+  // Payment history for these quotes. A database without SQL Section 44 has
+  // no payments table yet: that is an empty history, not an error.
+  async function loadPayments(ids) {
+    if (!ids.length) return
+    const { data, error } = await supabase.from('invoice_payments').select('*').in('quote_id', ids)
+      .order('received_on', { ascending: true }).order('created_at', { ascending: true })
+    if (error) return
+    const byQuote = {}
+    for (const p of data || []) (byQuote[p.quote_id] = byQuote[p.quote_id] || []).push(p)
+    setPayments(prev => ({ ...prev, ...Object.fromEntries(ids.map(id => [id, byQuote[id] || []])) }))
+    // Payments that were removed leave a record (kept by the database, not
+    // editable by anyone). Shown under the history.
+    const { data: gone, error: goneErr } = await supabase.from('invoice_payment_removals').select('*').in('quote_id', ids)
+      .order('removed_at', { ascending: true })
+    if (goneErr) return
+    const goneBy = {}
+    for (const r of gone || []) (goneBy[r.quote_id] = goneBy[r.quote_id] || []).push(r)
+    setRemovedPayments(prev => ({ ...prev, ...Object.fromEntries(ids.map(id => [id, goneBy[id] || []])) }))
+  }
+
+  // This professional's expenses, grouped by job. Before SQL Section 47 there
+  // is no such table: no expenses, not an error.
+  async function loadExpenses(freelancerId) {
+    const { data, error } = await supabase.from('job_expenses').select('*')
+      .eq('freelancer_id', freelancerId).order('incurred_on', { ascending: true })
+    if (error) return
+    const byQuote = {}
+    for (const e of data || []) (byQuote[e.quote_id || ''] = byQuote[e.quote_id || ''] || []).push(e)
+    setExpenses(byQuote)
+  }
+
+  // Copy this job's "Bill to client" expenses onto the invoice being issued,
+  // then mark them as billed so they are never billed twice. Returns the
+  // columns to add to the invoice patch, and a function to run once saved.
+  function billedCostsFor(q, invoiceKind) {
+    if (!invoiceCarriesCosts({ kind: invoiceKind })) return { columns: {}, markBilled: async () => {} }
+    const { columns, ids } = billedSnapshot(expenses[q.id] || [])
+    return {
+      columns,
+      markBilled: async invoiceNumber => {
+        if (!ids.length) return
+        await supabase.from('job_expenses').update({ billed_invoice_number: invoiceNumber }).in('id', ids)
+        setExpenses(prev => ({ ...prev, [q.id]: (prev[q.id] || []).map(e => ids.includes(e.id) ? { ...e, billed_invoice_number: invoiceNumber } : e) }))
+      },
+    }
+  }
+
+  // Re-read one quote after the database has changed it (the payments
+  // trigger keeps amount_paid, paid_at and status).
+  async function refreshQuote(id) {
+    const { data } = await supabase.from('quotes').select('*').eq('id', id).maybeSingle()
+    if (data) setQuotes(prev => prev.map(x => x.id === id ? data : x))
+    return data
+  }
+
+  async function savePayment(q, payment) {
+    setPaymentBusy(true); setPaymentError('')
+    const { error } = await supabase.from('invoice_payments').insert({ quote_id: q.id, ...payment })
+    if (error) {
+      setPaymentBusy(false)
+      // The database's own refusals (SQL Section 44) are written to be read.
+      const said = error.message || ''
+      const refusal = ['more than is still owed', 'cannot be dated in the future', 'already marked as paid', 'not on this job'].some(t => said.includes(t))
+      setPaymentError(/invoice_payments/.test(said) && /exist|schema/.test(said)
+        ? 'Payments are still being switched on for the site. Try again shortly.'
+        : refusal ? said
+        : `Could not save the payment. (${said})`)
+      // Someone else (another device) may have recorded one meanwhile.
+      if (refusal) { await refreshQuote(q.id); await loadPayments([q.id]) }
+      return
+    }
+    const wasPaid = !!q.paid_at
+    const fresh = await refreshQuote(q.id)
+    await loadPayments([q.id])
+    setPaymentBusy(false); setPayingId(null)
+    if (fresh?.paid_at && !wasPaid) {
+      notifyQuoteEvent(q.id, 'paid')
+      flash(`Paid in full. Bds$${money2(fresh.total)} is in your earnings.`)
+    } else {
+      flash(`Payment of Bds$${money2(payment.amount)} recorded. Bds$${money2(jobOutstanding(fresh || q))} still owed.`)
+    }
+  }
+
+  function deletePayment(q, p) {
+    setConfirmAction({
+      title: 'Remove this payment?',
+      body: `Bds$${money2(p.amount)} received ${fmtDate(p.received_on)} comes off ${q.invoice_number || q.quote_number}. Use this for a payment entered by mistake.`,
+      confirmLabel: 'Remove payment',
+      onConfirm: async () => {
+        setPaymentBusy(true)
+        const { error } = await supabase.from('invoice_payments').delete().eq('id', p.id)
+        if (error) flash('Could not remove the payment. Please try again.', true)
+        await refreshQuote(q.id)
+        await loadPayments([q.id])
+        setPaymentBusy(false)
+      },
+    })
+  }
+
+  // Pause or resume automatic payment reminders on one invoice.
+  async function toggleReminderPause(q) {
+    const next = !q.reminders_paused
+    setQuotes(prev => prev.map(x => x.id === q.id ? { ...x, reminders_paused: next } : x))
+    const { error } = await supabase.from('quotes').update({ reminders_paused: next }).eq('id', q.id)
+    if (error) {
+      setQuotes(prev => prev.map(x => x.id === q.id ? { ...x, reminders_paused: !next } : x))
+      flash('Could not change reminders for this invoice. Please try again.', true)
+    } else {
+      flash(next ? 'Reminders paused for this invoice.' : 'Reminders back on for this invoice.')
+    }
+  }
+
+  // The second invoice of a deposit job, once the deposit is paid: the rest
+  // of the total, on the same terms as the deposit invoice.
+  async function raiseBalanceInvoice(q) {
+    if (!freshRef.current) { showStillUpdating(); return }
+    setBusyId(q.id)
+    const termsValue = INVOICE_TERMS.some(t => t.value === q.invoice_terms) ? q.invoice_terms : 'net14'
+    const patch = buildBalanceInvoicePatch({ issuedKey: todayKeyBarbados(), nowIso: new Date().toISOString(), termsValue })
+    // Expenses billed on to the client go on the balance invoice.
+    const costs = billedCostsFor(q, 'balance')
+    Object.assign(patch, costs.columns)
+    const { data: saved, error } = await supabase.from('quotes').update(patch).eq('id', q.id).is('balance_invoice_number', null).select('id')
+    if (error || !saved?.length) {
+      setBusyId(null)
+      flash(error ? 'Could not raise the balance invoice. Please try again.' : 'A balance invoice has already been raised for this job.', true)
+      await refreshQuote(q.id)
+      return
+    }
+    await costs.markBilled(patch.balance_invoice_number)
+    const updated = { ...q, ...patch }
+    setQuotes(prev => prev.map(x => x.id === q.id ? updated : x))
+    const balance = invoicesOf(updated).find(i => i.kind === 'balance')
+    flash(`Balance invoice ${patch.balance_invoice_number} for Bds$${money2(balance?.amount)} sent to ${q.client_name || 'your client'}`)
+    if (q.message_id) {
+      supabase.from('messages').update({ client_read: false }).eq('id', q.message_id).then(() => {})
+      const replyId = newId()
+      supabase.from('message_replies').insert({
+        id: replyId,
+        message_id: q.message_id,
+        sender_name: profile.name,
+        sender_user_id: authUser?.id,
+        quote_id: q.id,
+        body: invoiceReplyBody(patch.balance_invoice_number, patch.balance_invoice_due_date, termsValue, 'balance'),
+      }).then(({ error: replyErr }) => {
+        if (!replyErr) authedPost('/api/notify-reply', { reply_id: replyId }).catch(() => {})
+      })
+    }
+    setBusyId(null)
   }
 
   async function updateStatus(quoteId, status, extra = {}) {
@@ -351,18 +527,26 @@ function QuotesInner() {
       client_phone: invoiceClientPhone.trim() || null,
       client_address: invoiceClientAddress.trim() || null,
       terms: invoiceTermsText.trim() || null,
+      // A quote that asks for a deposit is invoiced for the deposit first.
+      ...depositInvoiceColumns(q),
     }
+    // Expenses billed on to the client go on this invoice (not on a deposit
+    // invoice: those go on the balance invoice later).
+    const costs = billedCostsFor(q, invoicesOf({ ...q, ...patch })[0]?.kind)
+    Object.assign(patch, costs.columns)
+    const firstInvoice = invoicesOf({ ...q, ...patch })[0]
     const { error } = await supabase.from('quotes').update(patch).eq('id', q.id)
     if (error) {
       alert('Could not send the invoice. Please try again.')
       setBusyId(null)
       return
     }
+    await costs.markBilled(invoiceNumber)
     setQuotes(prev => prev.map(x => x.id === q.id ? { ...x, ...patch } : x))
     setInvoicingId(null)
     setQuickInvoiceId(null)
     clearInvoicePrompt(supabase, q.id)
-    setToast({ msg: `Invoice ${invoiceNumber} sent to ${q.client_name || 'your client'}`, err: false })
+    setToast({ msg: `${firstInvoice?.kind === 'deposit' ? `Deposit invoice ${invoiceNumber} for Bds$${money2(firstInvoice.amount)}` : `Invoice ${invoiceNumber}`} sent to ${q.client_name || 'your client'}`, err: false })
     setTimeout(() => setToast(null), 3600)
 
     // Note it in the conversation and notify the client
@@ -380,7 +564,7 @@ function QuotesInner() {
         sender_name: profile.name,
         sender_user_id: authUser?.id,
         quote_id: q.id,
-        body: `Sent invoice ${invoiceNumber}, payment due ${fmtDate(dueStr)} (${terms.label.toLowerCase()})`,
+        body: invoiceReplyBody(invoiceNumber, dueStr, terms.value, firstInvoice?.kind),
       }).then(({ error }) => {
         if (!error) authedPost('/api/notify-reply', { reply_id: replyId }).catch(() => {})
       })
@@ -504,7 +688,8 @@ function QuotesInner() {
     .filter(q => statuses.includes(q.status))
     .reduce((sum, q) => sum + (Number(q.total) || 0), 0)
   const totalEarned = sumWhere(['paid'])
-  const pendingPayment = sumWhere(['invoiced', 'completed'])
+  // Still owed: part payments already received are not pending.
+  const pendingPayment = byVenture.filter(q => ['invoiced', 'completed'].includes(q.status)).reduce((sum, q) => sum + jobOutstanding(q), 0)
   const pendingCount = byVenture.filter(q => q.status === 'sent').length
 
   // ── Earnings breakdowns (paid quotes only) ──
@@ -631,7 +816,7 @@ function QuotesInner() {
     .filter(q => ['invoiced', 'completed'].includes(q.status) && q.invoice_due_date)
     .map(q => ({ ...q, daysLeft: daysUntil(q.invoice_due_date) }))
     .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999))
-  const outstandingTotal = outstanding.reduce((sum, q) => sum + (Number(q.total) || 0), 0)
+  const outstandingTotal = outstanding.reduce((sum, q) => sum + jobOutstanding(q), 0)
   const overdueCount = outstanding.filter(q => q.daysLeft !== null && q.daysLeft < 0).length
 
   // Send a "payment due" reminder to the client (email + push + thread note)
@@ -703,12 +888,36 @@ function QuotesInner() {
     <main className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-10">
 
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Quotes &amp; earnings</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Track every quote from first send to money in hand.
-          </p>
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Quotes &amp; earnings</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Track every quote from first send to money in hand.
+            </p>
+          </div>
+          {/* Quotes and invoices for a date range, as a spreadsheet file */}
+          <button
+            onClick={() => setExportOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-full border transition-colors hover:border-gray-400"
+            style={{ borderColor: '#00267F', color: '#00267F' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+            Export CSV
+          </button>
         </div>
+        <ExportCsvDialog
+          open={exportOpen}
+          onClose={() => setExportOpen(false)}
+          records={exportOpen ? freelancerRecords(byVenture, { payments }) : []}
+          secondFile={{
+            label: 'Also download my expenses (a second file, with profit per job)',
+            prefix: 'vetted-expenses',
+            columns: EXPENSE_COLUMNS,
+            records: exportOpen ? expenseRecords(Object.values(expenses).flat(), Object.fromEntries(quotes.map(x => [x.id, x]))) : [],
+          }}
+          columns={FREELANCER_COLUMNS}
+          note={hasVentures && venture !== 'all' ? `Only ${venture === 'none' ? 'quotes with no business' : venture}, as chosen above.` : ''}
+        />
 
         {/* Earnings summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
@@ -831,12 +1040,12 @@ function QuotesInner() {
                           )
                         )}
                         <button
-                          onClick={() => updateStatus(q.id, 'paid', { paid_at: new Date().toISOString() })}
+                          onClick={() => { setPaymentError(''); setPayingId(q.id) }}
                           disabled={busyId === q.id}
                           className="text-xs font-semibold px-3.5 py-1.5 rounded-full text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                           style={{ backgroundColor: '#16a34a' }}
                         >
-                          Mark paid
+                          Record a payment
                         </button>
                       </div>
                     </div>
@@ -1143,7 +1352,7 @@ function QuotesInner() {
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(q.total).toFixed(2)}</p>
+                    <p className="text-sm font-bold" style={{ color: '#00267F' }}>${money2(q.invoice_number ? jobTotal(q) : q.total)}</p>
                     <p className="text-xs text-gray-400">due {fmtDate(q.due_date)}</p>
                   </div>
                   <svg
@@ -1219,14 +1428,34 @@ function QuotesInner() {
                           disabled={busyId === q.id}
                           onToggle={() => requestCompletedToggle(q)}
                         />
-                        <CheckRow
-                          label="Paid"
-                          sublabel={q.paid_at ? `Received ${fmtDate(q.paid_at)} · counted in your earnings` : 'Tick when the money is in hand'}
-                          checked={q.status === 'paid'}
-                          disabled={busyId === q.id}
-                          onToggle={() => requestPaidToggle(q)}
-                        />
                       </div>
+                    )}
+
+                    {/* Payments: each invoice, what is paid and owed, the history */}
+                    {q.invoice_number && (
+                      <PaymentsPanel
+                        quote={q}
+                        payments={payments[q.id] || []}
+                        removed={removedPayments[q.id] || []}
+                        busy={paymentBusy || busyId === q.id}
+                        onRecord={() => { setPaymentError(''); setPayingId(q.id) }}
+                        onDelete={p => deletePayment(q, p)}
+                        onRaiseBalance={() => raiseBalanceInvoice(q)}
+                        onUndoLegacyPaid={() => requestPaidToggle(q)}
+                        onTogglePause={() => toggleReminderPause(q)}
+                      />
+                    )}
+
+                    {/* Expenses: private to the professional */}
+                    {q.status !== 'declined' && (
+                      <ExpensesPanel
+                        quote={q}
+                        freelancerId={profile?.id}
+                        userId={authUser?.id}
+                        expenses={expenses[q.id] || []}
+                        onChange={list => setExpenses(prev => ({ ...prev, [q.id]: list }))}
+                        onNotice={(msg, err) => flash(msg, err)}
+                      />
                     )}
 
                     {/* Send-invoice form */}
@@ -1292,15 +1521,16 @@ function QuotesInner() {
                         >
                           Quote PDF
                         </button>
-                        {q.invoice_number && (
+                        {invoicesOf(q).map(inv => (
                           <button
-                            onClick={() => printSavedQuote(q, profile, { type: 'invoice' })}
+                            key={inv.number}
+                            onClick={() => printSavedQuote(q, profile, { type: 'invoice', invoiceNumber: inv.number })}
                             className="text-xs font-semibold px-3.5 py-1.5 rounded-full hover:opacity-90 transition-opacity"
                             style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                           >
-                            Invoice PDF
+                            {inv.kind === 'deposit' ? 'Deposit invoice PDF' : inv.kind === 'balance' ? 'Balance invoice PDF' : 'Invoice PDF'}
                           </button>
-                        )}
+                        ))}
 
                         {q.status === 'paid' && q.paid_at && (
                           <>
@@ -1390,6 +1620,17 @@ function QuotesInner() {
       </div>
 
       {/* Confirmation popup for lifecycle changes */}
+      {payingId && quotes.find(x => x.id === payingId) && (
+        <RecordPaymentDialog
+          key={payingId}
+          quote={quotes.find(x => x.id === payingId)}
+          busy={paymentBusy}
+          error={paymentError}
+          onSave={p => savePayment(quotes.find(x => x.id === payingId), p)}
+          onClose={() => setPayingId(null)}
+        />
+      )}
+
       {confirmAction && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center px-4"
@@ -1427,6 +1668,7 @@ function QuotesInner() {
         return (
           <QuickInvoiceDialog
             quote={q}
+            extraCosts={pendingBilledTotal(expenses[q.id] || [])}
             terms={invoiceTerms}
             onTermsChange={setInvoiceTerms}
             busy={busyId === q.id}

@@ -2,18 +2,21 @@
 import { PAYMENT_TERMS } from '@/lib/paymentTerms'
 import { invoiceDueDate, fmtInvoiceDate } from '@/lib/invoicing'
 import { todayKeyBarbados } from '@/lib/rentals'
+import { quoteDeposit, money2 } from '@/lib/payments'
 
 // "Send this invoice?" — where a professional lands from the Send invoice
 // button on a notification, a push or the acceptance email. Who it goes to,
 // how much, when it is due, and one button. A sent invoice cannot be unsent,
 // so it is a confirmation rather than a one-tap send.
-export default function QuickInvoiceDialog({ quote, terms, onTermsChange, busy, onSend, onClose, onMoreOptions }) {
+export default function QuickInvoiceDialog({ quote, terms, onTermsChange, busy, onSend, onClose, onMoreOptions, extraCosts = 0 }) {
   if (!quote) return null
   const dueKey = invoiceDueDate(todayKeyBarbados(), terms)
+  // A quote that asks for a deposit is invoiced for the deposit first.
+  const deposit = quoteDeposit(quote)
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
       <div className="bg-white rounded-2xl w-full max-w-sm p-6" role="dialog" aria-modal="true" aria-labelledby="quick-invoice-title" onClick={e => e.stopPropagation()}>
-        <h3 id="quick-invoice-title" className="font-bold text-gray-900 text-lg" style={{ fontFamily: 'var(--font-display)' }}>Send this invoice?</h3>
+        <h3 id="quick-invoice-title" className="font-bold text-gray-900 text-lg" style={{ fontFamily: 'var(--font-display)' }}>{deposit > 0 ? 'Send the deposit invoice?' : 'Send this invoice?'}</h3>
         <p className="text-sm text-gray-500 mt-1 leading-relaxed">
           {quote.client_name || 'Your client'} accepted quote {quote.quote_number} and is waiting for it.
         </p>
@@ -23,8 +26,12 @@ export default function QuickInvoiceDialog({ quote, terms, onTermsChange, busy, 
             <dd className="font-medium text-gray-900 text-right truncate">{quote.client_name || quote.client_email || 'Client'}</dd>
           </div>
           <div className="flex justify-between gap-3 px-4 py-2.5 border-t border-gray-100">
-            <dt className="text-gray-500">Amount</dt>
-            <dd className="font-bold tabular-nums" style={{ color: 'var(--accent)' }}>Bds${Number(quote.total || 0).toFixed(2)}</dd>
+            <dt className="text-gray-500">{deposit > 0 ? 'Deposit' : 'Amount'}</dt>
+            <dd className="font-bold tabular-nums" style={{ color: 'var(--accent)' }}>
+              Bds${money2(deposit > 0 ? deposit : Number(quote.total) + Number(extraCosts || 0))}
+              {deposit > 0 ? <span className="font-normal text-gray-400"> of Bds${money2(quote.total)}</span> : null}
+              {deposit === 0 && extraCosts > 0 ? <span className="block text-xs font-normal text-gray-400">includes Bds${money2(extraCosts)} billed costs</span> : null}
+            </dd>
           </div>
           <div className="flex justify-between gap-3 px-4 py-2.5 border-t border-gray-100">
             <dt className="text-gray-500">Payment due</dt>

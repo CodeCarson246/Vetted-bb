@@ -19,6 +19,13 @@ export async function GET(request) {
   if (!serviceKey) return Response.json({ error: 'Not configured.' }, { status: 500 })
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
 
+  // Rate-limit counts older than two days are no use to anyone (the longest
+  // window is ten minutes). Best effort: before SQL Section 46 there is no
+  // such table, and that must not stop the purge.
+  try {
+    await admin.from('rate_limits').delete().lt('window_start', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+  } catch { /* ignore */ }
+
   const { data: expired, error } = await admin
     .from('account_deactivations')
     .select('user_id, purge_after')

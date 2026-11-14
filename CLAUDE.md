@@ -22,3 +22,7 @@ Rules:
 - Keep entries short: one line each, plus the two sub-lines.
 - Be accurate over tidy. If something was only tested against a fake database, or not tested at all, say so. Do not write that something works unless it was checked on the live site.
 - Before changing a status, check the real state (git, the live site, the database) and do not go by memory.
+
+## Keep TESTING.md up to date
+
+When a change needs a person to try it, add the steps to `TESTING.md` under the account that does it (visitor, client, professional, organisation): one checkbox per thing to do, saying what should happen. Remove items once Carson confirms they work (and move them to SHIPPED in the changelog).

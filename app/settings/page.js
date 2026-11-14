@@ -8,6 +8,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 import InstallAppCard from '@/components/InstallAppCard'
 import { getPushStatus, enablePush, disablePush } from '@/lib/push'
 import { profileUrl } from '@/lib/handles'
+import { getMyFreelancer } from '@/lib/myFreelancer'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 const DURATIONS = [30, 45, 60, 90, 120, 180]
@@ -43,6 +44,9 @@ export default function SettingsPage() {
   const [bkSaving, setBkSaving] = useState(false)
   const [bkSaved, setBkSaved] = useState(false)
   const [hidden, setHidden] = useState(false)
+  // Automatic payment reminders (SQL Section 45): on unless switched off.
+  const [reminders, setReminders] = useState(true)
+  const [remindersBusy, setRemindersBusy] = useState(false)
   const [hiddenBusy, setHiddenBusy] = useState(false)
   const [showDeactConfirm, setShowDeactConfirm] = useState(false)
   const [deactBusy, setDeactBusy] = useState(false)
@@ -53,10 +57,13 @@ export default function SettingsPage() {
     if (!user) { router.replace('/login'); return }
     let cancelled = false
     ;(async () => {
-      const { data: fp } = await supabase.from('freelancers').select('id, name, trade, hidden').eq('user_id', user.id).maybeSingle()
+      // The owner's own complete row (some columns, like the reminder
+      // switch, are not public: lib/myFreelancer).
+      const fp = await getMyFreelancer(user.id)
       if (cancelled) return
       setProfile(fp || null)
       setHidden(!!fp?.hidden)
+      setReminders(fp?.payment_reminders_enabled !== false)
       if (fp) {
         const [{ data: svc }, { data: settings }] = await Promise.all([
           supabase.from('services').select('id, name, price, duration_minutes, bookable').eq('freelancer_id', fp.id).order('created_at', { ascending: true }),
@@ -109,6 +116,14 @@ export default function SettingsPage() {
     const { error } = await supabase.from('freelancers').update({ hidden: next }).eq('id', profile.id)
     if (!error) setHidden(next)
     setHiddenBusy(false)
+  }
+
+  async function toggleReminders() {
+    const next = !reminders
+    setRemindersBusy(true)
+    const { error } = await supabase.from('freelancers').update({ payment_reminders_enabled: next }).eq('id', profile.id)
+    if (!error) setReminders(next)
+    setRemindersBusy(false)
   }
 
   async function deactivateAccount() {
@@ -287,6 +302,17 @@ export default function SettingsPage() {
                   Clients can no longer find you or view your profile page. Flip the switch to go live again.
                 </p>
               )}
+            </Card>
+          )}
+
+          {profile && (
+            <Card title="Payment reminders" desc="Vetted.bb emails your clients about unpaid invoices for you: 3 days before the due date, on the day, and at 7, 14 and 30 days overdue, then stops. Part-paid invoices are reminded of what is still owed. You get a notification at 7, 14 and 30 days overdue. You can also pause reminders on a single invoice in Quotes & earnings.">
+              <div className="flex items-center justify-between gap-3 py-1">
+                <span className="text-sm font-medium text-gray-800">
+                  {reminders ? 'Reminders are on' : 'Reminders are off for all your invoices'}
+                </span>
+                <Switch on={reminders} onClick={() => { if (!remindersBusy) toggleReminders() }} />
+              </div>
             </Card>
           )}
 

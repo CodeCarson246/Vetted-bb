@@ -2332,3 +2332,590 @@ $$;
 --   SELECT column_name FROM information_schema.columns
 --   WHERE table_name = 'freelancers' AND column_name = 'rising_since'
 --     AND has_column_privilege('anon', 'public.freelancers', column_name, 'SELECT');
+
+-- ============================================================
+-- SECTION 44 — DEPOSITS AND PART PAYMENTS (2026-11-14)
+--
+--   >>> RUN THIS BEFORE THE MATCHING CODE GOES LIVE. <<<
+--   Additive and harmless on its own; the new code reads these columns.
+--
+-- Trades here often work on 50% upfront. This lets a quote ask for a
+-- deposit, invoices take part payments, and a deposit job be invoiced twice
+-- (the deposit, then the balance).
+--
+-- There is no invoices table: an invoice is the quote's own row with its
+-- invoice_* columns set (lib/invoicing.js). So the columns go on quotes, and
+-- a deposit job keeps BOTH its invoices on that one row (lib/payments.js):
+--
+--   deposit_type, deposit_value   on the quote: 'percent' (1 to 100) or
+--                                 'fixed' (Bds$); both empty = no deposit
+--   is_deposit                    the row's first invoice is the deposit
+--   invoice_amount                that first invoice's amount when it is
+--                                 the deposit (otherwise it is the total)
+--   balance_invoice_number,       the second invoice, for the rest, raised
+--   balance_invoiced_at,          once the deposit is paid
+--   balance_invoice_terms,
+--   balance_invoice_due_date
+--   amount_paid                   running total of invoice_payments,
+--                                 kept by the trigger below, never typed in
+--
+-- No parent_quote_id is needed: both invoices sit on the parent quote's row.
+--
+-- invoice_payments: one row per payment received (a deposit, a second
+-- payment, a final one), never overwritten. A mistaken entry is deleted and
+-- entered again.
+--
+-- Who can see and change payments (row level security):
+--   read     anyone who can read the quote: the professional, the client it
+--            is addressed to, and members of the organisation it belongs to
+--            (the same can_access_quote() rule the purchase orders use)
+--   add      only the professional the quote belongs to, as themselves
+--   delete   only the professional the quote belongs to
+--   change   nobody (delete and enter again)
+--
+-- When payments reach the job's total, the trigger marks the job paid
+-- (paid_at, status 'paid'), the same as ticking Paid used to. Deleting a
+-- payment that takes it back below the total un-marks it.
+--
+-- Rules the database keeps, not just the screens (a professional can write
+-- to their own rows without using the site):
+--   - a payment is not dated in the future, is against one of the job's own
+--     invoices, and never takes the job past what is owed; a job already
+--     marked paid takes no more payments (invoice_payments_guard)
+--   - a deposit invoice is never for more than the quote's total
+--   - two payments saved at the same moment are counted one after the
+--     other (the job's row is locked first), so neither is lost
+--   - a removed payment leaves a record: invoice_payment_removals, written
+--     only by the trigger, readable by everyone who can read the quote
+--
+-- Safe to re-run.
+-- ============================================================
+
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS deposit_type             text,
+  ADD COLUMN IF NOT EXISTS deposit_value            numeric,
+  ADD COLUMN IF NOT EXISTS is_deposit               boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS invoice_amount           numeric,
+  ADD COLUMN IF NOT EXISTS balance_invoice_number   text,
+  ADD COLUMN IF NOT EXISTS balance_invoiced_at      timestamptz,
+  ADD COLUMN IF NOT EXISTS balance_invoice_terms    text,
+  ADD COLUMN IF NOT EXISTS balance_invoice_due_date date,
+  ADD COLUMN IF NOT EXISTS amount_paid              numeric DEFAULT 0;
+
+ALTER TABLE quotes DROP CONSTRAINT IF EXISTS quotes_deposit_check;
+ALTER TABLE quotes ADD CONSTRAINT quotes_deposit_check CHECK (
+  (deposit_type IS NULL AND deposit_value IS NULL)
+  OR (deposit_type = 'percent' AND deposit_value IS NOT NULL AND deposit_value > 0 AND deposit_value <= 100)
+  OR (deposit_type = 'fixed' AND deposit_value IS NOT NULL AND deposit_value > 0)
+);
+
+-- A deposit invoice is for part of the job, never more than all of it.
+ALTER TABLE quotes DROP CONSTRAINT IF EXISTS quotes_invoice_amount_check;
+ALTER TABLE quotes ADD CONSTRAINT quotes_invoice_amount_check CHECK (
+  invoice_amount IS NULL OR (invoice_amount > 0 AND invoice_amount <= total)
+);
+
+CREATE TABLE IF NOT EXISTS invoice_payments (
+  id             uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  quote_id       uuid        NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  invoice_number text,
+  amount         numeric     NOT NULL CHECK (amount > 0),
+  received_on    date        NOT NULL,
+  method         text,
+  reference      text,
+  recorded_by    uuid        DEFAULT auth.uid(),
+  created_at     timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS invoice_payments_quote_idx ON invoice_payments (quote_id, received_on);
+
+ALTER TABLE invoice_payments DROP CONSTRAINT IF EXISTS invoice_payments_sane;
+ALTER TABLE invoice_payments ADD CONSTRAINT invoice_payments_sane CHECK (
+  received_on >= DATE '2000-01-01'
+  AND char_length(coalesce(method, '')) <= 80
+  AND char_length(coalesce(reference, '')) <= 120
+  AND char_length(coalesce(invoice_number, '')) <= 60
+);
+
+-- Payments that were removed: what was entered, who took it off, and when.
+-- Nobody can write here except the trigger below.
+CREATE TABLE IF NOT EXISTS invoice_payment_removals (
+  id             uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  quote_id       uuid        NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  invoice_number text,
+  amount         numeric     NOT NULL,
+  received_on    date        NOT NULL,
+  method         text,
+  reference      text,
+  recorded_at    timestamptz,
+  removed_by     uuid,
+  removed_at     timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS invoice_payment_removals_quote_idx ON invoice_payment_removals (quote_id, removed_at DESC);
+ALTER TABLE invoice_payment_removals ENABLE ROW LEVEL SECURITY;
+REVOKE INSERT, UPDATE, DELETE ON invoice_payment_removals FROM anon, authenticated;
+DROP POLICY IF EXISTS "Removed payments readable with the quote" ON invoice_payment_removals;
+CREATE POLICY "Removed payments readable with the quote"
+  ON invoice_payment_removals FOR SELECT
+  USING (can_access_quote(quote_id));
+
+ALTER TABLE invoice_payments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Payments readable with the quote" ON invoice_payments;
+CREATE POLICY "Payments readable with the quote"
+  ON invoice_payments FOR SELECT
+  USING (can_access_quote(quote_id));
+
+DROP POLICY IF EXISTS "Professional records payments" ON invoice_payments;
+CREATE POLICY "Professional records payments"
+  ON invoice_payments FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    recorded_by = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM quotes q JOIN freelancers f ON f.id = q.freelancer_id
+      WHERE q.id = invoice_payments.quote_id AND f.user_id = auth.uid() AND q.invoice_number IS NOT NULL
+    )
+  );
+
+DROP POLICY IF EXISTS "Professional deletes payments" ON invoice_payments;
+CREATE POLICY "Professional deletes payments"
+  ON invoice_payments FOR DELETE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM quotes q JOIN freelancers f ON f.id = q.freelancer_id
+      WHERE q.id = invoice_payments.quote_id AND f.user_id = auth.uid()
+    )
+  );
+
+-- Before a payment is saved: is it one the job can take?
+-- Only speaks to the professional the job belongs to (and the service role);
+-- anyone else falls through to the row level security rules above, which
+-- refuse them without telling them anything about the job.
+CREATE OR REPLACE FUNCTION public.invoice_payments_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  claims    jsonb;
+  q         quotes%ROWTYPE;
+  paid_sum  numeric;
+  job_total numeric;
+  today     date := ((now() AT TIME ZONE 'UTC') - interval '4 hours')::date;  -- Barbados
+BEGIN
+  claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+  IF claims IS NOT NULL AND coalesce(claims ->> 'role', '') <> 'service_role' AND NOT EXISTS (
+    SELECT 1 FROM quotes x JOIN freelancers f ON f.id = x.freelancer_id
+    WHERE x.id = NEW.quote_id AND f.user_id = auth.uid()
+  ) THEN
+    RETURN NEW;
+  END IF;
+
+  -- Lock the job first. A second payment saved at the same moment waits
+  -- here until this one is finished, then sees it.
+  SELECT * INTO q FROM quotes WHERE id = NEW.quote_id FOR UPDATE;
+  IF NOT FOUND OR q.invoice_number IS NULL THEN RETURN NEW; END IF;
+
+  IF NEW.received_on > today + 1 THEN
+    RAISE EXCEPTION 'A payment cannot be dated in the future.' USING ERRCODE = 'check_violation';
+  END IF;
+  IF NEW.invoice_number IS NOT NULL
+     AND NEW.invoice_number IS DISTINCT FROM q.invoice_number
+     AND NEW.invoice_number IS DISTINCT FROM q.balance_invoice_number THEN
+    RAISE EXCEPTION 'That invoice is not on this job.' USING ERRCODE = 'check_violation';
+  END IF;
+  IF q.paid_at IS NOT NULL THEN
+    RAISE EXCEPTION 'This job is already marked as paid.' USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- The invoiced total: the quote plus any costs billed on (section 47).
+  job_total := coalesce(q.total, 0) + coalesce((to_jsonb(q) ->> 'billed_expenses_total')::numeric, 0);
+  SELECT coalesce(sum(amount), 0) INTO paid_sum FROM invoice_payments WHERE quote_id = NEW.quote_id;
+  IF paid_sum + NEW.amount > job_total + 0.005 THEN
+    RAISE EXCEPTION 'That is more than is still owed on this job.' USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS invoice_payments_guard ON invoice_payments;
+CREATE TRIGGER invoice_payments_guard
+  BEFORE INSERT ON invoice_payments
+  FOR EACH ROW EXECUTE FUNCTION public.invoice_payments_guard();
+
+-- Keep quotes.amount_paid (and paid / not paid) in step with the payments.
+-- Paid in full means the quote's total plus any costs billed on to the
+-- client (section 47 adds that column; before it exists it counts as 0).
+CREATE OR REPLACE FUNCTION public.invoice_payments_sync()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  qid       uuid := coalesce(NEW.quote_id, OLD.quote_id);
+  paid_sum  numeric;
+  last_day  date;
+  q         quotes%ROWTYPE;
+  job_total numeric;
+  when_paid timestamptz;
+BEGIN
+  -- The job's row is locked before the payments are added up, so two
+  -- changes at the same moment cannot each miss the other.
+  SELECT * INTO q FROM quotes WHERE id = qid FOR UPDATE;
+  IF NOT FOUND THEN RETURN NULL; END IF;  -- the whole job is being deleted
+  SELECT coalesce(sum(amount), 0), max(received_on) INTO paid_sum, last_day
+    FROM invoice_payments WHERE quote_id = qid;
+  job_total := coalesce(q.total, 0) + coalesce((to_jsonb(q) ->> 'billed_expenses_total')::numeric, 0);
+
+  IF TG_OP = 'DELETE' THEN
+    INSERT INTO invoice_payment_removals (quote_id, invoice_number, amount, received_on, method, reference, recorded_at, removed_by)
+    VALUES (OLD.quote_id, OLD.invoice_number, OLD.amount, OLD.received_on, OLD.method, OLD.reference, OLD.created_at, auth.uid());
+  END IF;
+
+  IF paid_sum >= job_total AND job_total > 0 AND q.paid_at IS NULL THEN
+    -- Paid in full: dated the day the last payment came in (noon, Barbados).
+    when_paid := (last_day::timestamp + interval '16 hours') AT TIME ZONE 'UTC';
+    UPDATE quotes SET
+      amount_paid  = paid_sum,
+      paid_at      = when_paid,
+      completed_at = coalesce(completed_at, when_paid),
+      status       = 'paid'
+    WHERE id = qid;
+  ELSIF TG_OP = 'DELETE' AND paid_sum < job_total AND q.paid_at IS NOT NULL THEN
+    -- A payment was taken back and the job is no longer paid in full.
+    UPDATE quotes SET
+      amount_paid = paid_sum,
+      paid_at     = NULL,
+      status      = CASE WHEN completed_at IS NOT NULL AND client_completed_at IS NOT NULL THEN 'completed' ELSE 'invoiced' END
+    WHERE id = qid;
+  ELSE
+    UPDATE quotes SET amount_paid = paid_sum WHERE id = qid;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS invoice_payments_sync ON invoice_payments;
+CREATE TRIGGER invoice_payments_sync
+  AFTER INSERT OR DELETE ON invoice_payments
+  FOR EACH ROW EXECUTE FUNCTION public.invoice_payments_sync();
+
+-- Verify: should list invoice_payments with its three rules and
+-- invoice_payment_removals with one.
+--   SELECT tablename, policyname, cmd FROM pg_policies WHERE tablename IN ('invoice_payments', 'invoice_payment_removals');
+
+-- ============================================================
+-- SECTION 45 — AUTOMATIC PAYMENT REMINDERS (2026-11-14)
+--
+--   >>> RUN THIS BEFORE THE MATCHING CODE GOES LIVE. <<<
+--   The daily reminder job reads these columns; without them it stops
+--   with an error and sends nothing.
+--
+-- A daily job (/api/cron/payment-reminders) emails clients about unpaid and
+-- part-paid invoices: 3 days before the due date, on it, and at 7, 14 and 30
+-- days overdue (lib/paymentReminders.js).
+--
+-- There is no invoices table (an invoice is the quote's row), so the
+-- per-invoice columns go on quotes:
+--   reminders_paused     the professional paused reminders on this invoice
+--   last_reminder_sent   the Barbados day the last reminder went
+--   reminder_stage       "<invoice number>:<stage>" of the last one sent
+--                        (these two are for the professional's screen only;
+--                        the job decides from payment_reminder_log below,
+--                        because a professional can change their own row)
+--
+-- freelancers.payment_reminders_enabled: the professional's master switch,
+-- on by default. Organisations are not given one: they receive invoices,
+-- they do not send them. This column is not publicly readable (section 41);
+-- the owner reads it through my_freelancer().
+--
+-- payment_reminder_log: one row per reminder, sent or (in dry-run mode)
+-- only checked, so what went out is provable. It is also what the job reads
+-- to know which stages an invoice has had. A unique index allows one real
+-- reminder per invoice per Barbados day: a second attempt fails in the
+-- database, not just in the code. `error` is 'pending' while the email is
+-- going, empty once it was accepted, and the reason if it failed (a failed
+-- one is tried again another day). Readable by the professional the invoice
+-- belongs to; written only by the job (service role).
+--
+-- Safe to re-run.
+-- ============================================================
+
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS reminders_paused   boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS last_reminder_sent date,
+  ADD COLUMN IF NOT EXISTS reminder_stage     text;
+
+ALTER TABLE freelancers
+  ADD COLUMN IF NOT EXISTS payment_reminders_enabled boolean DEFAULT true;
+
+CREATE TABLE IF NOT EXISTS payment_reminder_log (
+  id             uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  quote_id       uuid        NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  invoice_number text        NOT NULL,
+  stage          text        NOT NULL,
+  sent_on        date        NOT NULL,
+  amount         numeric     NOT NULL,
+  recipients     text[]      NOT NULL DEFAULT '{}',
+  dry_run        boolean     NOT NULL DEFAULT false,
+  error          text,
+  created_at     timestamptz DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS payment_reminder_log_once_a_day
+  ON payment_reminder_log (quote_id, invoice_number, sent_on) WHERE NOT dry_run;
+CREATE INDEX IF NOT EXISTS payment_reminder_log_quote_idx ON payment_reminder_log (quote_id, created_at DESC);
+
+ALTER TABLE payment_reminder_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Professional reads own reminder log" ON payment_reminder_log;
+CREATE POLICY "Professional reads own reminder log"
+  ON payment_reminder_log FOR SELECT
+  TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM quotes q JOIN freelancers f ON f.id = q.freelancer_id
+    WHERE q.id = payment_reminder_log.quote_id AND f.user_id = auth.uid()
+  ));
+
+-- Verify: the last reminders the job sent (or checked, in dry-run mode).
+--   SELECT sent_on, invoice_number, stage, amount, dry_run, error, recipients
+--   FROM payment_reminder_log ORDER BY created_at DESC LIMIT 20;
+
+-- ============================================================
+-- SECTION 46 — RATE LIMITS THAT HOLD ACROSS SERVERS (2026-11-14)
+-- Twelve API routes limit how often they can be called (for example 5
+-- enquiries per 10 minutes from one connection). The counts used to live in
+-- the memory of whichever Vercel server answered, so they reset whenever a
+-- server restarted and each server counted on its own: a speed bump, not a
+-- limit. The counts now live here, shared by every server (lib/rateLimit.js).
+--
+--   rate_limits        one row per key per time window, with a hit count.
+--                      Keys are hashed in the app, so no IP address or user
+--                      id is stored in readable form.
+--   rate_limit_hit()   counts one request and answers whether it is within
+--                      the limit, in one atomic step. It uses a sliding
+--                      window (this window's count plus the share of the
+--                      last window still inside the period), so a burst
+--                      across a window boundary is not let through double.
+--
+-- Only the service role (the API routes) can use either; the public key can
+-- neither read the counts nor call the function. Old rows are deleted by the
+-- daily clean-up job.
+--
+-- Safe to re-run. Before it runs, the routes fall back to the old
+-- per-server counts, so nothing breaks either way.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key          text        NOT NULL,
+  window_start timestamptz NOT NULL,
+  hits         integer     NOT NULL DEFAULT 0,
+  PRIMARY KEY (key, window_start)
+);
+CREATE INDEX IF NOT EXISTS rate_limits_window_idx ON rate_limits (window_start);
+
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON rate_limits FROM anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.rate_limit_hit(p_key text, p_limit integer, p_window_seconds integer)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  win        double precision := greatest(coalesce(p_window_seconds, 60), 1);
+  now_epoch  double precision := extract(epoch FROM clock_timestamp());
+  cur_start  timestamptz := to_timestamp(floor(now_epoch / win) * win);
+  prev_start timestamptz := cur_start - make_interval(secs => win);
+  cur_hits   integer;
+  prev_hits  integer;
+  elapsed    double precision;
+BEGIN
+  INSERT INTO rate_limits AS r (key, window_start, hits)
+  VALUES (p_key, cur_start, 1)
+  ON CONFLICT (key, window_start) DO UPDATE SET hits = r.hits + 1
+  RETURNING hits INTO cur_hits;
+
+  SELECT hits INTO prev_hits FROM rate_limits WHERE key = p_key AND window_start = prev_start;
+  elapsed := (now_epoch - extract(epoch FROM cur_start)) / win;
+
+  RETURN cur_hits + coalesce(prev_hits, 0) * (1 - elapsed) <= p_limit;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.rate_limit_hit(text, integer, integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rate_limit_hit(text, integer, integer) TO service_role;
+
+-- Verify: the busiest keys right now (hashed).
+--   SELECT key, window_start, hits FROM rate_limits ORDER BY hits DESC LIMIT 10;
+
+-- ============================================================
+-- SECTION 47 — JOB EXPENSES (2026-11-14)
+--
+--   >>> RUN THIS BEFORE THE MATCHING CODE GOES LIVE. <<<
+--
+-- A professional can log what a job cost them (materials, parts, hire),
+-- with an optional receipt photo, and choose to bill an expense on to the
+-- client. Profit = what was invoiced minus what it cost.
+--
+-- WHO CAN SEE WHAT. Expenses are the professional's private commercial data:
+--
+--   job_expenses        only the professional who logged it can read, add,
+--                       change or delete a row, and only against their own
+--                       jobs. Nobody else, ever: no client, no organisation,
+--                       no public read. The service role (the automatic
+--                       invoice) reads it to copy billed lines.
+--   receipts bucket     PRIVATE (not public like portfolio): a receipt photo
+--                       is only reachable by its owner through a short-lived
+--                       signed link. Files live under <user id>/... and only
+--                       that user can add, see or delete them.
+--
+-- An expense reaches the client only when the professional ticks "Bill to
+-- client", and only as a copy made when the invoice is issued:
+--
+--   quotes.billed_expenses        [{description, amount, incurred_on}], the
+--                                 cost lines printed on the invoice
+--   quotes.billed_expenses_total  their sum; the invoice total is the
+--                                 quote's total plus this
+--   job_expenses.billed_invoice_number   the invoice a billed expense went
+--                                 on, so it is never billed twice
+--
+-- Unbilled expenses are never copied, so no client-facing page, document or
+-- email can show them: those all read the quotes row, never job_expenses.
+--
+-- The invoices are rows in quotes (there is no invoices table), so there is
+-- no invoice_id column: quote_id identifies the job and its invoices.
+--
+-- Also here, because the invoice total now includes billed costs:
+--   - verify_document() reports that same invoiced total
+--   (the part-payment triggers in section 44 already count billed costs as
+--   soon as this section has added the column)
+--
+-- Rules the database keeps, not just the screens: billed costs are never
+-- negative; an expense has a sensible date, amount and length; only
+-- professionals can upload receipts, up to 2,000 files each.
+--
+-- Safe to re-run.
+-- ============================================================
+
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS billed_expenses       jsonb,
+  ADD COLUMN IF NOT EXISTS billed_expenses_total numeric DEFAULT 0;
+
+ALTER TABLE quotes DROP CONSTRAINT IF EXISTS quotes_billed_expenses_check;
+ALTER TABLE quotes ADD CONSTRAINT quotes_billed_expenses_check CHECK (
+  (billed_expenses_total IS NULL OR billed_expenses_total >= 0)
+  AND CASE
+        WHEN billed_expenses IS NULL THEN true
+        WHEN jsonb_typeof(billed_expenses) <> 'array' THEN false
+        ELSE jsonb_array_length(billed_expenses) <= 200
+      END
+);
+
+CREATE TABLE IF NOT EXISTS job_expenses (
+  id                    uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  freelancer_id         uuid        NOT NULL REFERENCES freelancers(id) ON DELETE CASCADE,
+  quote_id              uuid        REFERENCES quotes(id) ON DELETE CASCADE,
+  description           text        NOT NULL CHECK (length(trim(description)) > 0),
+  amount                numeric     NOT NULL CHECK (amount > 0),
+  incurred_on           date        NOT NULL,
+  receipt_url           text,
+  bill_to_client        boolean     NOT NULL DEFAULT false,
+  billed_invoice_number text,
+  created_at            timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS job_expenses_quote_idx ON job_expenses (quote_id);
+
+ALTER TABLE job_expenses DROP CONSTRAINT IF EXISTS job_expenses_sane;
+ALTER TABLE job_expenses ADD CONSTRAINT job_expenses_sane CHECK (
+  incurred_on BETWEEN DATE '2000-01-01' AND DATE '2100-01-01'
+  AND amount < 100000000
+  AND char_length(description) <= 500
+  AND char_length(coalesce(receipt_url, '')) <= 500
+  AND char_length(coalesce(billed_invoice_number, '')) <= 60
+);
+CREATE INDEX IF NOT EXISTS job_expenses_freelancer_idx ON job_expenses (freelancer_id, incurred_on);
+
+ALTER TABLE job_expenses ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON job_expenses FROM anon;
+
+DROP POLICY IF EXISTS "Professional manages own expenses" ON job_expenses;
+CREATE POLICY "Professional manages own expenses"
+  ON job_expenses FOR ALL
+  TO authenticated
+  USING (freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid()))
+  WITH CHECK (
+    freelancer_id IN (SELECT id FROM freelancers WHERE user_id = auth.uid())
+    AND (quote_id IS NULL OR quote_id IN (
+      SELECT q.id FROM quotes q JOIN freelancers f ON f.id = q.freelancer_id WHERE f.user_id = auth.uid()
+    ))
+  );
+
+-- ── receipts bucket: private, owner-only ──
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('receipts', 'receipts', false, 10485760, ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = 10485760,
+  allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+DROP POLICY IF EXISTS "receipts owner read" ON storage.objects;
+CREATE POLICY "receipts owner read" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text);
+-- Receipts are for professionals, and not without limit: 2,000 files each.
+CREATE OR REPLACE FUNCTION public.receipts_upload_allowed()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public, storage
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.freelancers WHERE user_id = auth.uid())
+     AND (SELECT count(*) FROM storage.objects
+           WHERE bucket_id = 'receipts' AND name LIKE auth.uid()::text || '/%') < 2000
+$$;
+REVOKE ALL ON FUNCTION public.receipts_upload_allowed() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.receipts_upload_allowed() TO authenticated;
+
+DROP POLICY IF EXISTS "receipts owner upload" ON storage.objects;
+CREATE POLICY "receipts owner upload" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text AND public.receipts_upload_allowed());
+DROP POLICY IF EXISTS "receipts owner delete" ON storage.objects;
+CREATE POLICY "receipts owner delete" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ── document verification: the invoiced total includes billed costs ──
+CREATE OR REPLACE FUNCTION public.verify_document(p_code text)
+RETURNS TABLE (
+  quote_number          text,
+  invoice_number        text,
+  status                text,
+  total                 numeric,
+  currency              text,
+  quote_date            text,
+  invoiced_at           timestamptz,
+  completed_at          timestamptz,
+  paid_at               timestamptz,
+  issuer_name           text,
+  billed_to             text,
+  organisation_verified boolean
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT q.quote_number, q.invoice_number, q.status,
+         (q.total + CASE WHEN q.invoice_number IS NOT NULL THEN coalesce(q.billed_expenses_total, 0) ELSE 0 END)::numeric,
+         COALESCE(q.currency, 'BBD'),
+         q.quote_date::text, q.invoiced_at, q.completed_at, q.paid_at,
+         COALESCE(NULLIF(trim(f.company_name), ''), f.name) AS issuer_name,
+         q.client_name AS billed_to,
+         COALESCE(o.verified, false) AS organisation_verified
+    FROM quotes q
+    JOIN freelancers f ON f.id = q.freelancer_id
+    LEFT JOIN organisations o ON o.id = q.organisation_id
+   WHERE q.verify_code = upper(trim(p_code))
+   LIMIT 1
+$$;
+GRANT EXECUTE ON FUNCTION public.verify_document(text) TO anon, authenticated;
+
+-- Verify: should list the one expenses rule and the three receipts rules.
+--   SELECT tablename, policyname FROM pg_policies
+--   WHERE tablename = 'job_expenses' OR policyname LIKE 'receipts %';

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { jobPaymentStatus, jobOutstanding, amountPaid, money2, jobTotal } from '@/lib/payments'
 import { withFreelancerContacts } from '@/lib/freelancerContact'
 import { useAuth } from '@/lib/auth-context'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
@@ -155,7 +156,13 @@ export default function JobsPage() {
                         <Link href={profileUrl(f)} className="font-semibold capitalize hover:underline" style={{ color: '#00267F', textDecoration: 'none' }}>
                           {f?.company_name?.trim().length > 3 ? f.company_name : f?.name}
                         </Link>
-                        <span className="text-sm font-bold" style={{ color: '#00267F' }}>Bds${Number(job.total).toFixed(2)}</span>
+                        <span className="text-right">
+                          <span className="block text-sm font-bold" style={{ color: '#00267F' }}>Bds${money2(job.invoice_number ? jobTotal(job) : job.total)}</span>
+                          {/* Part payments: what has been paid and what is left. */}
+                          {jobPaymentStatus(job) === 'part-paid' && (
+                            <span className="block text-[11px] font-semibold" style={{ color: '#92400E' }}>Paid Bds${money2(amountPaid(job))} · Bds${money2(jobOutstanding(job))} left</span>
+                          )}
+                        </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
                         {job.invoice_number || job.quote_number} · {f?.trade}

@@ -22,7 +22,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // a copyable link for it.
 export async function POST(request) {
   try {
-    if (!rateLimit(`org-invite:${clientIp(request)}`, { limit: 20, windowMs: 10 * 60_000 })) {
+    // A generous ceiling per connection, before anything else is looked up.
+    // The real limit is per person, below, once we know who is asking.
+    if (!(await rateLimit(`org-invite-ip:${clientIp(request)}`, { limit: 200, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many invitations sent. Please try again later.' }, { status: 429 })
     }
 
@@ -46,6 +48,9 @@ export async function POST(request) {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser(token)
     if (userError || !user) return Response.json({ error: 'Not authenticated.' }, { status: 401 })
+    if (!(await rateLimit(`org-invite:${user.id}`, { limit: 20, windowMs: 10 * 60_000 }))) {
+      return Response.json({ error: 'Too many invitations sent. Please try again later.' }, { status: 429 })
+    }
 
     // Owner check (RLS would refuse the insert anyway; this gives a clear message).
     const { data: me } = await supabase

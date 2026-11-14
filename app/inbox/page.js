@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { authedPost } from '@/lib/authedFetch'
+import DepositSection, { depositColumns } from '@/components/DepositSection'
+import { depositAmount, depositInvoiceColumns, invoicesOf, money2, invoiceFor, quoteDeposit } from '@/lib/payments'
+import { invoiceNumberInReply } from '@/lib/invoicing'
+import { billedSnapshot, invoiceCarriesCosts } from '@/lib/expenses'
 import { useAuth } from '@/lib/auth-context'
 import { formatParish } from '@/lib/formatParish'
 import { getQuoteId, dedupeThreadReplies, conversationPreview, quoteReplyKind, isReceiptBody, quotedSince } from '@/lib/quoteReply'
@@ -64,6 +68,8 @@ export default function Inbox() {
   const [quotePaymentTerms, setQuotePaymentTerms] = useState('net14')
   // Send the invoice by itself the moment the client accepts this quote.
   const [quoteAutoInvoice, setQuoteAutoInvoice] = useState(false)
+  // Optional deposit on the quote being built (components/DepositSection).
+  const [quoteDeposit, setQuoteDeposit] = useState({ on: false, type: 'percent', value: 50 })
   const [quoteNotes, setQuoteNotes] = useState('')
   // Which venture this quote belongs to, for pros running several businesses.
   // '' = not tied to one, which is what single-business pros always send.
@@ -312,6 +318,7 @@ export default function Inbox() {
     // Standard conditions come from the profile; editable per document.
     setQuoteTerms(profile?.default_terms || '')
     setQuoteVerifyCode(generateVerifyCode())
+    setQuoteDeposit({ on: false, type: 'percent', value: 50 })
     setQuoteItems(prefillItems?.length > 0 ? prefillItems : [{ description: '', qty: 1, price: '' }])
     const now = new Date()
     const ast = new Date(now.getTime() - (4 * 60 * 60 * 1000))
@@ -432,6 +439,7 @@ export default function Inbox() {
       subtotal: quoteTotal(),
       total: quoteTotal(),
       notes: quoteNotes,
+      ...depositColumns(quoteDeposit.on, quoteDeposit.type, quoteDeposit.value),
       verify_code: quoteVerifyCode || null,
       currency: 'BBD',
       reference: quoteReference.trim() || null,
@@ -491,6 +499,9 @@ export default function Inbox() {
         // Only sent when ticked, so an ordinary quote never depends on the
         // column existing.
         ...(quoteAutoInvoice ? { auto_invoice: true } : {}),
+        // Only when a deposit is asked for, so a quote without one does not
+        // depend on the deposit columns existing.
+        ...depositColumns(quoteDeposit.on, quoteDeposit.type, quoteDeposit.value),
       })
       .select()
       .single()
@@ -557,13 +568,27 @@ export default function Inbox() {
       invoiced_at: now.toISOString(),
       invoice_terms: terms.value,
       invoice_due_date: dueStr,
+      // A quote that asks for a deposit is invoiced for the deposit first.
+      ...depositInvoiceColumns(quote),
     }
+    // Expenses this professional chose to bill on go on the invoice as cost
+    // lines (never on a deposit invoice). Read with their own session: only
+    // they can read job_expenses. No table yet (SQL 47 not run): none.
+    let billedIds = []
+    if (invoiceCarriesCosts(invoicesOf({ ...quote, ...patch })[0] || {})) {
+      const { data: exp } = await supabase.from('job_expenses').select('*').eq('quote_id', quote.id)
+      const snap = billedSnapshot(exp || [])
+      Object.assign(patch, snap.columns)
+      billedIds = snap.ids
+    }
+    const firstInvoice = invoicesOf({ ...quote, ...patch })[0]
     const { error } = await supabase.from('quotes').update(patch).eq('id', quote.id)
     if (error) {
       setInvoiceBusy(false)
       showToast('Could not send the invoice. Please try again.', true)
       return
     }
+    if (billedIds.length) await supabase.from('job_expenses').update({ billed_invoice_number: invoiceNumber }).in('id', billedIds)
     setThreadQuotes(prev => ({ ...prev, [quote.id]: { ...prev[quote.id], ...patch } }))
     setInvoicingQuoteId(null)
     clearInvoicePrompt(supabase, quote.id)
@@ -573,7 +598,7 @@ export default function Inbox() {
       sender_name: profile.name,
       sender_user_id: user?.id,
       quote_id: quote.id,
-      body: `Sent invoice ${invoiceNumber}, payment due ${fmt(dueStr)} (${terms.label.toLowerCase()})`,
+      body: `Sent invoice ${invoiceNumber}${firstInvoice?.kind === 'deposit' ? ' for the deposit' : ''}, payment due ${fmt(dueStr)} (${terms.label.toLowerCase()})`,
     }).select().single()
     if (invReply) setReplies(prev => ({ ...prev, [replyMsgId]: [...(prev[replyMsgId] || []), invReply] }))
 
@@ -583,7 +608,7 @@ export default function Inbox() {
     if (invReply?.id) authedPost('/api/notify-reply', { reply_id: invReply.id }).catch(() => {})
 
     setInvoiceBusy(false)
-    setQuoteToast(`Invoice sent`)
+    setQuoteToast(firstInvoice?.kind === 'deposit' ? `Deposit invoice sent (Bds$${money2(firstInvoice.amount)})` : `Invoice sent`)
     setTimeout(() => setQuoteToast(null), 4000)
   }
 
@@ -820,10 +845,13 @@ export default function Inbox() {
             const quoteData = quoteId ? (threadQuotes[quoteId] || null) : null
             const kind = quoteReplyKind(r)
             if (quoteId && quoteData) {
+              // A deposit job has two invoices; the reply names the one it sent.
+              const inv = kind === 'invoice' ? invoiceFor(quoteData, invoiceNumberInReply(r.body)) : null
               const cardTitle = kind === 'receipt' ? `Receipt ${quoteData.invoice_number || quoteData.quote_number}`
-                : kind === 'invoice' ? `Invoice ${quoteData.invoice_number || quoteData.quote_number}`
+                : kind === 'invoice' ? `${inv?.kind === 'deposit' ? 'Deposit invoice' : inv?.kind === 'balance' ? 'Balance invoice' : 'Invoice'} ${inv?.number || quoteData.invoice_number || quoteData.quote_number}`
                 : `Quote ${quoteData.quote_number}`
-              const cardDate = formatDocDate(kind === 'quote' ? quoteData.quote_date : (quoteData.invoiced_at || quoteData.quote_date))
+              const cardDate = formatDocDate(kind === 'quote' ? quoteData.quote_date : (inv?.issued || quoteData.invoiced_at || quoteData.quote_date))
+              const deposit = kind === 'quote' ? quoteDeposit(quoteData) : 0
               return (
                 <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: kind === 'receipt' ? '#166534' : '#00267F' }}>
@@ -838,12 +866,18 @@ export default function Inbox() {
                   <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-50">
                     <div className="flex items-center gap-4">
                       <div>
-                        <p className="text-xs text-gray-400">Total</p>
-                        <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
+                        <p className="text-xs text-gray-400">{inv && inv.kind !== 'full' ? 'Amount' : 'Total'}</p>
+                        <p className="text-sm font-bold" style={{ color: '#00267F' }}>${money2(inv ? inv.amount : quoteData.total)}</p>
                       </div>
+                      {deposit > 0 && (
+                        <div>
+                          <p className="text-xs text-gray-400">Deposit</p>
+                          <p className="text-sm font-semibold text-gray-700">${money2(deposit)}</p>
+                        </div>
+                      )}
                       <div>
                         <p className="text-xs text-gray-400">{kind === 'receipt' ? 'Paid' : 'Payment due'}</p>
-                        <p className="text-sm font-semibold" style={{ color: kind === 'receipt' ? '#166534' : '#374151' }}>{kind === 'receipt' ? formatDocDate(quoteData.paid_at) : formatDocDate(quoteData.due_date)}</p>
+                        <p className="text-sm font-semibold" style={{ color: kind === 'receipt' ? '#166534' : '#374151' }}>{kind === 'receipt' ? formatDocDate(quoteData.paid_at) : formatDocDate(inv?.due || quoteData.due_date)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
@@ -1419,6 +1453,15 @@ export default function Inbox() {
                 </div>
               </div>
 
+              {/* Deposit: optional, under the totals */}
+              <DepositSection
+                total={quoteTotal()}
+                on={quoteDeposit.on}
+                type={quoteDeposit.type}
+                value={quoteDeposit.value}
+                onChange={setQuoteDeposit}
+              />
+
               {/* Notes */}
               <div className="bg-white rounded-2xl border border-gray-100 p-6">
                 <h3 className="font-semibold text-gray-900 mb-4 text-sm">Notes (optional)</h3>
@@ -1509,6 +1552,23 @@ export default function Inbox() {
                     <span className="text-sm font-bold text-gray-900">Total</span>
                     <span className="text-sm font-bold" style={{ color: '#00267F' }}>${quoteTotal().toFixed(2)}</span>
                   </div>
+                  {(() => {
+                    const cols = depositColumns(quoteDeposit.on, quoteDeposit.type, quoteDeposit.value)
+                    const dep = cols.deposit_type ? depositAmount(quoteTotal(), cols.deposit_type, cols.deposit_value) : 0
+                    if (!(dep > 0) || dep >= quoteTotal()) return null
+                    return (
+                      <>
+                        <div className="flex justify-between py-1">
+                          <span className="text-xs font-bold" style={{ color: '#00267F' }}>Deposit required{cols.deposit_type === 'percent' ? ` (${cols.deposit_value}%)` : ''}</span>
+                          <span className="text-xs font-bold" style={{ color: '#00267F' }}>${money2(dep)}</span>
+                        </div>
+                        <div className="flex justify-between py-1">
+                          <span className="text-xs text-gray-600">Balance on completion</span>
+                          <span className="text-xs text-gray-600">${money2(quoteTotal() - dep)}</span>
+                        </div>
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
 

@@ -65,7 +65,9 @@ export async function POST(request) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!serviceKey) return Response.json({ error: 'Not configured.' }, { status: 500 })
 
-    if (!rateLimit(`quote-event:${clientIp(request)}`, { limit: 30, windowMs: 10 * 60_000 })) {
+    // A generous ceiling per connection, before anything else is looked up.
+    // The real limit is per person, below, once we know who is asking.
+    if (!(await rateLimit(`quote-event-ip:${clientIp(request)}`, { limit: 300, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many requests.' }, { status: 429 })
     }
 
@@ -75,6 +77,9 @@ export async function POST(request) {
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
     const { data: { user }, error: authErr } = await admin.auth.getUser(token)
     if (authErr || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!(await rateLimit(`quote-event:${user.id}`, { limit: 30, windowMs: 10 * 60_000 }))) {
+      return Response.json({ error: 'Too many requests.' }, { status: 429 })
+    }
 
     const { quote_id, event } = await request.json()
     const EVENTS = ['accepted', 'declined', 'completed', 'paid']

@@ -29,7 +29,7 @@ export async function POST(request) {
       return Response.json({ error: 'Your session has expired. Please log in again.' }, { status: 401 })
     }
 
-    if (!rateLimit(`reviews:${user.id}`, { limit: 5, windowMs: 10 * 60_000 })) {
+    if (!(await rateLimit(`reviews:${user.id}`, { limit: 5, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many reviews submitted. Please try again later.' }, { status: 429 })
     }
 

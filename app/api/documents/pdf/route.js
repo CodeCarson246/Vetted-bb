@@ -1,5 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { buildDocumentHtml } from '@/lib/documentHtml'
+import { invoicesOf } from '@/lib/payments'
+import { incomeSummary } from '@/lib/incomeSummary'
+import { buildReportHtml } from '@/lib/reportHtml'
 import { renderDocumentPdf } from '@/lib/renderPdf'
 import { rateLimit } from '@/lib/rateLimit'
 
@@ -38,6 +41,10 @@ function cleanDraft(d) {
     currency: str(d?.currency, 3) || 'BBD', reference: str(d?.reference, 100),
     from_address: str(d?.from_address, 500), bill_to_division: str(d?.bill_to_division, 200),
     bill_to_address: str(d?.bill_to_address, 500), verify_code: str(d?.verify_code, 12),
+    // A deposit on an unsaved quote, for the builder's Preview. Only the two
+    // known kinds pass; anything else is no deposit.
+    ...(['percent', 'fixed'].includes(d?.deposit_type) && Number(d?.deposit_value) > 0
+      ? { deposit_type: d.deposit_type, deposit_value: Number(d.deposit_value) } : {}),
   }
 }
 
@@ -54,6 +61,50 @@ async function readIssuer(db, column, value) {
   return data || null
 }
 
+// Rows of a table that may not exist yet (a section of SQL not run): none.
+async function rowsOrNone(query) {
+  const { data, error } = await query
+  return error ? [] : (data || [])
+}
+
+async function yearEndReport(db, user, { year, side, organisationId } = {}) {
+  const thisYear = new Date().getUTCFullYear()
+  const y = Number(year)
+  if (!Number.isInteger(y) || y < 2020 || y > thisYear + 1) return Response.json({ error: 'Choose a year.' }, { status: 400 })
+
+  let quotes, expenses = [], name
+  if (side === 'organisation') {
+    // Only an organisation the caller belongs to.
+    const { data: member } = organisationId
+      ? await db.from('organisation_members').select('organisation_id').eq('organisation_id', organisationId).eq('user_id', user.id).maybeSingle()
+      : { data: null }
+    if (!member) return Response.json({ error: 'Forbidden' }, { status: 403 })
+    const { data: org } = await db.from('organisations').select('name').eq('id', organisationId).maybeSingle()
+    name = org?.name || 'Your organisation'
+    quotes = await rowsOrNone(db.from('quotes').select('*').eq('organisation_id', organisationId))
+  } else {
+    const { data: f } = await db.from('freelancers').select('id, name, company_name').eq('user_id', user.id).maybeSingle()
+    if (!f) return Response.json({ error: 'Forbidden' }, { status: 403 })
+    name = (f.company_name || '').trim().length > 3 ? f.company_name : f.name
+    quotes = await rowsOrNone(db.from('quotes').select('*').eq('freelancer_id', f.id))
+    expenses = await rowsOrNone(db.from('job_expenses').select('amount, incurred_on').eq('freelancer_id', f.id))
+  }
+  const invoiced = quotes.filter(q => q.invoice_number).map(q => q.id)
+  const payments = invoiced.length ? await rowsOrNone(db.from('invoice_payments').select('quote_id, amount, received_on').in('quote_id', invoiced)) : []
+
+  const summary = incomeSummary({ quotes, payments, expenses }, y, side === 'organisation' ? 'organisation' : 'professional')
+  const generatedOn = new Date(Date.now() - 4 * 3600 * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+  const { pdf } = await renderDocumentPdf(buildReportHtml(summary, { name, generatedOn }))
+  const filename = `Vetted-${summary.side === 'organisation' ? 'spending' : 'income'}-summary-${y}.pdf`
+  return new Response(pdf, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${filename}"`,
+      'Cache-Control': 'private, no-store',
+    },
+  })
+}
+
 export async function POST(request) {
   try {
     const token = (request.headers.get('authorization') || '').replace(/^Bearer /, '')
@@ -68,11 +119,17 @@ export async function POST(request) {
     if (authErr || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
     // Rendering is heavy: a speed bump against runaway loops.
-    if (!rateLimit(`pdf:${user.id}`, { limit: 20, windowMs: 60_000 })) {
+    if (!(await rateLimit(`pdf:${user.id}`, { limit: 20, windowMs: 60_000 }))) {
       return Response.json({ error: 'Too many documents at once. Try again in a minute.' }, { status: 429 })
     }
 
     const body = await request.json().catch(() => ({}))
+
+    // The year-end summary. Worked out HERE from the database, read with the
+    // caller's own session, so row level security decides what is counted
+    // and the branded PDF always matches the records. Figures sent by the
+    // browser are never printed.
+    if (body?.report) return await yearEndReport(db, user, body.report)
     let type = TYPES.includes(body?.type) ? body.type : 'quote'
 
     let quote, issuer
@@ -103,11 +160,16 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    const html = buildDocumentHtml(quote, issuer, { type, forPdf: true })
+    // A deposit job has two invoices; the request may name one of them. A
+    // number that is not one of this job's invoices is ignored (the latest
+    // invoice is printed), never printed as given.
+    const wanted = typeof body?.invoiceNumber === 'string' ? body.invoiceNumber : null
+    const invoiceNumber = type === 'invoice' && wanted && invoicesOf(quote).some(i => i.number === wanted) ? wanted : undefined
+    const html = buildDocumentHtml(quote, issuer, { type, forPdf: true, invoiceNumber })
     const { pdf, pages, scale } = await renderDocumentPdf(html)
 
     const label = type === 'receipt' ? 'Receipt' : type === 'invoice' ? 'Invoice' : 'Quote'
-    const number = (type === 'quote' ? quote.quote_number : quote.invoice_number || quote.quote_number) || 'document'
+    const number = (type === 'quote' ? quote.quote_number : invoiceNumber || quote.balance_invoice_number || quote.invoice_number || quote.quote_number) || 'document'
     const filename = `${label}-${number}`.replace(/[^A-Za-z0-9._-]+/g, '-') + '.pdf'
 
     return new Response(pdf, {

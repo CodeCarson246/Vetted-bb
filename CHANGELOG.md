@@ -18,14 +18,30 @@ Everything that is not SHIPPED, newest first. Last checked against the live site
 
 ### Written, not live
 
-- **[WRITTEN]** Rising Talent badge, 2026-11-13. Not deployed. SQL Section 43 has been run (column confirmed 2026-11-13), so it is safe to push.
-  - Needs testing: give a profile the badge from the admin panel (↑ Rising), then check it on search, a category page, the homepage (if featured) and the profile header; remove it again.
-- **[WRITTEN]** Profile save shows the real reason when it fails, 2026-11-13. Not deployed.
-- **[WRITTEN]** Dead `deleteReply` removed from the inbox, 2026-11-13. The pre-push scan is now clean. Not deployed.
-- **[WRITTEN]** Admin link in the workspace sidebar and the top menu, shown only to accounts in `ADMIN_EMAILS`, 2026-11-13. Not deployed. Checked on localhost: shown for an admin account, the check answers 401 signed out.
-  - Needs testing: sign in as a non-admin account and confirm there is no Admin link.
+- **[WRITTEN]** Stress-test fixes to the whole unpushed batch, 2026-11-14. Not deployed. They changed SQL Sections 44, 45 (comments only) and 47, so the combined 44–47 file must be run again even if the earlier one was run (it is safe to re-run). Tested: reminder job against a fake database (18 checks), reminder rules (18 unit tests), Sections 44 and 47 in an in-memory database (17 and 12 checks), the per-person limit through the real route, the original stress script (no failures left), 218 unit tests, the build. NOT tested: two payments saved at the same instant (the in-memory database has one connection); the receipts upload rule against Supabase's real storage; any signed-in screen.
+  - Needs testing: TESTING.md sections 3 (Removed payments, overpayment), 5 and 6.
+- **[WRITTEN]** Year-end income summary, 2026-11-14. Not deployed. Needs no SQL of its own; part payments (44) and expenses (47) only count once those sections have run. Tested: the figures (8 unit tests), the PDF route against a fake database (6 checks: signed out, own figures only, figures sent by the browser ignored, members only for an organisation, disclaimer present, no expense descriptions), the production build. The PDF layout was seen with sample figures; the signed-in pages were not seen (the local preview is signed out).
+  - Needs testing: TESTING.md sections 3 and 4 (Reports, Year-end summary).
+- **[WRITTEN]** Job expenses, 2026-11-14. Not deployed. SQL Section 47 must run BEFORE the push (it also updates the Section 44 payment trigger, so run 44 first; the combined file does). Tested: privacy rules in an in-memory database (9 checks), billed vs unbilled through the real acceptance code (2 checks), PDF and money rules (unit tests), a test that fails if any client-facing file reads job_expenses. Not seen signed in.
+  - Needs testing: TESTING.md section 3 (Expenses).
+- **[WRITTEN]** Outstanding / Payable card, 2026-11-14. Not deployed. Needs SQL Section 44 (part payments) for part-paid amounts to count right; without it every unpaid invoice counts in full. Unit-tested; the card itself was not seen signed in.
+  - Needs testing: TESTING.md (dashboard and Records).
+- **[WRITTEN]** Rate limits shared across servers, 2026-11-14. Not deployed. SQL Section 46 can run before or after the push (until it runs, the routes keep the old per-server counts). Tested: the SQL in an in-memory database (4 checks), two separate copies of the limiter sharing one count (4 checks), every route's limiter call awaited (test).
+- **[WRITTEN]** Automatic payment reminders, 2026-11-14. Not deployed. SQL Section 45 must run BEFORE the push. The daily job is in DRY-RUN mode until `PAYMENT_REMINDERS_MODE=live` is set in Vercel. Tested: decision rules (11 unit tests, including a full invoice life and Barbados-time edges), the real job against a fake database (7 checks), the SQL in an in-memory database (4 checks). Never run against the live database.
+  - Needs testing: see TESTING.md section 5.
+- **[WRITTEN]** Deposits and part payments, 2026-11-14. Not deployed. SQL Section 44 must run BEFORE the push. Tested against an in-memory database (8 checks), the real acceptance route with a fake database (3 checks) and unit tests; the signed-in screens were not seen (no signed-in session available).
+  - Needs testing: build a quote with a 50% deposit and preview its PDF; accept it from a client account; record the deposit payment; raise the balance invoice; record a part payment then the rest; check the PDFs, the client's cards and My jobs; a quote with no deposit still invoices for the total.
+- **[WRITTEN]** CSV export of quotes and invoices, 2026-11-13. Not deployed. Checked on localhost as a professional: the dialog opens on 1 Jan to today; the file downloaded with the right name, a BOM, the header in order, invoices linked to their quotes, newest first; "No records found for that date range" for last year. The organisation version was checked only by unit tests (no organisation account exists).
+  - Needs testing: export as an organisation from Records; open a file in Excel.
+- **[WRITTEN]** Signup password minimum raised in the Supabase dashboard (8 characters, upper and lower case, digits and symbols). Set by Carson 2026-11-13; it is a setting, not code.
 
 ### Live but not verified
+
+- **[DEPLOYED]** Rising Talent badge, 2026-11-13 (341df58). Checked on live: the admin panel shows a Rising button on all 6 profiles; the badges page lists it. No profile has the badge yet.
+  - Needs testing: give a profile the badge, check it on search, a category page and the profile header, then remove it.
+- **[DEPLOYED]** Admin link for admins only, 2026-11-13 (341df58). Checked on live: shown in the sidebar and the top menu for Carson's account.
+  - Needs testing: no Admin link for a non-admin account.
+- **[DEPLOYED]** Profile save shows the real reason when it fails; dead `deleteReply` removed, 2026-11-13 (341df58).
 
 - **[DEPLOYED]** SQL Sections 39, 40 and 41, run by Carson 2026-11-13. Checked on live: `notified_at` exists; a signed-out insert into messages is refused; professionals' email is no longer publicly readable; signed in, `my_freelancer()` returns the full own profile and a whole-row read is refused; Dashboard, Inbox, Quotes, Calendar, Settings, Search (6 profiles) and a public profile load with no console errors. Section 40's guards were not exercised directly (they need a second signed-in account).
 - **[DEPLOYED]** Storage rules, SQL Section 42, run 2026-11-13 (code 2d1c3f0). Checked on live while signed out: uploads to all six buckets refused, file listing returns nothing, an existing profile photo cannot be replaced or deleted, `.html` refused, and existing photos still load. Signed-in uploads not yet tested (on Carson's test list).
@@ -66,7 +82,6 @@ Everything that is not SHIPPED, newest first. Last checked against the live site
 ### Known gaps, left as they are
 
 - **[BACKLOG]** `vetted-rising` form: anyone can submit, by design. Left alone at Carson's request (2026-11-12).
-- **[BACKLOG]** Rate limits are held in one server's memory (`lib/rateLimit.js`). Durable limits need Upstash.
 - **[BACKLOG]** Rentals & Stays category icon is a placeholder.
 - **[BACKLOG]** Social share graphics still use the old fonts (Sora and Inter), not Barlow.
 - **[BACKLOG]** ESLint reports about 119 problems. None stop the build.
@@ -82,11 +97,7 @@ Everything that is not SHIPPED, newest first. Last checked against the live site
 
 ## Carson's test list
 
-Things Carson has said he will test himself. He asks for this list when he is ready; tick them off by moving each to SHIPPED.
-
-- Phone verification: verify a professional's phone from the dashboard and check the badge appears on the public profile. (Worked before; re-test.)
-- Review photos: as a client with a paid, completed job, leave a review with a photo, and check the photo shows on the professional's profile. Section 42 and the review-photo path change are both live.
-- Storage (Section 42 is live): upload and remove a profile photo (professional and client), add and delete a portfolio image, add service photos, attach a photo in a chat.
+The full step-by-step list is in [TESTING.md](TESTING.md), grouped by account (visitor, client, professional, organisation).
 
 ## History
 
@@ -94,16 +105,48 @@ Reverse chronological. Backfilled from git on 2026-11-13: one line per meaningfu
 
 Entries from 2026-11-11 onward carry a status. Earlier entries are all live; anything among them with an open question is listed under Outstanding, and the rest were not individually re-verified for this backfill.
 
+### 2026-11-14
+
+- **[WRITTEN]** Stress test of the unpushed batch, then fixes for everything it found.
+  - Reminders: only the people in the job's conversation are emailed (a quote with no conversation, or the address typed on a quote, is never used); what was sent is read from `payment_reminder_log`, not from the quote row a professional can edit; a series never starts on an invoice already 14+ days overdue and nothing goes at 60+ days (so going live does not email old unpaid invoices); at most 10 reminders per job; a failed email is retried on later days (3 tries per stage) and no longer uses up the stage; the job reads every page of invoices within a due-date window instead of the 500 oldest, and stops with time to spare.
+  - Money, in the database: a payment cannot be future-dated, exceed what is owed, name another job's invoice, or go on a job already marked paid; the job's row is locked so two payments at once are both counted; a removed payment is kept in `invoice_payment_removals` and shown under "Removed"; a deposit invoice cannot exceed the total; billed costs cannot be negative; expenses have date, amount and length limits; receipts are for professionals only, 2,000 files each.
+  - Other: every non-number CSV cell is guarded against spreadsheet formulas (the expenses file had three unguarded columns); an invoice that includes billed costs says so and how much in the client's notification and email; rate limits on signed-in routes are per person, with a generous per-connection ceiling, a 1.5 second cap on the shared count, and IPv6 counted by network; a job marked paid counts as received in full in the year-end summary; other currencies are left out of the summary and said so.
+  - Files: `app/api/cron/payment-reminders/route.js`, `lib/paymentReminders.js`, `lib/rateLimit.js`, six routes in `app/api/` (notify-message, notify-reply, notify-quote-event, notify-saved, organisation-invite, request-booking), `lib/financialCsv.js`, `lib/payments.js`, `lib/incomeSummary.js`, `lib/reportHtml.js`, `lib/invoicing.js`, `lib/serverInvoice.js`, `components/PaymentsPanel.js`, `components/IncomeSummary.js`, `app/quotes/page.js`, `SUPABASE_SQL.sql`, tests
+  - Needs testing: TESTING.md sections 3, 5 and 6
+  - SQL to run: yes, Sections 44–47 again (44 and 47 changed; not run)
+- **[WRITTEN]** Year-end income summary. Professionals get a new **Reports** page in the sidebar; organisations get a "Year-end summary" section at the bottom of Records. Pick a year (this year by default): Total received (cash basis) is the headline, then Total invoiced, Outstanding, Expenses logged and Net (professionals only), Invoices issued, Clients or Professionals, Average invoice, and a Month / Invoiced / Received / Expenses table. Received counts money on the day it came in, whichever year it was invoiced; Invoiced counts each invoice (deposit and balance separately) on its issue date; Outstanding is what is still owed today on that year's invoices. Download as CSV (one row per month) and Download as PDF (branded like invoices; the server works the figures out again from the database with the person's own session, so a Vetted.bb-branded summary always matches the records). The disclaimer is on screen and on the PDF, word for word. No tax figures, rates or forms anywhere. No new tables. — `lib/incomeSummary.js`, `lib/reportHtml.js`, `lib/printQuote.js` (`downloadReportPdf`), `components/IncomeSummary.js`, `app/reports/page.js`, `components/WorkspaceSidebar.js`, `app/organisation/records/page.js`, `app/api/documents/pdf/route.js`, `tests/incomeSummary.test.js`, `tests/expenses.test.js` (allowlist)
+  - Needs testing: TESTING.md sections 3 and 4
+  - SQL to run: no (uses 44 and 47 once run)
+- **[WRITTEN]** Job expenses: an "Expenses" section on each job in Quotes & earnings (description, amount, date, optional receipt photo, "Bill to client"), with a private Invoiced / Expenses / Profit summary. Billed expenses are copied onto the invoice as "Cost:" lines when it is issued (the job's invoice, or for a deposit job the balance invoice), raise its total, and are marked billed so they never go twice; issued invoices never change. Unbilled expenses never leave job_expenses, which only the professional can read. Receipts go to a PRIVATE `receipts` bucket (owner-only, opened by a 5-minute signed link), not a public one like portfolio. The invoices export can add a second file of expenses with invoiced, expenses and profit per job. Paid-in-full and document verification now use the invoiced total including billed costs. There is no invoices table, so `invoice_id` from the brief is not used: `quote_id` identifies the job and its invoices. — `lib/expenses.js`, `lib/payments.js` (`jobTotal`), `lib/documentHtml.js`, `lib/serverInvoice.js`, `components/ExpensesPanel.js`, `components/ExportCsvDialog.js`, `components/QuickInvoiceDialog.js`, `app/quotes/page.js`, `app/inbox/page.js`, `app/messages/page.js`, `app/jobs/page.js`, `app/organisation/records/page.js`, `tests/expenses.test.js`
+  - Needs testing: TESTING.md section 3
+  - SQL to run: yes, Section 47 (not run; BEFORE the push, after 44)
+- **[WRITTEN]** Outstanding card at the top of a professional's dashboard and a Payable card on an organisation's Records: the amount still owed across unpaid and part-paid invoices (per invoice, part payments taken off), "across N invoices", and "N overdue" in red when there are any; "All invoices paid" when nothing is owed. The dashboard card opens Quotes & earnings on Pending payment (`?view=outstanding`); the Records card switches the table to a new "Unpaid invoices" filter. Computed in the browser from one query; no new route. The figure uses the site's display font (Barlow Semi Condensed), not Sora, which is now kept for the logo. — `lib/payments.js` (`outstandingSummary`), `components/OutstandingCard.js`, `app/dashboard/page.js`, `app/quotes/page.js`, `app/organisation/records/page.js`, `tests/payments.test.js`
+  - Needs testing: TESTING.md sections 3 and 4
+  - SQL to run: Section 44 (already listed)
+- **[WRITTEN]** Rate limits now hold across every Vercel server: counts are kept in Supabase (`rate_limits`, `rate_limit_hit()`, sliding window), with each server's own memory as a quick first check. Keys are hashed, so no IP or user id is stored readably. Only the service role can use them. If the database cannot answer, requests go through on the server's own count rather than locking people out. Old counts are cleared by the daily clean-up job. A test fails if any route forgets to `await` the limiter. Chosen over Upstash: no new account or service. — `lib/rateLimit.js`, the 12 rate-limited routes in `app/api/`, `app/api/cron/purge-deactivated/route.js`, `tests/rateLimit.test.js`
+  - Needs testing: TESTING.md section 6
+  - SQL to run: yes, Section 46 (not run; any order)
+- **[WRITTEN]** Automatic payment reminders: a daily job at 9am Barbados time emails clients about unpaid and part-paid invoices 3 days before the due date, on it, and at 7, 14 and 30 days overdue, then stops; the professional gets a notification and push at 7, 14 and 30 days only. Reminders state the outstanding amount, include the professional's payment details, and never go twice in a day (enforced by a unique index on the log) or for an invoice sent in the last 24 hours. Dates are Barbados days. A master switch in Settings (on by default) and "Pause reminders" on each invoice. Dry run by default: nothing is sent until `PAYMENT_REMINDERS_MODE=live`. Every reminder (and every dry-run check) is logged in `payment_reminder_log`. Organisations get no switch: they receive invoices, they do not send them. — `lib/paymentReminders.js`, `app/api/cron/payment-reminders/route.js`, `vercel.json`, `app/settings/page.js`, `components/PaymentsPanel.js`, `app/quotes/page.js`, `tests/paymentReminders.test.js`
+  - Needs testing: TESTING.md section 5
+  - SQL to run: yes, Section 45 (not run; BEFORE the push)
+- **[WRITTEN]** `TESTING.md`: the step-by-step test checklist, by account; `CLAUDE.md` says to keep it updated.
+- **[WRITTEN]** Deposits and part payments. Quotes can ask for a deposit (percentage, default 50, or fixed Bds$), shown under Total on the quote and its PDF. Accepting such a quote invoices the deposit only ("Deposit invoice"); once the deposit is paid, "Raise balance invoice" invoices the rest. Every invoice takes payments through "Record a payment" (amount, date received, method, reference), each one its own row with a history; the job is paid when payments reach the total. The "Paid" tick box is replaced by the payments panel (jobs ticked paid before this still show, with Undo). Invoice PDFs show Total / Paid / Balance due when part-paid. The CSV export now has a line per deposit and balance invoice and fills Payment method and Payment reference from recorded payments. No invoices table exists: an invoice is the quote's row, so the deposit and balance invoices both live on it (no parent_quote_id needed). — `lib/payments.js`, `lib/invoicing.js`, `lib/serverInvoice.js`, `lib/documentHtml.js`, `lib/financialCsv.js`, `lib/printQuote.js`, `components/DepositSection.js`, `components/PaymentsPanel.js`, `components/RecordPaymentDialog.js`, `components/QuickInvoiceDialog.js`, `app/quotes/page.js`, `app/inbox/page.js`, `app/messages/page.js`, `app/jobs/page.js`, `app/organisation/requests/[id]/page.js`, `app/organisation/records/page.js`, `app/api/documents/pdf`, `app/api/notify-reply`, `tests/payments.test.js`, `tests/documentHtml.test.js`, `tests/financialCsv.test.js`
+  - Needs testing: see Outstanding
+  - SQL to run: yes, Section 44 (not run; BEFORE the push)
+
 ### 2026-11-13
 
-- **[WRITTEN]** Rising Talent badge: given and removed from the admin panel, shown for 90 days on search, category pages, the homepage and the profile header; new entry on the badges page — `lib/rising.js`, `components/TrustMark.js`, `components/badgeArt.js` (hand-drawn emblem until the designer supplies one), `app/badges/page.js`, `app/admin/page.js`, `app/api/admin`, `app/search/page.js`, `app/page.js`, `app/categories/[slug]/page.js`, `app/freelancers/[id]/page.js`, `app/api/featured-professionals`, `lib/freelancerColumns.js`
+- **[WRITTEN]** CSV export of quotes and invoices: an Export CSV button on Quotes & earnings (professionals) and on Records (organisations), opening a dialog with From/To dates, presets (This year, Last year, Last 90 days, All time) and a type (All, Invoices only, Quotes only). Each quote is one line and, once invoiced, its invoice is a second line linked by the quote number. Amounts as charged; VAT, payment method and payment reference are always blank because none of them is recorded anywhere. Formula-looking text such as `=HYPERLINK(...)` in a client name is written as text. On Records it replaces the old Export CSV, which downloaded the filtered table with different columns. — `lib/financialCsv.js`, `components/ExportCsvDialog.js`, `app/quotes/page.js`, `app/organisation/records/page.js`, `tests/financialCsv.test.js`
+  - Needs testing: export as an organisation; open a file in Excel
+  - SQL to run: no
+- **[DEPLOYED]** Rising Talent badge: given and removed from the admin panel, shown for 90 days on search, category pages, the homepage and the profile header; new entry on the badges page — `lib/rising.js`, `components/TrustMark.js`, `components/badgeArt.js` (hand-drawn emblem until the designer supplies one), `app/badges/page.js`, `app/admin/page.js`, `app/api/admin`, `app/search/page.js`, `app/page.js`, `app/categories/[slug]/page.js`, `app/freelancers/[id]/page.js`, `app/api/featured-professionals`, `lib/freelancerColumns.js`
   - Needs testing: give and remove the badge in the admin panel; check where it shows
   - SQL to run: Section 43, run by Carson 2026-11-13
-- **[WRITTEN]** Profile and client-profile save errors now say what went wrong — `lib/saveErrorMessage.js`, `app/dashboard/page.js`
+- **[DEPLOYED]** Profile and client-profile save errors now say what went wrong — `lib/saveErrorMessage.js`, `app/dashboard/page.js`
   - SQL to run: no
-- **[WRITTEN]** Removed the dead `deleteReply` function — `app/inbox/page.js`
+- **[DEPLOYED]** Removed the dead `deleteReply` function — `app/inbox/page.js`
   - SQL to run: no
-- **[WRITTEN]** Admin link for admins only, in the workspace sidebar and the top menu; `/api/admin?check=1` answers whether the caller is an admin — `lib/useIsAdmin.js`, `components/WorkspaceSidebar.js`, `components/SiteNav.js`, `app/api/admin/route.js`
+- **[DEPLOYED]** Admin link for admins only, in the workspace sidebar and the top menu; `/api/admin?check=1` answers whether the caller is an admin — `lib/useIsAdmin.js`, `components/WorkspaceSidebar.js`, `components/SiteNav.js`, `app/api/admin/route.js`
   - Needs testing: no Admin link for a non-admin account
   - SQL to run: no
 - Local only, not in git: the admin page failed on localhost because `.env.local`'s `ADMIN_EMAILS` listed only the Outlook address; the Gmail address was added. Vercel already had both.
@@ -113,7 +156,7 @@ Entries from 2026-11-11 onward carry a status. Earlier entries are all live; any
   - SQL to run: Section 42, run by Carson 2026-11-13
 - **[SHIPPED]** Profile "Save changes" works (April checklist §1.2). Confirmed by Carson 2026-11-13.
 - **[SHIPPED]** Leaked key clean-up: legacy keys changed (April checklist §1.3). Confirmed by Carson 2026-11-13.
-- **[WRITTEN]** `CHANGELOG.md` and `CLAUDE.md` added — repo root. Not committed.
+- **[DEPLOYED]** `CHANGELOG.md` and `CLAUDE.md` added — repo root (2d1c3f0).
   - SQL to run: no
 - **[DEPLOYED]** Notification routes accept only a saved row's id and need its author to be signed in — `app/api/notify-message`, `notify-reply`, `match-saved-searches`, `lib/serverNotifyGuard.js`, `lib/notifyContent.js`
   - Needs testing: enquiry, reply, quote, invoice, reminder and receipt notifications
@@ -124,7 +167,7 @@ Entries from 2026-11-11 onward carry a status. Earlier entries are all live; any
 - **[DEPLOYED]** Audit fixes: receipts need a paid job, quote events must match the saved quote, bookings validated on the server, invite limits, whole-number ratings — `app/api/documents/pdf`, `notify-quote-event`, `notify-saved`, `request-booking`, `reviews`, `client-review`, `organisation-invite`, `signup`, `lib/displayName.js`
   - Needs testing: see Outstanding
   - SQL to run: no
-- **[WRITTEN]** Database guards on quotes, professional profiles, messages and replies — `SUPABASE_SQL.sql` Section 40
+- **[DEPLOYED]** Database guards on quotes, professional profiles, messages and replies — `SUPABASE_SQL.sql` Section 40 (run 2026-11-13)
   - SQL to run: yes, Section 40 (not run)
 - **[DEPLOYED]** Pages read named public columns of a professional, never the whole row — `lib/freelancerColumns.js`, `lib/freelancerContact.js`, `lib/myFreelancer.js`, 9 pages, `tests/freelancerColumns.test.js`
   - Needs testing: profile, search, saved, dashboard, messages, jobs after Section 41

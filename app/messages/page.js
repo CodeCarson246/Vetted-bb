@@ -10,6 +10,8 @@ import { formatDocDate } from '@/lib/formatDate'
 import { fmtInvoiceDate } from '@/lib/invoicing'
 import { authedPost } from '@/lib/authedFetch'
 import { withFreelancerContacts } from '@/lib/freelancerContact'
+import { invoiceFor, invoiceBalance, quoteDeposit, depositLabel, money2, jobTotal } from '@/lib/payments'
+import { invoiceNumberInReply } from '@/lib/invoicing'
 import { useRealtimeThreads } from '@/lib/useRealtimeThreads'
 import { uploadChatPhoto } from '@/lib/uploadChatPhoto'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
@@ -133,7 +135,7 @@ export default function ClientMessages() {
       const invoice = status === 'accepted' && res.ok ? (res.data?.invoice || null) : null
       // Show the invoice at once rather than waiting for the reload below.
       if (invoice) {
-        setQuotes(prev => ({ ...prev, [quoteId]: { ...prev[quoteId], status: 'invoiced', invoice_number: invoice.invoice_number, invoice_due_date: invoice.invoice_due_date } }))
+        setQuotes(prev => ({ ...prev, [quoteId]: { ...prev[quoteId], status: 'invoiced', invoice_number: invoice.invoice_number, invoice_due_date: invoice.invoice_due_date, ...(invoice.is_deposit ? { is_deposit: true, invoice_amount: invoice.invoice_amount } : {}) } }))
       }
       setToast({
         message: status !== 'accepted' ? 'Quote declined.'
@@ -370,18 +372,22 @@ export default function ClientMessages() {
             if (quoteId && quoteData) {
               const asReceipt = (r.body || '').startsWith('Sent receipt')
               const asInvoice = asReceipt || ((r.body || '').startsWith('Sent invoice') && !!quoteData.invoice_number)
-              const dueDate = asInvoice ? (quoteData.invoice_due_date || quoteData.due_date) : quoteData.due_date
+              // A deposit job has two invoices; the reply names the one it sent.
+              const inv = asInvoice && !asReceipt ? invoiceFor(quoteData, invoiceNumberInReply(r.body)) : null
+              const invPaid = inv ? invoiceBalance(quoteData, inv) : null
+              const deposit = !asInvoice ? quoteDeposit(quoteData) : 0
+              const dueDate = asInvoice ? (inv?.due || quoteData.invoice_due_date || quoteData.due_date) : quoteData.due_date
               return (
                 <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: asReceipt ? '#166534' : '#00267F' }}>
                     <div>
-                      <p className="text-white font-semibold text-sm">{asReceipt ? `Receipt ${quoteData.invoice_number}` : asInvoice ? `Invoice ${quoteData.invoice_number}` : `Quote ${quoteData.quote_number}`}</p>
+                      <p className="text-white font-semibold text-sm">{asReceipt ? `Receipt ${quoteData.invoice_number}` : asInvoice ? `${inv?.kind === 'deposit' ? 'Deposit invoice' : inv?.kind === 'balance' ? 'Balance invoice' : 'Invoice'} ${inv?.number || quoteData.invoice_number}` : `Quote ${quoteData.quote_number}`}</p>
                       <p className="text-xs mt-0.5" style={{ color: asReceipt ? '#86efac' : '#93b8ff' }}>
-                        From {f?.name} · {formatDocDate((asInvoice ? quoteData.invoiced_at : quoteData.quote_date) || quoteData.quote_date)}
+                        From {f?.name} · {formatDocDate((asInvoice ? (inv?.issued || quoteData.invoiced_at) : quoteData.quote_date) || quoteData.quote_date)}
                       </p>
                     </div>
                     <button
-                      onClick={() => setViewingQuote({ quote: quoteData, freelancer: f, asInvoice, asReceipt })}
+                      onClick={() => setViewingQuote({ quote: quoteData, freelancer: f, asInvoice, asReceipt, invoiceNumber: inv?.number })}
                       className="text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity"
                       style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                     >
@@ -391,9 +397,21 @@ export default function ClientMessages() {
                   <div className="px-4 py-3 flex items-center justify-between bg-gray-50">
                     <div className="flex items-center gap-4">
                       <div>
-                        <p className="text-xs text-gray-400">Total</p>
-                        <p className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(quoteData.total).toFixed(2)}</p>
+                        <p className="text-xs text-gray-400">{inv && inv.kind !== 'full' ? 'Amount' : 'Total'}</p>
+                        <p className="text-sm font-bold" style={{ color: '#00267F' }}>${money2(inv ? inv.amount : quoteData.total)}</p>
                       </div>
+                      {deposit > 0 && (
+                        <div>
+                          <p className="text-xs text-gray-400">{depositLabel(quoteData).replace(' required', '')}</p>
+                          <p className="text-sm font-semibold text-gray-700">${money2(deposit)} upfront</p>
+                        </div>
+                      )}
+                      {invPaid && invPaid.paid > 0 && invPaid.outstanding > 0 && (
+                        <div>
+                          <p className="text-xs text-gray-400">Still to pay</p>
+                          <p className="text-sm font-semibold" style={{ color: '#92400E' }}>${money2(invPaid.outstanding)}</p>
+                        </div>
+                      )}
                       <div>
                         <p className="text-xs text-gray-400">{asReceipt ? 'Paid' : 'Payment due'}</p>
                         <p className="text-sm font-semibold" style={{ color: asReceipt ? '#166534' : '#374151' }}>{asReceipt
@@ -544,6 +562,14 @@ export default function ClientMessages() {
 
   const activeMsg = messages.find(m => m.id === expandedId) || null
 
+
+  // Billed cost lines for the document being previewed (see the table below).
+  const viewCosts = (() => {
+    const vq = viewingQuote?.quote
+    if (!vq || !Array.isArray(vq.billed_expenses) || !(viewingQuote.asInvoice || viewingQuote.asReceipt)) return []
+    const kind = viewingQuote.asReceipt ? 'receipt' : invoiceFor(vq, viewingQuote.invoiceNumber)?.kind
+    return kind === 'full' || kind === 'balance' || kind === 'receipt' ? vq.billed_expenses.filter(c => Number(c?.amount) > 0) : []
+  })()
   return (
     <main className="bg-gray-50 overflow-hidden" style={{ height: 'calc(100dvh - 68px)' }}>
       {/* Hide the global footer on mobile so the chat fills the viewport and
@@ -795,6 +821,17 @@ export default function ClientMessages() {
                     </td>
                   </tr>
                 ))}
+                {/* Costs the professional billed on (copied onto the invoice when
+                    it was issued). Only on the invoice that carries them and the
+                    receipt; never on the quote or a deposit invoice. */}
+                {viewCosts.map((c, i) => (
+                  <tr key={`cost-${i}`} style={{ backgroundColor: ((viewingQuote.quote.items || []).length + i) % 2 === 0 ? 'var(--row-stripe)' : 'var(--surface-card)' }}>
+                    <td className="px-3 py-2 text-gray-700">Cost: {c.description}</td>
+                    <td className="px-3 py-2 text-gray-700 text-center">1</td>
+                    <td className="px-3 py-2 text-gray-700 text-right">Bds${money2(c.amount)}</td>
+                    <td className="px-3 py-2 font-medium text-gray-900 text-right">Bds${money2(c.amount)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
             <div className="flex justify-end mb-6">
@@ -805,7 +842,7 @@ export default function ClientMessages() {
                 </div>
                 <div className="flex justify-between py-2 border-t-2 border-gray-900 mt-1">
                   <span className="text-sm font-bold text-gray-900">Total</span>
-                  <span className="text-sm font-bold" style={{ color: '#00267F' }}>${Number(viewingQuote.quote.total).toFixed(2)}</span>
+                  <span className="text-sm font-bold" style={{ color: '#00267F' }}>${money2(viewCosts.length ? jobTotal(viewingQuote.quote) : viewingQuote.quote.total)}</span>
                 </div>
               </div>
             </div>
@@ -838,7 +875,7 @@ export default function ClientMessages() {
                     Receipt PDF
                   </button>
                   <button
-                    onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice' })}
+                    onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice', invoiceNumber: viewingQuote.invoiceNumber })}
                     className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
                     style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                   >
@@ -848,7 +885,7 @@ export default function ClientMessages() {
               ) : viewingQuote.asInvoice ? (
                 <>
                   <button
-                    onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice' })}
+                    onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice', invoiceNumber: viewingQuote.invoiceNumber })}
                     className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
                     style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                   >
@@ -873,7 +910,7 @@ export default function ClientMessages() {
                   </button>
                   {viewingQuote.quote.invoice_number && (
                     <button
-                      onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice' })}
+                      onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice', invoiceNumber: viewingQuote.invoiceNumber })}
                       className="flex-1 py-3 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
                       style={{ backgroundColor: '#00267F' }}
                     >

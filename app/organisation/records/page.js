@@ -6,6 +6,13 @@ import { useOrganisation } from '@/lib/useOrganisation'
 import { currencySymbol } from '@/lib/organisations'
 import { formatVerifyCode } from '@/lib/verifyCode'
 import { termLabel } from '@/lib/paymentTerms'
+import ExportCsvDialog from '@/components/ExportCsvDialog'
+import OutstandingCard from '@/components/OutstandingCard'
+import IncomeSummary from '@/components/IncomeSummary'
+import { outstandingSummary, jobOutstanding, jobTotal } from '@/lib/payments'
+import { todayKeyBarbados } from '@/lib/rentals'
+import { organisationRecords, ORGANISATION_COLUMNS } from '@/lib/financialCsv'
+import { fetchFreelancerContacts } from '@/lib/freelancerContact'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const STATUS_LABELS = { sent: 'Awaiting decision', accepted: 'Accepted', declined: 'Declined', invoiced: 'Invoiced', completed: 'Completed', paid: 'Paid' }
@@ -25,10 +32,6 @@ const fmtDate = (v) => {
   return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 const money = (sym, n) => `${sym}${Number(n || 0).toFixed(2)}`
-const csvCell = (v) => {
-  const s = v == null ? '' : String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
 
 // Every quote and invoice the organisation has received, filterable and
 // exportable: the audit answer in one click. Paid totals are spend;
@@ -42,6 +45,23 @@ export default function OrganisationRecords() {
   const [pro, setPro] = useState('all')
   const [member, setMember] = useState('all')
   const [status, setStatus] = useState('all')
+  // The export works from every quote and invoice, not the filtered table:
+  // its own date range and type decide what goes in the file.
+  const [exportRecords, setExportRecords] = useState([])
+  // What the organisation still owes professionals (part payments taken off).
+  const [payable, setPayable] = useState(null)
+  // ?status=unpaid (from the Payable card) opens the table on unpaid invoices.
+  useEffect(() => {
+    try {
+      const wanted = new URLSearchParams(window.location.search).get('status')
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the address on arrival
+      if (wanted === 'unpaid' || STATUS_LABELS[wanted]) setStatus(wanted)
+    } catch { /* ignore */ }
+  }, [])
+  const [exportOpen, setExportOpen] = useState(false)
+  // The year-end spending summary, from the same quotes and payments.
+  const [reportData, setReportData] = useState(null)
+  const [thisYear, setThisYear] = useState('')
 
   useEffect(() => {
     if (loading || !org) return
@@ -59,8 +79,27 @@ export default function OrganisationRecords() {
         msgIds.length ? supabase.from('messages').select('id, sender_name, sender_user_id').in('id', msgIds) : Promise.resolve({ data: [] }),
         reqIds.length ? supabase.from('quote_requests').select('id, title').in('id', reqIds) : Promise.resolve({ data: [] }),
       ])
+      // Professionals' email addresses are not public (SQL Section 41); an
+      // organisation with a quote from them may have them.
+      const contacts = await fetchFreelancerContacts(qs.map(q => q.freelancer_id))
+      // Payments recorded against these invoices, for the export's payment
+      // columns. Before SQL Section 44 there is no such table: none, then.
+      const invoicedIds = qs.filter(q => q.invoice_number).map(q => q.id)
+      const { data: paymentRows } = invoicedIds.length
+        ? await supabase.from('invoice_payments').select('*').in('quote_id', invoicedIds).order('received_on', { ascending: true })
+        : { data: [] }
+      const payments = {}
+      for (const p of paymentRows || []) (payments[p.quote_id] = payments[p.quote_id] || []).push(p)
       if (cancelled) return
       const byMsg = Object.fromEntries((msgs || []).map(m => [m.id, m]))
+      setPayable(outstandingSummary(qs, todayKeyBarbados()))
+      setThisYear(todayKeyBarbados().slice(0, 4))
+      setReportData({ quotes: qs, payments: paymentRows || [] })
+      setExportRecords(organisationRecords(qs, {
+        contacts,
+        payments,
+        raisedBy: Object.fromEntries((msgs || []).map(m => [m.id, m.sender_name || ''])),
+      }))
       const byReq = Object.fromEntries((reqs || []).map(r => [r.id, r]))
       setRows(qs.map(q => {
         const f = q.freelancers || {}
@@ -78,10 +117,13 @@ export default function OrganisationRecords() {
           requestTitle: byReq[q.quote_request_id]?.title || '',
           status: q.status,
           currency: q.currency || 'BBD',
-          total: Number(q.total) || 0,
+          // Once invoiced: the invoiced total, including any costs the
+          // professional billed on.
+          total: q.invoice_number ? jobTotal(q) : (Number(q.total) || 0),
           terms: termLabel(q.invoice_terms || q.payment_terms),
           invoiced_at: q.invoiced_at,
           paid_at: q.paid_at,
+          unpaid: !!q.invoice_number && !q.paid_at && jobOutstanding(q) > 0,
           reference: q.reference || '',
           verify_code: q.verify_code || '',
         }
@@ -100,7 +142,7 @@ export default function OrganisationRecords() {
     && (month === 'all' || r.month === month)
     && (pro === 'all' || r.professional === pro)
     && (member === 'all' || r.requestedBy === member)
-    && (status === 'all' || r.status === status)
+    && (status === 'all' || (status === 'unpaid' ? r.unpaid : r.status === status))
   )
   const hasFilter = year !== 'all' || month !== 'all' || pro !== 'all' || member !== 'all' || status !== 'all'
   const sym = currencySymbol(filtered[0]?.currency)
@@ -117,24 +159,6 @@ export default function OrganisationRecords() {
   const byMonth = groupSum(paid, r => (r.paid_at || r.date).slice(0, 7)).sort((a, b) => b[0].localeCompare(a[0]))
   const byPro = groupSum(paid, r => r.professional)
   const byMember = groupSum(paid, r => r.requestedBy || 'Unknown')
-
-  function exportCsv() {
-    const header = ['Quote no.', 'Invoice no.', 'Date', 'Professional', 'Trade', 'Requested by', 'Request', 'Status', 'Currency', 'Total', 'Terms', 'Invoiced', 'Paid', 'Reference', 'Verification code']
-    const lines = filtered.map(r => [
-      r.quote_number, r.invoice_number, r.date, r.professional, r.trade, r.requestedBy, r.requestTitle,
-      STATUS_LABELS[r.status] || r.status, r.currency, r.total.toFixed(2), r.terms,
-      r.invoiced_at ? r.invoiced_at.slice(0, 10) : '', r.paid_at ? r.paid_at.slice(0, 10) : '', r.reference, formatVerifyCode(r.verify_code),
-    ].map(csvCell).join(','))
-    const csv = [header.join(','), ...lines].join('\n')
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    const slug = (org.name || 'organisation').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    a.download = `vetted-records-${slug}-${new Date().toISOString().slice(0, 10)}.csv`
-    document.body.appendChild(a); a.click(); document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
 
   if (loading || !org) {
     return <main className="min-h-screen page-bg flex items-center justify-center"><p className="text-sm text-gray-400">Loading…</p></main>
@@ -159,9 +183,22 @@ export default function OrganisationRecords() {
             <p className="text-sm text-gray-500">Every quote and invoice received by {org.name}. Filter, then export or print for your files.</p>
           </div>
           <div className="flex gap-2 flex-shrink-0 no-print">
+            <a href="#year-end" className="text-sm font-semibold px-4 py-2 rounded-full border transition-colors hover:border-gray-400" style={{ borderColor: '#00267F', color: '#00267F' }}>Year-end summary</a>
             <button onClick={() => window.print()} disabled={!ready || filtered.length === 0} className="text-sm font-semibold px-4 py-2 rounded-full border transition-colors hover:border-gray-400 disabled:opacity-50" style={{ borderColor: '#00267F', color: '#00267F' }}>Print / PDF</button>
-            <button onClick={exportCsv} disabled={!ready || filtered.length === 0} className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#00267F' }}>Export CSV</button>
+            <button onClick={() => setExportOpen(true)} disabled={!ready || rows.length === 0} className="text-sm font-semibold px-4 py-2 rounded-full text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#00267F' }}>Export CSV</button>
+            <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} records={exportRecords} columns={ORGANISATION_COLUMNS} />
           </div>
+        </div>
+
+        {/* What the organisation still owes professionals */}
+        <div className="no-print">
+          <OutstandingCard
+            label="Payable"
+            summary={payable}
+            loading={!ready || !payable}
+            href="/organisation/records?status=unpaid"
+            onShow={() => { setStatus('unpaid'); document.getElementById('records-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
+          />
         </div>
 
         {/* Filters */}
@@ -185,6 +222,7 @@ export default function OrganisationRecords() {
             </select>
             <select className={selectCls} value={status} onChange={e => setStatus(e.target.value)}>
               <option value="all">Any status</option>
+              <option value="unpaid">Unpaid invoices</option>
               {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
             {hasFilter && <button onClick={() => { setYear('all'); setMonth('all'); setPro('all'); setMember('all'); setStatus('all') }} className="text-xs font-medium text-gray-400 hover:text-gray-600">✕ Clear</button>}
@@ -234,7 +272,7 @@ export default function OrganisationRecords() {
             <p className="px-6 py-10 text-sm text-gray-500 text-center">{rows.length === 0 ? 'No quotes yet. They appear here as soon as a professional sends one.' : 'Nothing matches these filters.'}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table id="records-table" className="w-full text-sm">
                 <thead className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
                   <tr>
                     <th className="px-4 py-3">Date</th>
@@ -276,6 +314,13 @@ export default function OrganisationRecords() {
         <p className="text-xs text-gray-400 mt-4">
           Totals are what professionals have invoiced {org.name} through Vetted.bb, as they recorded it. <Link href="/verify" className="font-semibold" style={{ color: '#00267F' }}>Verify any document</Link> with its code.
         </p>
+
+        {/* Year-end spending summary: what was paid to professionals, by year. */}
+        <section id="year-end" className="mt-10 no-print scroll-mt-20">
+          <h2 className="text-lg font-bold text-gray-900 mb-1">Year-end summary</h2>
+          <p className="text-sm text-gray-500 mb-4">What {org.name} was invoiced and paid in a calendar year, month by month.</p>
+          <IncomeSummary data={reportData} thisYear={thisYear} side="organisation" organisationId={org.id} />
+        </section>
       </div>
     </main>
   )

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { quoteDeposit, money2 } from '@/lib/payments'
 import { withFreelancerContacts } from '@/lib/freelancerContact'
 import { useOrganisation } from '@/lib/useOrganisation'
 import { formatParish } from '@/lib/formatParish'
@@ -161,6 +162,12 @@ export default function QuoteRequestDetail() {
                       {isLowest && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F9C000', color: '#00267F' }}>Lowest</span>}
                     </div>
                     <p className="text-xs text-gray-500 mb-3">{q.quote_number} · {termLabel(q.payment_terms)}</p>
+                    {quoteDeposit(q) > 0 && (
+                      <p className="text-xs mb-3" style={{ color: '#00267F' }}>
+                        <span className="font-bold">Deposit {sym}{money2(quoteDeposit(q))} upfront</span>
+                        <span className="text-gray-500"> · balance {sym}{money2(Number(q.total) - quoteDeposit(q))} on completion</span>
+                      </p>
+                    )}
                     <ul className="text-xs text-gray-600 flex flex-col gap-1 mb-4 flex-1">
                       {(q.items || []).slice(0, 4).map((it, i) => (
                         <li key={i} className="flex justify-between gap-2"><span className="truncate">{it.description}</span><span className="tabular-nums flex-shrink-0">{it.price ? sym + ((parseFloat(it.price) || 0) * (parseInt(it.qty) || 1)).toFixed(2) : ''}</span></li>

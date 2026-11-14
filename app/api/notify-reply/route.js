@@ -3,7 +3,8 @@ import { rateLimit, clientIp } from '@/lib/rateLimit'
 import { notifyThreadClient } from '@/lib/serverThreadNotify'
 import { signedInUser, isUuid, isFresh, claimNotification } from '@/lib/serverNotifyGuard'
 import { replyNoticeKind } from '@/lib/notifyContent'
-import { invoiceSummary } from '@/lib/invoicing'
+import { invoiceSummary, invoiceNumberInReply } from '@/lib/invoicing'
+import { invoiceFor } from '@/lib/payments'
 
 // Notifies the CLIENT side of a thread when the professional replies or
 // sends a quote, invoice, reminder or receipt.
@@ -22,13 +23,18 @@ export async function POST(request) {
       return Response.json({ error: 'Server is not configured for notifications.' }, { status: 500 })
     }
 
-    if (!rateLimit(`notify-reply:${clientIp(request)}`, { limit: 10, windowMs: 10 * 60_000 })) {
+    // A generous ceiling per connection, before anything else is looked up.
+    // The real limit is per person, below, once we know who is asking.
+    if (!(await rateLimit(`notify-reply-ip:${clientIp(request)}`, { limit: 300, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many notifications. Please try again later.' }, { status: 429 })
     }
 
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
     const user = await signedInUser(admin, request)
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!(await rateLimit(`notify-reply:${user.id}`, { limit: 30, windowMs: 10 * 60_000 }))) {
+      return Response.json({ error: 'Too many notifications. Please try again later.' }, { status: 429 })
+    }
 
     const body = await request.json().catch(() => null)
     const replyId = body?.reply_id
@@ -56,8 +62,10 @@ export async function POST(request) {
     } else if (kind === 'invoice') {
       // The same summary the automatic invoice sends, built from the saved
       // invoice instead of from text in the request.
+      // A deposit job has two invoices; the reply names the one it sent.
       const { data: quote } = await admin.from('quotes').select('*').eq('id', reply.quote_id).maybeSingle()
-      if (quote?.invoice_number) message = invoiceSummary(quote.invoice_number, quote.total, quote.invoice_due_date)
+      const inv = quote ? invoiceFor(quote, invoiceNumberInReply(reply.body)) : null
+      if (inv) message = invoiceSummary(inv.number, inv.amount, inv.due, inv.kind, quote.billed_expenses_total || 0)
     } else if (kind === 'reply' && !message) {
       message = 'Photo'
     }

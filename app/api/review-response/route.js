@@ -18,7 +18,7 @@ export async function POST(request) {
     const { data: { user }, error: authErr } = await admin.auth.getUser(token)
     if (authErr || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!rateLimit(`review-response:${user.id}`, { limit: 20, windowMs: 10 * 60_000 })) {
+    if (!(await rateLimit(`review-response:${user.id}`, { limit: 20, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many updates. Please try again later.' }, { status: 429 })
     }
 

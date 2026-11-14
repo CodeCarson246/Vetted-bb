@@ -60,6 +60,10 @@ test('the conversation line is one both pages recognise as an invoice', () => {
 test('the client summary states the amount and the due date', () => {
   assert.equal(invoiceSummary('INV-20261112-550', 756, '2026-11-26'), 'Invoice INV-20261112-550 for $756.00, payment due 26 Nov 2026')
   assert.equal(invoiceSummary('INV-1', '120.5', '2026-11-12'), 'Invoice INV-1 for $120.50, payment due 12 Nov 2026')
+  // Costs billed on top of the quote are named, never slipped in.
+  assert.equal(invoiceSummary('INV-1', 2300, '2026-11-12', 'full', 300), 'Invoice INV-1 for $2300.00 (includes $300.00 in costs added to the quoted price), payment due 12 Nov 2026')
+  assert.equal(invoiceSummary('INV-2', 1300, '2026-11-12', 'balance', 300), 'Balance invoice INV-2 for $1300.00 (includes $300.00 in costs added to the quoted price), payment due 12 Nov 2026')
+  assert.equal(invoiceSummary('INV-1', 1000, '2026-11-12', 'deposit', 300), 'Deposit invoice INV-1 for $1000.00, payment due 12 Nov 2026')
 })
 
 test('the send-invoice link round-trips, and nothing else is mistaken for one', () => {

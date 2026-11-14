@@ -67,7 +67,7 @@ async function sendAdminEmail(app) {
 
 export async function POST(request) {
   try {
-    if (!rateLimit(`vetted-rising:${clientIp(request)}`, { limit: 5, windowMs: 10 * 60_000 })) {
+    if (!(await rateLimit(`vetted-rising:${clientIp(request)}`, { limit: 5, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many applications from this connection. Please try again later.' }, { status: 429 })
     }
 

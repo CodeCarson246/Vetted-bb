@@ -146,3 +146,36 @@ test('the Total amount lines up with the line-total column', () => {
   const html = buildDocumentHtml(base, issuer)
   assert.ok(html.includes('padding:calc(10px * var(--s)) calc(14px * var(--s)) calc(10px * var(--s)) 0;border-top:calc(2px * var(--s)) solid #111827;font-size:calc(14px * var(--s));font-weight:700;color:#00267F;text-align:right'))
 })
+
+// ── deposits and part payments (lib/payments.js) ──
+const build = buildDocumentHtml
+const depBase = { quote_number: 'QT-1', quote_date: '2026-11-01', total: 2000, items: [{ description: 'Plumbing', qty: '1', price: '2000' }], currency: 'BBD', verify_code: 'ABCD1234' }
+const text = html => html.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ')
+
+test('a quote with a deposit shows the deposit and the balance under Total', () => {
+  const t = text(build({ ...depBase, deposit_type: 'percent', deposit_value: 50 }, {}, { type: 'quote' }))
+  assert.match(t, /Total Bds\$2000\.00 Deposit required \(50%\) Bds\$1000\.00 Balance on completion Bds\$1000\.00/)
+})
+
+test('a quote without a deposit is unchanged', () => {
+  assert.doesNotMatch(text(build(depBase, {}, { type: 'quote' })), /Deposit|Balance/)
+})
+
+test('a part-paid invoice shows Total, Paid and Balance due', () => {
+  const t = text(build({ ...depBase, invoice_number: 'INV-1', amount_paid: 1000 }, {}, { type: 'invoice' }))
+  assert.match(t, /INVOICE/); assert.match(t, /Total Bds\$2000\.00 Paid Bds\$1000\.00 Balance due Bds\$1000\.00/)
+})
+
+test('deposit and balance invoices are labelled and pick their own number', () => {
+  const q = { ...depBase, deposit_type: 'percent', deposit_value: 50, invoice_number: 'INV-D', is_deposit: true, invoice_amount: 1000, amount_paid: 1000, balance_invoice_number: 'INV-B' }
+  const d = text(build(q, {}, { type: 'invoice', invoiceNumber: 'INV-D' }))
+  assert.match(d, /DEPOSIT INVOICE INV-D/); assert.match(d, /Deposit due \(50%\) Bds\$1000\.00/)
+  const b = text(build(q, {}, { type: 'invoice', invoiceNumber: 'INV-B' }))
+  assert.match(b, /BALANCE INVOICE INV-B/); assert.match(b, /Deposit paid Bds\$1000\.00 Balance due Bds\$1000\.00/)
+  assert.match(text(build(q, {}, { type: 'invoice' })), /BALANCE INVOICE INV-B/) // latest by default
+})
+
+test('the verification block is the same with or without a deposit', () => {
+  const block = h => h.slice(h.indexOf('/verify'), h.indexOf('/verify') + 400)
+  assert.equal(block(build({ ...depBase, deposit_type: 'percent', deposit_value: 50 }, {}, { type: 'quote' })), block(build(depBase, {}, { type: 'quote' })))
+})

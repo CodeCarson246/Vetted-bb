@@ -21,7 +21,9 @@ export async function POST(request) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!serviceKey) return Response.json({ error: 'Bookings are not configured.' }, { status: 500 })
 
-    if (!rateLimit(`book:${clientIp(request)}`, { limit: 8, windowMs: 10 * 60_000 })) {
+    // A generous ceiling per connection, before anything else is looked up.
+    // The real limit is per person, below, once we know who is asking.
+    if (!(await rateLimit(`book-ip:${clientIp(request)}`, { limit: 80, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
     }
 
@@ -31,6 +33,9 @@ export async function POST(request) {
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
     const { data: { user }, error: authErr } = await admin.auth.getUser(token)
     if (authErr || !user) return Response.json({ error: 'Please log in to request a booking.' }, { status: 401 })
+    if (!(await rateLimit(`book:${user.id}`, { limit: 8, windowMs: 10 * 60_000 }))) {
+      return Response.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+    }
 
     const { freelancer_id, service_id, date, end_date, start_time, note } = await request.json()
     if (!freelancer_id || !service_id || !date) return Response.json({ error: 'Missing required fields.' }, { status: 400 })
