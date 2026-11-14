@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { getMyFreelancer } from '@/lib/myFreelancer'
 import { useAuth } from '@/lib/auth-context'
 import { profileUrl } from '@/lib/handles'
+import { useIsAdmin } from '@/lib/useIsAdmin'
 
 const ICONS = {
   dashboard: <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10" />,
@@ -22,6 +23,7 @@ const ICONS = {
   sent: <path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />,
   rising: <path strokeLinecap="round" strokeLinejoin="round" d="M23 6l-9.5 9.5-5-5L1 18M17 6h6v6" />,
   badges: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" /></>,
+  admin: <><rect x="3" y="11" width="18" height="11" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0110 0v4" /></>,
   logout: <path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />,
 }
 
@@ -55,6 +57,8 @@ export default function WorkspaceSidebar({ open, onClose }) {
   const pathname = usePathname() || ''
   const [profile, setProfile] = useState(null)
   const [unread, setUnread] = useState(0)
+  // Admins only: the server decides (lib/useIsAdmin).
+  const isAdmin = useIsAdmin(user)
 
   useEffect(() => {
     if (!user) { setProfile(null); setUnread(0); return }
@@ -149,6 +153,13 @@ export default function WorkspaceSidebar({ open, onClose }) {
           <Link href="/badges" onClick={onClose} className={linkSub} style={{ color: 'rgba(255,255,255,0.72)' }}>
             <NavIcon name="badges" /> <span className="flex-1">What badges mean</span>
           </Link>
+          {/* Admin panel. Shown only to accounts the server lists as admins;
+              the page itself checks again. */}
+          {isAdmin && (
+            <Link href="/admin" onClick={onClose} className={linkSub} style={{ color: pathname.startsWith('/admin') ? '#F9C000' : 'rgba(255,255,255,0.72)' }}>
+              <NavIcon name="admin" /> <span className="flex-1">Admin</span>
+            </Link>
+          )}
           {/* Log out, without the detour through Settings. This device only:
               other phones and computers stay signed in. */}
           <button

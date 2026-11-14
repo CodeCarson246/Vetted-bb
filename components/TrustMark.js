@@ -9,7 +9,11 @@ import BadgeGlyph from './badgeArt'
 //   organisation  gold circle, navy tick    an organisation we checked is genuine
 //   vendor        gold shield in a navy pill a professional registered with Treasury
 //   featured      navy star in a gold pill   a professional we are highlighting
+//   rising        gold arrow in a white pill a Vetted Rising member, first 90 days
 // The emblems themselves live in badgeArt.js.
+//
+// A page shows `rising` only when isRising() (lib/rising.js) says so; the
+// mark itself does not know about dates.
 export const TRUST_MARKS = {
   verified: {
     title: 'Verified professional',
@@ -30,6 +34,11 @@ export const TRUST_MARKS = {
     title: 'Featured professional',
     short: 'Featured',
     explain: 'A professional Vetted.bb is highlighting on the homepage and in search.',
+  },
+  rising: {
+    title: 'Rising Talent',
+    short: 'Rising Talent',
+    explain: 'A young professional who joined through Vetted Rising, our programme for 16 to 30 year olds. They are new here and backed by us. Shown for their first 90 days.',
   },
 }
 
@@ -62,6 +71,21 @@ export default function TrustMark({ kind, size = 16, withLabel = false, label })
       >
         <BadgeGlyph kind="vendor" size={Math.round(size * 0.8)} />
         {text}
+      </span>
+    )
+  }
+
+  if (kind === 'rising') {
+    // White with a navy edge, so it reads on a white card and on the navy
+    // profile header alike, and is never mistaken for Featured (gold).
+    return (
+      <span
+        title={`${meta.title}: ${meta.explain}`}
+        role="img"
+        aria-label={meta.title}
+        style={{ display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle', backgroundColor: '#ffffff', color: '#00267F', border: '1px solid #00267F', borderRadius: 999, padding: '1px 8px 1px 3px', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.6, whiteSpace: 'nowrap' }}
+      >
+        <BadgeGlyph kind="rising" size={13} style={{ marginRight: 4 }} />{text}
       </span>
     )
   }

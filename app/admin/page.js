@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import Icon from '@/components/Icon'
+import { isRising, risingEndsAt } from '@/lib/rising'
 
 // Admin access is enforced server-side by /api/admin (ADMIN_EMAILS env
 // var + JWT verification). This page is only a UI shell — it holds no
@@ -110,13 +111,15 @@ export default function AdminPanel() {
       },
       body: JSON.stringify({ id, field, value, reason }),
     })
+    const body = await res.json().catch(() => ({}))
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
       alert(body.error || 'Update failed. Please try again.')
       return
     }
     setFreelancers(prev => prev.map(f => f.id === id
-      ? { ...f, [field]: value, ...(field === 'flagged' ? { flag_reason: value ? (reason || null) : null } : {}) }
+      ? field === 'rising'
+        ? { ...f, rising_since: body.rising_since ?? null }
+        : { ...f, [field]: value, ...(field === 'flagged' ? { flag_reason: value ? (reason || null) : null } : {}) }
       : f))
   }
 
@@ -340,6 +343,26 @@ export default function AdminPanel() {
                               : { borderColor: '#d1d5db', color: '#9ca3af' }}
                           >
                             ★ Featured
+                          </button>
+                          <button
+                            onClick={() => {
+                              const on = isRising(f)
+                              const ends = risingEndsAt(f)
+                              if (on && !confirm(`Remove the Rising Talent badge? It would otherwise end on ${formatDate(ends)}.`)) return
+                              if (!on && !confirm('Give this profile the Rising Talent badge for 90 days, from today? Only for Vetted Rising members.')) return
+                              toggleFlag(f.id, 'rising', !on)
+                            }}
+                            title={isRising(f)
+                              ? `Rising Talent until ${formatDate(risingEndsAt(f))}. Click to remove`
+                              : f.rising_since
+                              ? `Rising Talent ended ${formatDate(risingEndsAt(f))}. Click to give it again for 90 days`
+                              : 'Give the Rising Talent badge for 90 days (Vetted Rising members)'}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors"
+                            style={isRising(f)
+                              ? { backgroundColor: '#ffffff', color: '#00267F', borderColor: '#00267F' }
+                              : { borderColor: '#d1d5db', color: '#9ca3af' }}
+                          >
+                            ↑ Rising
                           </button>
                           <button
                             onClick={() => toggleFlag(f.id, 'hidden', !f.hidden)}

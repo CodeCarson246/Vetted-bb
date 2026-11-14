@@ -56,7 +56,7 @@ const NAMED_LISTS = /^(FREELANCER_PUBLIC_COLS|COLS|ISSUER_COLS)$/
 
 test('the public column list and the private one do not overlap', () => {
   for (const c of FREELANCER_PRIVATE_COLS) assert.equal(PUBLIC.has(c), false, c)
-  assert.equal(PUBLIC.size, 32)
+  assert.equal(PUBLIC.size, 33)
 })
 
 test('no page reads the freelancers table as a whole row, or a private column', () => {

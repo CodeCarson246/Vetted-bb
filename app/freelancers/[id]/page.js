@@ -16,6 +16,8 @@ import { serviceEnquiryLine } from '@/lib/enquiryLines'
 import { formatResponseTime } from '@/lib/formatResponseTime'
 import { useSaved } from '@/lib/useSaved'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
+import TrustMark from '@/components/TrustMark'
+import { isRising } from '@/lib/rising'
 import BookingWidget from '@/components/BookingWidget'
 import Tooltip from '@/components/Tooltip'
 import WeekView from '@/components/calendar/WeekView'
@@ -741,6 +743,7 @@ export default function FreelancerProfile() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="text-2xl font-bold text-white capitalize">{freelancer.name}</h1>
                     {isVerified(freelancer) && <VerifiedBadge size={20} withLabel />}
+                    {isRising(freelancer) && <TrustMark kind="rising" />}
                   </div>
                   {freelancer.company_name && freelancer.company_name.trim().length > 3 && (
                     <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>{freelancer.company_name}</p>

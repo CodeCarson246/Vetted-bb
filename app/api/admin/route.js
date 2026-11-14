@@ -33,6 +33,13 @@ export async function GET(request) {
   if (ctx.error) return Response.json({ error: ctx.error }, { status: ctx.status })
   const { supabase } = ctx
 
+  // ?check=1 only answers "is the caller an admin?" (lib/useIsAdmin), so the
+  // site can show the Admin link to admins and nobody else. Reaching this
+  // line already means yes; nothing else is read or returned.
+  if (new URL(request.url).searchParams.get('check') === '1') {
+    return Response.json({ admin: true })
+  }
+
   const [
     { count: freelancerCount },
     { count: clientCount },
@@ -50,7 +57,7 @@ export async function GET(request) {
     supabase.from('reviews').select('*', { count: 'exact', head: true }),
     supabase.from('messages').select('*', { count: 'exact', head: true }),
     supabase.from('services').select('*', { count: 'exact', head: true }),
-    supabase.from('freelancers').select('id, name, trade, category, location, rating, created_at, verified, featured, hidden, flagged, flag_reason, deactivated_at').order('created_at', { ascending: false }),
+    supabase.from('freelancers').select('id, name, trade, category, location, rating, created_at, verified, featured, hidden, flagged, flag_reason, deactivated_at, rising_since').order('created_at', { ascending: false }),
     supabase.from('reviews').select('id, author, comment, rating, type, date, created_at').order('created_at', { ascending: false }),
     supabase.from('messages').select('id, sender_name, sender_email, subject, created_at, read').order('created_at', { ascending: false }),
     supabase.from('services').select('id, name, price, created_at, freelancer_id, freelancers(name)').order('created_at', { ascending: false }),
@@ -92,17 +99,21 @@ export async function PATCH(request) {
     return Response.json({ success: true })
   }
 
-  if (!id || !['verified', 'featured', 'hidden', 'flagged'].includes(field) || typeof value !== 'boolean') {
+  if (!id || !['verified', 'featured', 'hidden', 'flagged', 'rising'].includes(field) || typeof value !== 'boolean') {
     return Response.json({ error: 'Invalid request.' }, { status: 400 })
   }
 
+  // Rising Talent: switching it on starts the 90 days today (lib/rising.js);
+  // switching it off ends it now.
   const patch = field === 'flagged'
     ? { flagged: value, flag_reason: value ? (typeof reason === 'string' ? reason.slice(0, 300) : null) : null }
+    : field === 'rising'
+    ? { rising_since: value ? new Date().toISOString() : null }
     : { [field]: value }
 
   const { error } = await supabase.from('freelancers').update(patch).eq('id', id)
   if (error) return Response.json({ error: error.message }, { status: 500 })
-  return Response.json({ success: true })
+  return Response.json({ success: true, ...(field === 'rising' ? { rising_since: patch.rising_since } : {}) })
 }
 
 export async function DELETE(request) {

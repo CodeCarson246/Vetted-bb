@@ -33,6 +33,12 @@ const DETAILS = [
     who: 'Professionals',
     note: 'Featured professionals appear on the homepage.',
   },
+  {
+    kind: 'rising',
+    how: 'Given by Vetted.bb to people who join through Vetted Rising, once we have met them and built their profile with them. It lasts 90 days and then ends by itself.',
+    who: 'Professionals',
+    note: 'Next to the name on search cards, category pages, the homepage and the profile.',
+  },
 ]
 
 const CARD = { borderTop: '4px solid #00267F', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,38,127,0.08)' }
@@ -45,7 +51,7 @@ export default function Badges() {
           <p className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-3" style={{ color: '#F9C000' }}>Trust marks</p>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 leading-tight" style={{ letterSpacing: '-0.005em' }}>What our badges mean</h1>
           <p className="text-base leading-relaxed max-w-2xl mx-auto" style={{ color: '#c3d4ff' }}>
-            Four marks, each with one meaning. None can be bought.
+            Five marks, each with one meaning. None can be bought.
           </p>
         </div>
       </section>

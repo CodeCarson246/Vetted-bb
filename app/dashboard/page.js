@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { authedPost } from '@/lib/authedFetch'
+import { saveErrorMessage } from '@/lib/saveErrorMessage'
 import { withFreelancerContacts } from '@/lib/freelancerContact'
 import { FREELANCER_PUBLIC_COLS } from '@/lib/freelancerColumns'
 import { useAuth } from '@/lib/auth-context'
@@ -459,7 +460,8 @@ function DashboardInner() {
       .eq('user_id', user.id)
 
     if (error) {
-      setToast({ message: 'Something went wrong. Please try again.', type: 'error' })
+      console.error('[profile] save failed:', error)
+      setToast({ message: saveErrorMessage(error), type: 'error' })
     } else {
       setProfile(prev => ({ ...prev, ...updatePayload }))
       setShowEditForm(false)
@@ -638,7 +640,8 @@ function DashboardInner() {
       .update({ ...patch, updated_at: new Date().toISOString() })
       .eq('user_id', user.id)
     if (error) {
-      setToast({ message: 'Something went wrong. Please try again.', type: 'error' })
+      console.error('[client profile] save failed:', error)
+      setToast({ message: saveErrorMessage(error), type: 'error' })
     } else {
       setClientProfile(prev => ({ ...prev, ...patch }))
       setToast({ message: 'Profile updated', type: 'success' })

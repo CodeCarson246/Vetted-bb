@@ -4,12 +4,15 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { useIsAdmin } from '@/lib/useIsAdmin'
 import ThemeToggle from '@/components/ThemeToggle'
 import NotificationBell from '@/components/NotificationBell'
 import MessagePreview from '@/components/MessagePreview'
 
 export default function SiteNav() {
   const { user } = useAuth()
+  // Admins only: the server decides (lib/useIsAdmin).
+  const isAdmin = useIsAdmin(user)
   const [freelancerProfile, setFreelancerProfile] = useState(null)
   const [clientProfile, setClientProfile] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -434,6 +437,17 @@ export default function SiteNav() {
                     >
                       Settings
                     </Link>
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setDropdownOpen(false)}
+                        style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', fontFamily: 'var(--font-body)', color: '#374151', textDecoration: 'none' }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F0F4FF'; e.currentTarget.style.color = '#00267F' }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151' }}
+                      >
+                        Admin
+                      </Link>
+                    )}
                     <div style={{ borderTop: '1px solid var(--border-card)', margin: '4px 0' }} />
                     <button
                       onClick={() => {
@@ -647,6 +661,9 @@ export default function SiteNav() {
               <Link href="/saved" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Saved professionals</Link>
               <Link href="/invite" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Invite friends</Link>
               <Link href="/settings" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Settings</Link>
+              {isAdmin && (
+                <Link href="/admin" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Admin</Link>
+              )}
               <Link href="/search" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>Browse Professionals</Link>
               <Link href="/for-organisations" onClick={() => setMenuOpen(false)} style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>For organisations</Link>
               <button

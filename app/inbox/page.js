@@ -692,25 +692,6 @@ export default function Inbox() {
     setTimeout(() => setToast(null), 3500)
   }
 
-  async function deleteReply(replyId, msgId) {
-    // Supabase: DELETE FROM message_replies WHERE id = replyId
-    const { error } = await supabase
-      .from('message_replies')
-      .delete()
-      .eq('id', replyId)
-    if (error) {
-      showToast('Failed to delete. Please try again.', true)
-      return
-    }
-    setReplies(prev => ({
-      ...prev,
-      [msgId]: (prev[msgId] || []).map(r => r.id === replyId ? { ...r, _deleted: true } : r),
-    }))
-    setReplyDeleteConfirm(null)
-    setReplyMenuOpen(null)
-    showToast('Message deleted')
-  }
-
   async function handleDeleteReply(replyId) {
     setConfirmDeleteReplyId(null)
     // Optimistic update — mark deleted across all loaded threads

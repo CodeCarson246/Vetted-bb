@@ -16,19 +16,19 @@ Only Carson moves an item to SHIPPED, after testing it. New work starts as DEPLO
 
 Everything that is not SHIPPED, newest first. Last checked against the live site and database on 2026-11-13. Items marked "April checklist" come from `Vetted-bb-Pre-Launch-Checklist.docx` (April 2026) and its 21 June reconciliation, `Vetted-bb-Outstanding-Issues-Updated_1.docx`, both in Downloads.
 
-### SQL waiting to be run
+### Written, not live
 
-- **[WRITTEN]** SQL Section 42 (storage rules). Not run. Run it only AFTER the code change that goes with it is live (review photos saved under the reviewer's own folder); before that, review photo uploads would fail.
-  - Until run: anyone can upload, replace and delete files in the `avatars` bucket (see Broken).
-- **[WRITTEN]** SQL Sections 39 and 40 (`SUPABASE_SQL.sql`). Not run: confirmed 2026-11-13, `messages.notified_at` does not exist yet.
-  - Until run: a row can still be saved straight to the database under any name; a professional can still set their own `verified`, `featured`, `rating`; a quote can still be given any `organisation_id`; either side can still rewrite a conversation's first message.
-  - Safe to run now. No order requirement.
-- **[WRITTEN]** SQL Section 41 (contact details not public). Not run: confirmed 2026-11-13, every professional's email and phone are still readable with the public key.
-  - The matching code is live (60b427b), so it is safe to run now.
-  - After it runs, a new column on `freelancers` is unreadable until it is granted in the database and added to `lib/freelancerColumns.js`.
+- **[WRITTEN]** Rising Talent badge, 2026-11-13. Not deployed. SQL Section 43 has been run (column confirmed 2026-11-13), so it is safe to push.
+  - Needs testing: give a profile the badge from the admin panel (↑ Rising), then check it on search, a category page, the homepage (if featured) and the profile header; remove it again.
+- **[WRITTEN]** Profile save shows the real reason when it fails, 2026-11-13. Not deployed.
+- **[WRITTEN]** Dead `deleteReply` removed from the inbox, 2026-11-13. The pre-push scan is now clean. Not deployed.
+- **[WRITTEN]** Admin link in the workspace sidebar and the top menu, shown only to accounts in `ADMIN_EMAILS`, 2026-11-13. Not deployed. Checked on localhost: shown for an admin account, the check answers 401 signed out.
+  - Needs testing: sign in as a non-admin account and confirm there is no Admin link.
 
 ### Live but not verified
 
+- **[DEPLOYED]** SQL Sections 39, 40 and 41, run by Carson 2026-11-13. Checked on live: `notified_at` exists; a signed-out insert into messages is refused; professionals' email is no longer publicly readable; signed in, `my_freelancer()` returns the full own profile and a whole-row read is refused; Dashboard, Inbox, Quotes, Calendar, Settings, Search (6 profiles) and a public profile load with no console errors. Section 40's guards were not exercised directly (they need a second signed-in account).
+- **[DEPLOYED]** Storage rules, SQL Section 42, run 2026-11-13 (code 2d1c3f0). Checked on live while signed out: uploads to all six buckets refused, file listing returns nothing, an existing profile photo cannot be replaced or deleted, `.html` refused, and existing photos still load. Signed-in uploads not yet tested (on Carson's test list).
 - **[DEPLOYED]** Notification routes lock-down, 2026-11-13 (60b427b): `notify-message`, `notify-reply`, `match-saved-searches`.
   - Confirmed on live: unsigned requests get 401; Dashboard, Inbox, Quotes & earnings and My enquiries load when signed in.
   - Needs testing: send a real enquiry and check the professional gets the email and push; reply as the professional and check the client is notified; send a quote, an invoice, a reminder and a receipt.
@@ -37,8 +37,8 @@ Everything that is not SHIPPED, newest first. Last checked against the live site
 - **[DEPLOYED]** Audit fixes to eight routes, 2026-11-13 (60b427b): `documents/pdf`, `notify-quote-event`, `notify-saved`, `request-booking`, `reviews`, `client-review`, `organisation-invite`, `signup`.
   - Tested only against a fake database, never on live.
   - Needs testing: download a quote, an invoice and a receipt; accept and decline a quote; mark a job paid and completed; request a booking; invite someone to an organisation twice (second time shows the existing link).
-- **[DEPLOYED]** Contact details read through `my_freelancer()` and `freelancer_contact()`, 2026-11-13 (60b427b). Falls back to a direct read until Section 41 runs, so the new path has never run on live.
-  - Needs testing after Section 41: Edit profile still shows payment details and terms; a client sees the professional's email in a conversation; an invoice PDF still prints the phone and payment details.
+- **[DEPLOYED]** Contact details read through `my_freelancer()` and `freelancer_contact()`, 2026-11-13 (60b427b). Section 41 is live, so this path is now in use; `my_freelancer()` confirmed on live.
+  - Needs testing: Edit profile still shows payment details and terms; a client sees the professional's email in a conversation; an invoice PDF still prints the phone and payment details.
 - **[DEPLOYED]** Sitemap lists professionals again, 2026-11-13 (60b427b). Confirmed live: 6 profile URLs. Not checked in Google Search Console.
 - **[DEPLOYED]** "Your invoice has been sent" wording for automatic invoices, 2026-11-12 (d5798cc).
   - Needs testing: accept a quote that has the automatic box ticked, from a second account.
@@ -62,12 +62,6 @@ Everything that is not SHIPPED, newest first. Last checked against the live site
 
 ### Broken
 
-- **[BROKEN]** `avatars` storage bucket is open to anyone. Tested 2026-11-13 with a probe file, deleted afterwards, while signed out: upload, overwrite and delete were all accepted, as was an `.html` file. File names are listable, so anyone can replace or delete any profile photo, or host a web page on the Supabase domain. The April checklist expected "public with RLS".
-  - `portfolio`, `review-photos` and `service-images` refuse signed-out uploads. Anyone can list the files in all five public photo buckets.
-  - Fix WRITTEN 2026-11-13: SQL Section 42 plus a one-line code change. Not deployed, not run. See History.
-- **[BROKEN]** Vetted Rising admin alert email. Applications save (1 in the table) but the email does not arrive. Cause not confirmed; first check `RESEND_API_KEY` and `ADMIN_EMAILS` in Vercel.
-- **[BROKEN]** Rising Talent badge. The Vetted Rising page promises it in three places; nothing in the code awards or shows it.
-- **[BROKEN]** `deleteReply` in `app/inbox/page.js`. Dead code that calls two setters that do not exist. Nothing calls it, so it harms nothing today, and it is the only hit in the pre-push scan.
 
 ### Known gaps, left as they are
 
@@ -91,8 +85,8 @@ Everything that is not SHIPPED, newest first. Last checked against the live site
 Things Carson has said he will test himself. He asks for this list when he is ready; tick them off by moving each to SHIPPED.
 
 - Phone verification: verify a professional's phone from the dashboard and check the badge appears on the public profile. (Worked before; re-test.)
-- Review photos: as a client with a paid, completed job, leave a review with a photo, and check the photo shows on the professional's profile. Needs Section 42 and the review-photo path change to be live first.
-- After Section 42: upload and remove a profile photo (professional and client), add and delete a portfolio image, add service photos, attach a photo in a chat.
+- Review photos: as a client with a paid, completed job, leave a review with a photo, and check the photo shows on the professional's profile. Section 42 and the review-photo path change are both live.
+- Storage (Section 42 is live): upload and remove a profile photo (professional and client), add and delete a portfolio image, add service photos, attach a photo in a chat.
 
 ## History
 
@@ -102,9 +96,21 @@ Entries from 2026-11-11 onward carry a status. Earlier entries are all live; any
 
 ### 2026-11-13
 
-- **[WRITTEN]** Storage rules: only the owner can add, replace or delete their own files; nobody can list other people's; photo buckets take JPG, PNG and WebP up to 10 MB — `SUPABASE_SQL.sql` Section 42, `app/freelancers/[id]/page.js` (review photos saved under the reviewer's own folder). Tested on an in-memory Postgres, 10 checks.
+- **[WRITTEN]** Rising Talent badge: given and removed from the admin panel, shown for 90 days on search, category pages, the homepage and the profile header; new entry on the badges page — `lib/rising.js`, `components/TrustMark.js`, `components/badgeArt.js` (hand-drawn emblem until the designer supplies one), `app/badges/page.js`, `app/admin/page.js`, `app/api/admin`, `app/search/page.js`, `app/page.js`, `app/categories/[slug]/page.js`, `app/freelancers/[id]/page.js`, `app/api/featured-professionals`, `lib/freelancerColumns.js`
+  - Needs testing: give and remove the badge in the admin panel; check where it shows
+  - SQL to run: Section 43, run by Carson 2026-11-13
+- **[WRITTEN]** Profile and client-profile save errors now say what went wrong — `lib/saveErrorMessage.js`, `app/dashboard/page.js`
+  - SQL to run: no
+- **[WRITTEN]** Removed the dead `deleteReply` function — `app/inbox/page.js`
+  - SQL to run: no
+- **[WRITTEN]** Admin link for admins only, in the workspace sidebar and the top menu; `/api/admin?check=1` answers whether the caller is an admin — `lib/useIsAdmin.js`, `components/WorkspaceSidebar.js`, `components/SiteNav.js`, `app/api/admin/route.js`
+  - Needs testing: no Admin link for a non-admin account
+  - SQL to run: no
+- Local only, not in git: the admin page failed on localhost because `.env.local`'s `ADMIN_EMAILS` listed only the Outlook address; the Gmail address was added. Vercel already had both.
+- **[SHIPPED]** Vetted Rising admin alert email: arrives at the addresses in `ADMIN_EMAILS`. Confirmed by Carson 2026-11-13 (email received 5 Nov).
+- **[DEPLOYED]** Storage rules: only the owner can add, replace or delete their own files; nobody can list other people's; photo buckets take JPG, PNG and WebP up to 10 MB — `SUPABASE_SQL.sql` Section 42, `app/freelancers/[id]/page.js` (review photos saved under the reviewer's own folder). Code live as 2d1c3f0; tested on an in-memory Postgres, 10 checks.
   - Needs testing: the upload and delete actions on Carson's test list
-  - SQL to run: yes, Section 42 (not run; after the code is live)
+  - SQL to run: Section 42, run by Carson 2026-11-13
 - **[SHIPPED]** Profile "Save changes" works (April checklist §1.2). Confirmed by Carson 2026-11-13.
 - **[SHIPPED]** Leaked key clean-up: legacy keys changed (April checklist §1.3). Confirmed by Carson 2026-11-13.
 - **[WRITTEN]** `CHANGELOG.md` and `CLAUDE.md` added — repo root. Not committed.

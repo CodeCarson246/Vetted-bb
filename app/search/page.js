@@ -14,6 +14,7 @@ import { parsePrice, lowestPaidPrice } from '@/lib/price'
 import { isProfileComplete } from '@/lib/profileCompleteness'
 import { effectiveCategories } from '@/lib/categories'
 import TrustMark from '@/components/TrustMark'
+import { isRising } from '@/lib/rising'
 import SectionHeading from '@/components/SectionHeading'
 import { profileUrl } from '@/lib/handles'
 import Icon from '@/components/Icon'
@@ -109,6 +110,8 @@ function FreelancerCard({ f, getMinPrice, sortBy, saved, onToggleSave }) {
               {isVerified(f) && <VerifiedBadge size={16} />}
               {/* Registered government vendor */}
               {f.govt_vendor_status === 'registered' && <TrustMark kind="vendor" size={14} />}
+              {/* Vetted Rising member, first 90 days */}
+              {isRising(f) && <TrustMark kind="rising" />}
               {/* Availability dot */}
               <span className="flex items-center gap-1">
                 <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${f.available ? 'bg-green-400' : 'bg-gray-300'}`} />

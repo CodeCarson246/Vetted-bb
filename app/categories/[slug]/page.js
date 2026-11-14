@@ -6,6 +6,8 @@ import { formatParish } from '@/lib/formatParish'
 import { lowestPaidPrice } from '@/lib/price'
 import { SITE_URL } from '@/lib/siteUrl'
 import VerifiedBadge, { isVerified } from '@/components/VerifiedBadge'
+import TrustMark from '@/components/TrustMark'
+import { isRising } from '@/lib/rising'
 import CategoryIcon from '@/components/CategoryIcon'
 import { profileUrl } from '@/lib/handles'
 
@@ -56,7 +58,7 @@ export default async function CategoryPage({ params }) {
   // Two queries rather than .or(): category names contain '&' and spaces,
   // which break PostgREST filter-string parsing. Cheap here since the page
   // is ISR-cached (revalidate above).
-  const COLS = 'id, name, trade, avatar_url, location, rating, review_count, available, bio, verified, phone_verified, services(price)'
+  const COLS = 'id, name, trade, avatar_url, location, rating, review_count, available, bio, verified, phone_verified, rising_since, services(price)'
   const base = () => sb()
     .from('freelancers')
     .select(COLS)
@@ -143,6 +145,7 @@ export default async function CategoryPage({ params }) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold capitalize" style={{ color: '#00267F', fontFamily: 'var(--font-display)' }}>{f.name}</span>
                       {isVerified(f) && <VerifiedBadge size={15} />}
+                      {isRising(f) && <TrustMark kind="rising" />}
                       <span className={`text-xs font-medium ${f.available ? 'text-green-600' : 'text-gray-400'}`}>
                         ● {f.available ? 'Available' : 'Unavailable'}
                       </span>

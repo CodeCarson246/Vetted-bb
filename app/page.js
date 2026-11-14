@@ -8,6 +8,7 @@ import { popularTrades } from '@/lib/popularTrades'
 import TrustBar from '@/components/TrustBar'
 import VerifiedBadge from '@/components/VerifiedBadge'
 import TrustMark from '@/components/TrustMark'
+import { isRising } from '@/lib/rising'
 import CategoryIcon from '@/components/CategoryIcon'
 import SectionHeading from '@/components/SectionHeading'
 import { profileUrl } from '@/lib/handles'
@@ -330,6 +331,7 @@ export default function Home() {
                       <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color: '#00267F', lineHeight: 1.2 }}>{f.name}</span>
                       {(f.phone_verified || f.verified) && <VerifiedBadge size={15} />}
                       {f.featured && <TrustMark kind="featured" />}
+                      {isRising(f) && <TrustMark kind="rising" />}
                     </div>
                     <p style={{ fontSize: '0.82rem', color: '#6B7280', marginTop: '2px', textTransform: 'capitalize' }}>{f.trade}</p>
                   </div>

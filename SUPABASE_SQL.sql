@@ -2250,3 +2250,85 @@ SELECT policyname, cmd, roles::text AS who
 FROM pg_policies
 WHERE schemaname = 'storage' AND tablename = 'objects'
 ORDER BY policyname;
+
+-- ============================================================
+-- SECTION 43 — RISING TALENT BADGE (2026-11-13)
+--
+--   >>> RUN THIS BEFORE THE MATCHING CODE GOES LIVE. <<<
+--   The pages ask for the new column by name; until it exists, search,
+--   profiles and category pages would fail to load. Adding it first is
+--   harmless: nothing reads it until the code arrives.
+--
+-- The Vetted Rising page promises members "a Rising Talent badge for your
+-- first 90 days". This is that badge.
+--
+--   freelancers.rising_since   when the badge was given. Set and cleared only
+--                              from the admin panel (/api/admin, service role).
+--                              The badge shows while this is under 90 days ago
+--                              (lib/rising.js) and ends by itself.
+--
+-- Two follow-on changes:
+--   - Section 41 lets the public read only the columns it names, so the new
+--     column is granted here.
+--   - Section 40's guard stops a professional setting their own trust marks;
+--     rising_since is added to it, so nobody can give themselves the badge.
+--
+-- Safe to re-run.
+-- ============================================================
+
+ALTER TABLE freelancers ADD COLUMN IF NOT EXISTS rising_since timestamptz;
+
+GRANT SELECT (rising_since) ON public.freelancers TO anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.freelancers_guard_trust()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  claims jsonb;
+BEGIN
+  claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+  IF claims IS NULL OR coalesce(claims ->> 'role', '') = 'service_role' THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    -- A new profile belongs to the person creating it and starts with
+    -- nothing earned.
+    NEW.user_id        := coalesce(nullif(claims ->> 'sub', '')::uuid, NEW.user_id);
+    NEW.email          := coalesce(nullif(claims ->> 'email', ''), NEW.email);
+    NEW.rating         := 0;
+    NEW.client_rating  := 0;
+    NEW.review_count   := 0;
+    NEW.verified       := false;
+    NEW.featured       := false;
+    NEW.phone_verified := false;
+    NEW.phone          := NULL;
+    NEW.flagged        := false;
+    NEW.flag_reason    := NULL;
+    NEW.deactivated_at := NULL;
+    NEW.rising_since   := NULL;
+  ELSE
+    NEW.user_id        := OLD.user_id;
+    NEW.email          := OLD.email;
+    NEW.created_at     := OLD.created_at;
+    NEW.rating         := OLD.rating;
+    NEW.client_rating  := OLD.client_rating;
+    NEW.review_count   := OLD.review_count;
+    NEW.verified       := OLD.verified;
+    NEW.featured       := OLD.featured;
+    NEW.flagged        := OLD.flagged;
+    NEW.flag_reason    := OLD.flag_reason;
+    NEW.deactivated_at := OLD.deactivated_at;
+    NEW.rising_since   := OLD.rising_since;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Verify: should return one row, rising_since, readable by the public.
+--   SELECT column_name FROM information_schema.columns
+--   WHERE table_name = 'freelancers' AND column_name = 'rising_since'
+--     AND has_column_privilege('anon', 'public.freelancers', column_name, 'SELECT');

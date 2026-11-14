@@ -1,11 +1,18 @@
-// The four trust-mark emblems, drawn by the designer and traced to flat
+// The trust-mark emblems, drawn by the designer and traced to flat
 // vector paths on a 24x24 grid (one path per brand colour, big shapes
 // first). Kept apart from TrustMark so VerifiedBadge can use the same art
 // without a circular import. Presentational only: safe in server components.
 //
 // Regenerating: drop the new badge set in a folder and re-run the trace
 // script; do not hand-edit the path data.
+//
+// Exception: `rising` (Rising Talent) is drawn by hand, a navy disc with a
+// gold arrow climbing out of it, until the designer supplies artwork.
 export const BADGE_ART = {
+  rising: [
+    ['#00267F', 'M12 1C5.92 1 1 5.92 1 12C1 18.08 5.92 23 12 23C18.08 23 23 18.08 23 12C23 5.92 18.08 1 12 1Z'],
+    ['#F9C000', 'M12 5L18.2 11.2L14.6 11.2L14.6 18.4L9.4 18.4L9.4 11.2L5.8 11.2Z'],
+  ],
   verified: [
     ['#00267F', 'M10.19 22.91C6.89 22.32 3.98 20.14 2.42 17.1C-0.86 10.72 2.43 3.17 9.34 1.24C10.69 0.87 13.26 0.87 14.65 1.24C22.13 3.27 25.22 11.83 20.84 18.4C18.6 21.77 14.19 23.64 10.19 22.91ZM11.91 15.85C12.71 15.03 14.64 13.05 16.2 11.45C18.17 9.43 19.03 8.49 19.03 8.34C19.03 8.03 17.76 6.75 17.45 6.75C17.25 6.75 16.53 7.43 13.72 10.29L10.24 13.83L8.8 12.35C7.73 11.25 7.3 10.87 7.14 10.87C6.8 10.88 5.51 12.17 5.51 12.5C5.51 12.7 5.94 13.19 7.65 14.93C9.75 17.07 10.03 17.33 10.31 17.34C10.39 17.35 11.11 16.68 11.91 15.85Z'],
     ['#ffffff', 'M9.98 17.22C9.87 17.16 8.82 16.13 7.65 14.93C5.94 13.19 5.51 12.7 5.51 12.5C5.51 12.17 6.8 10.88 7.14 10.87C7.3 10.87 7.73 11.25 8.8 12.35L10.24 13.83L13.72 10.29C16.53 7.43 17.25 6.75 17.45 6.75C17.76 6.75 19.03 8.03 19.03 8.34C19.03 8.49 18.17 9.43 16.2 11.45C14.64 13.05 12.71 15.03 11.91 15.85C10.45 17.35 10.34 17.43 9.98 17.22Z'],
