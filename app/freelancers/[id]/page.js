@@ -394,9 +394,12 @@ export default function FreelancerProfile() {
     }
     setReviewImageUploading(true)
     setReviewError(null)
-    // Random sanitized filename — never put raw user filenames in storage paths
+    if (!user) { window.location.href = '/login'; return }
+    // Random sanitized filename — never put raw user filenames in storage paths.
+    // Saved under the reviewer's own folder: the storage rules (SQL section 42)
+    // let a person add files only to a folder named with their own user id.
     const ext = file.name.split('.').pop().toLowerCase()
-    const path = `${freelancer.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('review-photos')
       .upload(path, file, { upsert: false })

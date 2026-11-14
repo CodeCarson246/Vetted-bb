@@ -2115,3 +2115,138 @@ GRANT SELECT (
 --   SELECT column_name FROM information_schema.columns c
 --   WHERE table_schema = 'public' AND table_name = 'freelancers'
 --     AND NOT has_column_privilege('anon', 'public.freelancers', column_name, 'SELECT');
+
+-- ============================================================
+-- SECTION 42 — STORAGE: ONLY THE OWNER CAN CHANGE THEIR FILES (2026-11-13)
+-- Found 2026-11-13: anyone, signed in or not, could upload, overwrite and
+-- delete any file in the avatars bucket (any file type, HTML included), and
+-- anyone could list the files in avatars, portfolio, service-images,
+-- review-photos and chat-photos. The rules for those buckets were set up by
+-- hand in the Supabase dashboard; the ones in section 2.6 were only ever
+-- commented-out examples.
+--
+-- This replaces them. For each photo bucket a signed-in person may add,
+-- replace and delete only their own files, and see only their own in a
+-- file listing. Nobody can list anyone else's. Photos still show for
+-- everyone, because the buckets stay public: a public bucket serves its
+-- files by link without checking these rules.
+--
+-- Whose file it is comes from where it is saved, matching the site's code:
+--   avatars          <user id>.<jpg|jpeg|png|webp>
+--                    (older uploads: avatars/<user id>-<time>.jpg, which
+--                    the owner can still delete)
+--   portfolio        <user id>/...   (older uploads: portfolio/<user id>/...)
+--   service-images   <user id>/...
+--   review-photos    <user id>/...   (the site saved these under the
+--                    professional's id until 2026-11-13; it now uses the
+--                    reviewer's)
+--   chat-photos      <user id>/...   (section 15; only its open file
+--                    listing changes here)
+--
+-- The five photo buckets also accept only JPG, PNG and WebP images up to
+-- 10 MB, the same rule the site's upload forms already apply.
+--
+-- quote-attachments (section 30) is private and is not changed.
+--
+-- How the old rules are removed: every rule on storage files that names one
+-- of the four buckets below, or names no bucket at all (such a rule applies
+-- to every bucket), is dropped. A rule that also names chat-photos or
+-- quote-attachments is left alone and reported. The result grid at the end
+-- lists every storage rule that remains.
+--
+-- Safe to re-run.
+-- ============================================================
+
+DO $$
+DECLARE
+  p           record;
+  def         text;
+  mine        boolean;
+  others      boolean;
+  any_bucket  boolean;
+BEGIN
+  FOR p IN
+    SELECT policyname, qual, with_check FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+  LOOP
+    def := coalesce(p.qual, '') || ' ' || coalesce(p.with_check, '');
+    mine := def ~ '''(avatars|portfolio|service-images|review-photos)''';
+    others := def ~ '''(chat-photos|quote-attachments)''';
+    any_bucket := def ~ 'bucket_id';
+    IF (mine AND NOT others) OR NOT any_bucket THEN
+      EXECUTE format('DROP POLICY %I ON storage.objects', p.policyname);
+      RAISE NOTICE 'Removed storage rule: %', p.policyname;
+    ELSIF mine THEN
+      RAISE NOTICE 'Left in place (also covers chat-photos or quote-attachments): %', p.policyname;
+    END IF;
+  END LOOP;
+END $$;
+
+-- ── avatars ──
+CREATE POLICY "avatars owner read" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'avatars' AND (
+    name ~ ('^' || auth.uid()::text || '\.(jpe?g|png|webp)$')
+    OR name LIKE 'avatars/' || auth.uid()::text || '-%'));
+CREATE POLICY "avatars owner upload" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'avatars' AND name ~ ('^' || auth.uid()::text || '\.(jpe?g|png|webp)$'));
+CREATE POLICY "avatars owner replace" ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'avatars' AND name ~ ('^' || auth.uid()::text || '\.(jpe?g|png|webp)$'))
+  WITH CHECK (bucket_id = 'avatars' AND name ~ ('^' || auth.uid()::text || '\.(jpe?g|png|webp)$'));
+CREATE POLICY "avatars owner delete" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'avatars' AND (
+    name ~ ('^' || auth.uid()::text || '\.(jpe?g|png|webp)$')
+    OR name LIKE 'avatars/' || auth.uid()::text || '-%'));
+
+-- ── portfolio ──
+CREATE POLICY "portfolio owner read" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'portfolio' AND (
+    (storage.foldername(name))[1] = auth.uid()::text
+    OR ((storage.foldername(name))[1] = 'portfolio' AND (storage.foldername(name))[2] = auth.uid()::text)));
+CREATE POLICY "portfolio owner upload" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'portfolio' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "portfolio owner replace" ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'portfolio' AND (storage.foldername(name))[1] = auth.uid()::text)
+  WITH CHECK (bucket_id = 'portfolio' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "portfolio owner delete" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'portfolio' AND (
+    (storage.foldername(name))[1] = auth.uid()::text
+    OR ((storage.foldername(name))[1] = 'portfolio' AND (storage.foldername(name))[2] = auth.uid()::text)));
+
+-- ── service-images ──
+CREATE POLICY "service-images owner read" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'service-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "service-images owner upload" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'service-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "service-images owner replace" ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'service-images' AND (storage.foldername(name))[1] = auth.uid()::text)
+  WITH CHECK (bucket_id = 'service-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "service-images owner delete" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'service-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ── review-photos ──
+CREATE POLICY "review-photos owner read" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'review-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "review-photos owner upload" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'review-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "review-photos owner delete" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'review-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ── chat-photos: no more open file listing (section 15 allowed anyone) ──
+DROP POLICY IF EXISTS "chat-photos public read" ON storage.objects;
+DROP POLICY IF EXISTS "chat-photos owner read" ON storage.objects;
+CREATE POLICY "chat-photos owner read" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'chat-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ── the photo buckets take photos only ──
+UPDATE storage.buckets
+SET file_size_limit = 10485760,
+    allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp']
+WHERE id IN ('avatars', 'portfolio', 'service-images', 'review-photos', 'chat-photos');
+
+-- Every storage rule now in place. Expect the 16 above, plus the chat-photos
+-- upload rule (section 15) and the three quote-attachments rules (section 30):
+-- 20 rows.
+SELECT policyname, cmd, roles::text AS who
+FROM pg_policies
+WHERE schemaname = 'storage' AND tablename = 'objects'
+ORDER BY policyname;
