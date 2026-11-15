@@ -18,6 +18,8 @@ Everything that is not SHIPPED, newest first. Last checked against the live site
 
 ### Written, not live
 
+- **[WRITTEN]** Inbox crash fix and three fixes from Carson's first test run, 2026-11-14. Not deployed. Tested: 219 unit tests (a new one fails on the old inbox code), the build, the no-undef scan. NOT seen working: localhost was signed out, so the fixed inbox, the enquiry form and the header were not opened; pushes cannot be checked without a real device.
+  - Needs testing: TESTING.md section 2 (enquiry name, header email, push) and section 3 (open a conversation that has a quote in it).
 - **[WRITTEN]** Signup password minimum raised in the Supabase dashboard (8 characters, upper and lower case, digits and symbols). Set by Carson 2026-11-13; it is a setting, not code.
 
 ### Live but not verified
@@ -109,6 +111,9 @@ Entries from 2026-11-11 onward carry a status. Earlier entries are all live; any
 
 ### 2026-11-14
 
+- **[WRITTEN]** The Pro's inbox crashed ("This page couldn't load") on opening any conversation with a quote in it, live since 2cd5e4f: the quote builder's deposit settings were named `quoteDeposit`, hiding the `quoteDeposit()` helper the quote card calls. The "No messages yet" share box had the same fault with `profileUrl`, crashing the inbox for a professional with no messages. A new test fails if any file declares a name it also imports. The enquiry form's name is now the account's name and cannot be edited there (clients change it on their dashboard), like the email. The client's conversation header shows the professional's email (it was only in the side panel, hidden below laptop width). Every push is now awaited (nine places sent it without waiting, so Vercel could stop the function before it went), with an 8-second limit per device. — `app/inbox/page.js`, `app/page.js`, `app/freelancers/[id]/page.js`, `app/messages/page.js`, `lib/serverPush.js`, `lib/serverOrgRecipients.js`, eight routes in `app/api/`, `tests/hiddenImports.test.js`
+  - Needs testing: TESTING.md sections 2 and 3
+  - SQL to run: no
 - **[DEPLOYED]** Stress test of the unpushed batch, then fixes for everything it found.
   - Reminders: only the people in the job's conversation are emailed (a quote with no conversation, or the address typed on a quote, is never used); what was sent is read from `payment_reminder_log`, not from the quote row a professional can edit; a series never starts on an invoice already 14+ days overdue and nothing goes at 60+ days (so going live does not email old unpaid invoices); at most 10 reminders per job; a failed email is retried on later days (3 tries per stage) and no longer uses up the stage; the job reads every page of invoices within a due-date window instead of the 500 oldest, and stops with time to spare.
   - Money, in the database: a payment cannot be future-dated, exceed what is owed, name another job's invoice, or go on a job already marked paid; the job's row is locked so two payments at once are both counted; a removed payment is kept in `invoice_payment_removals` and shown under "Removed"; a deposit invoice cannot exceed the total; billed costs cannot be negative; expenses have date, amount and length limits; receipts are for professionals only, 2,000 files each.

@@ -145,7 +145,12 @@ export default function FreelancerProfile() {
         setSenderName(fp?.name || u.user_metadata?.full_name || u.email.split('@')[0])
       })
     } else {
+      // The name on the client's profile (set on their dashboard), the same
+      // one the professional's inbox shows.
       setSenderName(u.user_metadata?.full_name || u.email.split('@')[0])
+      supabase.from('client_profiles').select('display_name').eq('user_id', u.id).maybeSingle().then(({ data: cp }) => {
+        if (cp?.display_name?.trim()) setSenderName(cp.display_name.trim())
+      })
     }
   }, [authUser, authLoading])
 
@@ -1738,14 +1743,17 @@ export default function FreelancerProfile() {
                           Enquiring as <strong>{orgContext.name}</strong>. Your whole team will see this conversation.
                         </p>
                       )}
+                      {/* The name on the account, like the email below: the
+                          professional sees the same name in their inbox. */}
                       <input
                         type="text"
                         required
+                        readOnly
                         value={senderName}
-                        onChange={e => setSenderName(e.target.value)}
-                        placeholder="Jane Smith"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 outline-none focus:border-gray-400 bg-white"
+                        title="The name on your account"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-500 outline-none bg-gray-50 cursor-default"
                       />
+                      <p className="text-xs text-gray-400 mt-1">To change your name, edit your profile on your <a href="/dashboard" className="underline">dashboard</a>.</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Your email</label>

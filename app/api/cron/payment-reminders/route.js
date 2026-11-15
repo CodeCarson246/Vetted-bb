@@ -171,7 +171,7 @@ export async function GET(request) {
           ...notice, dedupeKey: `payment-reminder:${q.id}:${decision.invoice.number}:${decision.stage}`,
         })
         if (outcome !== 'duplicate') {
-          sendPushToUser(q.freelancers.user_id, { title: notice.title, body: notice.body, url: notice.link }).catch(() => {})
+          await sendPushToUser(q.freelancers.user_id, { title: notice.title, body: notice.body, url: notice.link }).catch(() => {})
         }
       }
 

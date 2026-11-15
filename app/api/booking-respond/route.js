@@ -80,7 +80,7 @@ export async function POST(request) {
         body: `${appt.title} · ${when}${appt.start_time ? ` · ${appt.start_time}` : ''}${quote ? '. Your quote is in your messages.' : ''}`,
         link: quote ? '/messages' : '/bookings',
       })
-      sendPushToUser(appt.client_user_id, {
+      await sendPushToUser(appt.client_user_id, {
         title: action === 'confirm' ? 'Booking confirmed' : 'Booking declined',
         body: `${appt.title} · ${when}`,
         url: `/freelancers/${appt.freelancer_id}`,

@@ -52,9 +52,9 @@ export default function Home() {
       supabase.from('freelancers').select('category').not('category', 'is', null).eq('hidden', false).is('deactivated_at', null),
       supabase.from('freelancers').select('location').not('location', 'is', null).eq('hidden', false).is('deactivated_at', null),
     ]).then(([{ count: professionals }, { data: cats }, { data: locs }]) => {
-      const categories = new Set((cats || []).map(r => r.category).filter(Boolean)).size
+      const categoryCount = new Set((cats || []).map(r => r.category).filter(Boolean)).size
       const parishes = new Set((locs || []).map(r => r.location).filter(Boolean)).size
-      setPlatformStats({ professionals: professionals || 0, categories, parishes })
+      setPlatformStats({ professionals: professionals || 0, categories: categoryCount, parishes })
     })
   }, [])
 

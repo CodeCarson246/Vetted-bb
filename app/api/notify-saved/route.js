@@ -61,7 +61,7 @@ export async function POST(request) {
     // One push per saver per professional, like the notification itself:
     // saving, removing and saving again does not buzz their phone each time.
     if (outcome !== 'duplicate') {
-      sendPushToUser(freelancer.user_id, {
+      await sendPushToUser(freelancer.user_id, {
         title: `${saverName} saved your profile`,
         body: 'A client added you to their saved professionals.',
         url: '/dashboard',

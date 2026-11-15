@@ -57,7 +57,7 @@ export async function POST(request) {
         link,
         dedupeKey: `ss:${s.user_id}:${f.id}`,
       })
-      sendPushToUser(s.user_id, {
+      await sendPushToUser(s.user_id, {
         title: `New ${label} matches your saved search`,
         body: `${f.name} just joined Vetted.bb.`,
         url: link,

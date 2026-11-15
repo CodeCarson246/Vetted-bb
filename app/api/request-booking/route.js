@@ -122,7 +122,7 @@ export async function POST(request) {
         body: `${svc.name} · ${when}${time ? ` · ${time}` : ''}`,
         link: '/calendar',
       })
-      sendPushToUser(freelancer.user_id, { title: `Booking request from ${clientName}`, body: `${svc.name} · ${when}`, url: '/calendar' }).catch(() => {})
+      await sendPushToUser(freelancer.user_id, { title: `Booking request from ${clientName}`, body: `${svc.name} · ${when}`, url: '/calendar' }).catch(() => {})
     }
 
     return Response.json({ success: true })
@@ -231,7 +231,7 @@ async function requestRental({ admin, user, clientName, cleanNote, svc, freelanc
       body: `${svc.name} · ${when} · Bds${money(pricing.total)}`,
       link: '/calendar',
     })
-    sendPushToUser(freelancer.user_id, { title: `Booking request from ${clientName}`, body: `${svc.name} · ${when}`, url: '/calendar' }).catch(() => {})
+    await sendPushToUser(freelancer.user_id, { title: `Booking request from ${clientName}`, body: `${svc.name} · ${when}`, url: '/calendar' }).catch(() => {})
   }
 
   return Response.json({ success: true, rental: pricing })

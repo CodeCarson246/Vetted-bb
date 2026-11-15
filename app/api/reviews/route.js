@@ -157,7 +157,7 @@ export async function POST(request) {
       body: comment.trim().slice(0, 140),
       link: '/dashboard?tab=reviews',
     })
-    sendPushToUser(freelancer.user_id, {
+    await sendPushToUser(freelancer.user_id, {
       title: `${author} left you a ${rating}-star review`,
       body: comment.trim().slice(0, 120),
       url: '/dashboard?tab=reviews',

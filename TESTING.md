@@ -1,6 +1,8 @@
 # Vetted.bb test checklist
 
-Everything built since 12 November that needs a person to try it. Tick each box as you go. When a section passes, tell Claude and it moves those items to SHIPPED in `CHANGELOG.md`.
+Everything built since 12 November that needs a person to try it. When a section passes, tell Claude and it moves those items to SHIPPED in `CHANGELOG.md`.
+
+**Tick items on the checklist page, not here:** https://claude.ai/artifact/UwDDgE8KF7LfWiEGz4s9dA (private to you; works on your phone). The boxes below don't click in a file viewer. Claude keeps the two in step: when this file changes, the page is republished; ticks are read from the page.
 
 **You will need four browsers or windows** (a private window counts as one):
 
@@ -36,10 +38,10 @@ Localhost uses the live database, so anything you send while testing is real.
 ## 2. Client account
 
 **Enquiries and messages**
-- [ ] Send an enquiry from a profile. The email box shows your account's address and cannot be edited
+- [ ] Send an enquiry from a profile. The name and email boxes show your account's name and address and cannot be edited (the name is changed on your dashboard)
 - [ ] The Pro gets an email, a push and a bell notification for it
 - [ ] Reply in that conversation. The Pro is notified again
-- [ ] The conversation header shows the Pro's email address
+- [ ] The conversation header shows the Pro's email address under their name, on a phone too
 
 **Quotes, deposits and invoices**
 - [ ] A quote with a deposit shows "Deposit … upfront" on its card
@@ -60,6 +62,7 @@ Localhost uses the live database, so anything you send while testing is real.
 
 **Profile and photos**
 - [ ] Dashboard, Inbox, Quotes & earnings, Calendar and Settings all load
+- [ ] Inbox: open a conversation that has a quote or invoice card in it. It opens (it used to show "This page couldn't load")
 - [ ] Edit profile shows your payment details and default terms; change your bio, save, refresh, and it stayed
 - [ ] Change your profile photo, then remove it
 - [ ] Add a portfolio image, then delete it

@@ -349,6 +349,8 @@ export default function ClientMessages() {
           </Link>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1">{f?.name}{isVerified(f) && <VerifiedBadge size={13} />}</p>
+            {/* The details panel with the email is hidden on narrower screens. */}
+            {f?.email && <p className="text-xs text-gray-500 truncate select-all">{f.email}</p>}
             <p className="text-xs text-gray-400 truncate">{msg.subject}</p>
           </div>
         </div>

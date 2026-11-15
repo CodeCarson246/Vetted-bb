@@ -121,9 +121,10 @@ export async function POST(request) {
     }
     const { subject, message } = notice
 
-    // Browser push first (fire-and-forget) — the email below is the
-    // reliable channel, push is the instant one.
-    sendPushToUser(freelancer.user_id, {
+    // Browser push first. Awaited: on Vercel a function can be stopped as
+    // soon as it answers, and an unawaited push was being lost with it.
+    // A failed push never stops the email below.
+    await sendPushToUser(freelancer.user_id, {
       title: `${senderName} sent you a message`,
       body: message ? message.slice(0, 120) : subject,
       url: '/inbox',

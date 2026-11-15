@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { authedPost } from '@/lib/authedFetch'
 import DepositSection, { depositColumns } from '@/components/DepositSection'
-import { depositAmount, depositInvoiceColumns, invoicesOf, money2, invoiceFor, quoteDeposit } from '@/lib/payments'
+// quoteDeposit is renamed here: the page's own deposit settings use that name.
+import { depositAmount, depositInvoiceColumns, invoicesOf, money2, invoiceFor, quoteDeposit as depositOnQuote } from '@/lib/payments'
 import { invoiceNumberInReply } from '@/lib/invoicing'
 import { billedSnapshot, invoiceCarriesCosts } from '@/lib/expenses'
 import { useAuth } from '@/lib/auth-context'
@@ -32,6 +33,9 @@ import { SITE_HOST } from '@/lib/siteUrl'
 import TrustMark from '@/components/TrustMark'
 import { profileUrl } from '@/lib/handles'
 import Icon from '@/components/Icon'
+
+// The 3-digit suffix on quote and invoice numbers (100 to 999).
+const numberSuffix = () => Math.floor(Math.random() * 900) + 100
 
 function EnvelopeIcon({ className }) {
   return (
@@ -329,7 +333,7 @@ export default function Inbox() {
     setQuoteAutoInvoice(profile?.auto_invoice_default === true)
     setQuoteNotes('')
     setQuoteVenture('')
-    setQuoteNumber(`QT-${astDate.replace(/-/g, '').slice(0, 8)}-${Math.floor(Math.random()*900)+100}`)
+    setQuoteNumber(`QT-${astDate.replace(/-/g, '').slice(0, 8)}-${numberSuffix()}`)
   }
 
   // Service enquiries from profiles list services as "• Name: price"
@@ -559,7 +563,7 @@ export default function Inbox() {
     const due = new Date(now)
     due.setDate(due.getDate() + terms.days)
     const dueStr = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`
-    const invoiceNumber = `INV-${now.toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 900) + 100}`
+    const invoiceNumber = `INV-${now.toISOString().slice(0, 10).replace(/-/g, '')}-${numberSuffix()}`
     const fmt = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
     const patch = {
@@ -851,7 +855,7 @@ export default function Inbox() {
                 : kind === 'invoice' ? `${inv?.kind === 'deposit' ? 'Deposit invoice' : inv?.kind === 'balance' ? 'Balance invoice' : 'Invoice'} ${inv?.number || quoteData.invoice_number || quoteData.quote_number}`
                 : `Quote ${quoteData.quote_number}`
               const cardDate = formatDocDate(kind === 'quote' ? quoteData.quote_date : (inv?.issued || quoteData.invoiced_at || quoteData.quote_date))
-              const deposit = kind === 'quote' ? quoteDeposit(quoteData) : 0
+              const deposit = kind === 'quote' ? depositOnQuote(quoteData) : 0
               return (
                 <div key={r.id} className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: kind === 'receipt' ? '#166534' : '#00267F' }}>
@@ -1088,12 +1092,12 @@ export default function Inbox() {
               No messages yet. Share your profile to start receiving enquiries.
             </p>
             {profile && (() => {
-              const profileUrl = `${SITE_URL}${profileUrl(profile)}`
+              const shareUrl = `${SITE_URL}${profileUrl(profile)}`
               const loc = profile.location ? `based in ${formatParish(profile.location)}` : 'in Barbados'
-              const text = `Check out ${profile.name} on Vetted.bb. They're a ${profile.trade} ${loc}. ${profileUrl}`
+              const text = `Check out ${profile.name} on Vetted.bb. They're a ${profile.trade} ${loc}. ${shareUrl}`
               const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
-              const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl)}`
-              const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out ${profile.name} on Vetted.bb, a ${profile.trade} ${loc}.`)}&url=${encodeURIComponent(profileUrl)}`
+              const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
+              const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out ${profile.name} on Vetted.bb, a ${profile.trade} ${loc}.`)}&url=${encodeURIComponent(shareUrl)}`
               return (
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <a
