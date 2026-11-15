@@ -18,12 +18,15 @@ Everything that is not SHIPPED, newest first. Last checked against the live site
 
 ### Written, not live
 
-- **[WRITTEN]** Fixes from Carson's test run of 15 November. Not deployed. SQL Section 48 (enquiry limit) can run before or after the push. Tested: 220 unit tests, Section 48 in an in-memory database (7 checks), the notification route against a fake database (29 checks), the build. NOT seen working: localhost is signed out, so the client pop-up, the expenses hints, the export's second-file button and the Settings test button were not opened.
-  - Needs testing: TESTING.md sections 2, 3, 5 and 6.
 - **[WRITTEN]** Signup password minimum raised in the Supabase dashboard (8 characters, upper and lower case, digits and symbols). Set by Carson 2026-11-13; it is a setting, not code.
 
 ### Live but not verified
 
+- **[DEPLOYED]** Fixes from Carson's test run of 15 November (809ed3b). SQL Section 48 run by Claude in the Supabase SQL editor on 2026-11-15; both triggers confirmed present. Tested before the push: 220 unit tests, Section 48 in an in-memory database (7 checks), the notification route against a fake database (29 checks), the build. NOT seen working on the live site: Chrome was signed out of vetted.bb, so no screen was opened.
+  - Needs testing: TESTING.md sections 2, 3, 5 and 6.
+- **[DEPLOYED]** Payment reminders switched to LIVE, 2026-11-15: `PAYMENT_REMINDERS_MODE=live` added in Vercel (Production, Config type) by Claude at Carson's request, applied by the next deploy. The dry-run log had no rows to check: the job ran at 9am and found nothing due (the three open invoices, all to the test client, are due 26 Nov, so the first reminder is 23 Nov). Claude ran the job's decision rules against the live invoices instead; all three say "not due yet".
+  - Needs testing: on 23 Nov, the test client gets "due on 26 Nov" reminders; check payment_reminder_log shows them with an empty error.
+- Push still unresolved: both push keys exist in Vercel for Production and Preview, and Carson's devices accept a push sent with the local keys. The live server's answer is what Settings → Send a test notification shows; Vercel's free plan keeps runtime logs about an hour, so earlier failures could not be read.
 - **[DEPLOYED]** Inbox crash fix and three fixes from Carson's first test run, 2026-11-14 (f97e149). On the live site, signed in as the Pro, the Client Test conversation that crashed now opens with its quote and invoice cards and no console errors. Not seen: the enquiry form's read-only name, the header email on a phone, and whether a push now arrives (needs a real device).
   - Needs testing: TESTING.md section 2 (enquiry name, header email, push).
 - After the push on 2026-11-14 the live site was checked signed in as a professional: Dashboard (Outstanding card, Reports link), Quotes & earnings, Reports, Settings (reminders switch) and Inbox all load with no console errors. Nothing was clicked through: no payment recorded, no deposit quote sent, no expense added, no PDF or CSV downloaded. Reminders are in dry-run mode.
@@ -113,7 +116,7 @@ Entries from 2026-11-11 onward carry a status. Earlier entries are all live; any
 
 ### 2026-11-15
 
-- **[WRITTEN]** From Carson's test run:
+- **[DEPLOYED]** From Carson's test run:
   - The client's quote/invoice pop-up showed the first invoice's number, the full total and the first due date on a deposit job. It now shows the invoice the card was for (number, date, due date), with the deposit, balance and part-payment lines the PDF has, and buttons named after what they print ("Balance invoice PDF", "Original quote PDF"). — `app/messages/page.js`
   - A cost ticked "Bill to client" lowered the job's profit before the invoice; it now counts as income too ("Quoted + to bill"). The expenses section says when billed costs will reach the client (the client has not accepted yet / on the balance invoice / when you send the invoice). Send invoice still appears only after the client accepts, as before. — `lib/expenses.js`, `components/ExpensesPanel.js`, `tests/expenses.test.js`
   - The expenses CSV was a second download from one click, which browsers block; the export now offers it with its own "Download second file" button. — `components/ExportCsvDialog.js`
@@ -121,7 +124,7 @@ Entries from 2026-11-11 onward carry a status. Earlier entries are all live; any
   - Push still not arriving: Carson's six devices all accepted a test push sent with the local keys (201), so the likely cause is the live server's push keys. Settings now has "Send a test notification", which says whether the live server is missing a key (by name) and what each device's push service answered; the server log now says when pushes are skipped for a missing key. — `app/api/push-test/route.js`, `app/settings/page.js`, `lib/serverPush.js`
   - Not bugs: the reminder log was empty because the daily job had not run yet (9am Barbados time; the push came after Friday's run), and `PAYMENT_REMINDERS_MODE` is not listed in Vercel because it has never been added.
   - Needs testing: TESTING.md sections 2, 3, 5 and 6
-  - SQL to run: yes, Section 48 (not run; any order)
+  - SQL to run: Section 48, run 2026-11-15
 
 ### 2026-11-14
 
