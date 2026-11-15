@@ -50,6 +50,9 @@ export default function ExportCsvDialog({ open, onClose, records, columns, note,
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [withSecond, setWithSecond] = useState(false)
+  // The second file waits for its own click: browsers block a second
+  // download started by the same click unless "multiple downloads" is allowed.
+  const [secondReady, setSecondReady] = useState(null) // { text, filename, count } | { count: 0 }
 
   if (!open) return null
 
@@ -78,12 +81,46 @@ export default function ExportCsvDialog({ open, onClose, records, columns, note,
       download(buildCsv(chosen, columns), exportFilename(fromKey, toKey))
       if (secondFile && withSecond) {
         const second = selectRecords(secondFile.records, { from, to })
-        if (second.length) download(buildCsv(second, secondFile.columns), `${secondFile.prefix}-${fromKey}-to-${toKey}.csv`)
+        setSecondReady(second.length
+          ? { text: buildCsv(second, secondFile.columns), filename: `${secondFile.prefix}-${fromKey}-to-${toKey}.csv`, count: second.length }
+          : { count: 0 })
+        return
       }
       onClose()
     } finally {
       setBusy(false)
     }
+  }
+
+  function finish() { setSecondReady(null); onClose() }
+
+  if (secondReady) {
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={finish}>
+        <div className="bg-white rounded-2xl w-full max-w-sm p-6" role="dialog" aria-modal="true" aria-labelledby="export-second-title" onClick={e => e.stopPropagation()}>
+          <h3 id="export-second-title" className="font-bold text-gray-900 text-lg" style={{ fontFamily: 'var(--font-display)' }}>First file downloaded</h3>
+          <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+            {secondReady.count
+              ? `Now download the second file (${secondReady.count} row${secondReady.count === 1 ? '' : 's'}).`
+              : 'There is nothing for the second file in those dates.'}
+          </p>
+          <div className="flex gap-3 mt-5">
+            <button onClick={finish} className="flex-1 py-2.5 rounded-full border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors">
+              {secondReady.count ? 'Skip' : 'Close'}
+            </button>
+            {secondReady.count > 0 && (
+              <button
+                onClick={() => { download(secondReady.text, secondReady.filename); finish() }}
+                className="flex-1 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: '#F9C000', color: '#00267F' }}
+              >
+                Download second file
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

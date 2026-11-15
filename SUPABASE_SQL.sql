@@ -2919,3 +2919,88 @@ GRANT EXECUTE ON FUNCTION public.verify_document(text) TO anon, authenticated;
 -- Verify: should list the one expenses rule and the three receipts rules.
 --   SELECT tablename, policyname FROM pg_policies
 --   WHERE tablename = 'job_expenses' OR policyname LIKE 'receipts %';
+
+-- ============================================================
+-- SECTION 48 — ENQUIRY LIMIT IN THE DATABASE (2026-11-15)
+--
+-- Can be run before or after the matching code. Safe to re-run.
+--
+-- Enquiries are saved straight from the browser (a new conversation in
+-- messages, or a "--- New message ---" reply in one that already exists),
+-- so the per-person limit on the notification route only stopped the email
+-- and push: the enquiry itself still went in. This makes the database
+-- refuse it:
+--
+--   enquiries      5 per person per 10 minutes: new conversations plus
+--                  replies that start "--- New " (the label the enquiry
+--                  form writes)
+--   other replies  60 per person per 10 minutes: an ordinary conversation
+--                  is never near this; it stops a flood
+--
+-- The refusal message is shown to the person as it is written here.
+-- Not affected: the service role (the site's own server code: automatic
+-- quotes and invoices) and the SQL editor.
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS messages_sender_recent_idx        ON messages (sender_user_id, created_at);
+CREATE INDEX IF NOT EXISTS message_replies_sender_recent_idx ON message_replies (sender_user_id, created_at);
+
+CREATE OR REPLACE FUNCTION public.limit_enquiries()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  claims     jsonb;
+  uid        uuid;
+  recent     integer;
+  is_enquiry boolean;
+BEGIN
+  claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+  IF claims IS NULL OR coalesce(claims ->> 'role', '') = 'service_role' THEN
+    RETURN NEW;
+  END IF;
+  uid := auth.uid();
+  IF uid IS NULL THEN
+    RETURN NEW;  -- signed out: the row level security rules decide
+  END IF;
+
+  -- messages has no body column: read it through to_jsonb so one function
+  -- serves both tables.
+  is_enquiry := TG_TABLE_NAME = 'messages' OR coalesce(to_jsonb(NEW) ->> 'body', '') LIKE '--- New %';
+
+  IF is_enquiry THEN
+    SELECT (SELECT count(*) FROM messages
+             WHERE sender_user_id = uid AND created_at > now() - interval '10 minutes')
+         + (SELECT count(*) FROM message_replies
+             WHERE sender_user_id = uid AND created_at > now() - interval '10 minutes' AND body LIKE '--- New %')
+      INTO recent;
+    IF recent >= 5 THEN
+      RAISE EXCEPTION 'Too many enquiries: you can send 5 every 10 minutes. Please try again shortly.'
+        USING ERRCODE = 'check_violation';
+    END IF;
+  ELSE
+    SELECT count(*) INTO recent FROM message_replies
+     WHERE sender_user_id = uid AND created_at > now() - interval '10 minutes';
+    IF recent >= 60 THEN
+      RAISE EXCEPTION 'Too many messages in a short time. Please wait a few minutes before sending more.'
+        USING ERRCODE = 'check_violation';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS messages_limit_enquiries ON public.messages;
+CREATE TRIGGER messages_limit_enquiries
+  BEFORE INSERT ON public.messages
+  FOR EACH ROW EXECUTE FUNCTION public.limit_enquiries();
+
+DROP TRIGGER IF EXISTS message_replies_limit ON public.message_replies;
+CREATE TRIGGER message_replies_limit
+  BEFORE INSERT ON public.message_replies
+  FOR EACH ROW EXECUTE FUNCTION public.limit_enquiries();
+
+-- Verify: should return two rows.
+--   SELECT tgname FROM pg_trigger WHERE tgname IN ('messages_limit_enquiries', 'message_replies_limit');

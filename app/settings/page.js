@@ -9,6 +9,7 @@ import InstallAppCard from '@/components/InstallAppCard'
 import { getPushStatus, enablePush, disablePush } from '@/lib/push'
 import { profileUrl } from '@/lib/handles'
 import { getMyFreelancer } from '@/lib/myFreelancer'
+import { authedPost } from '@/lib/authedFetch'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 const DURATIONS = [30, 45, 60, 90, 120, 180]
@@ -39,6 +40,8 @@ export default function SettingsPage() {
   const [ready, setReady] = useState(false)
   const [pushState, setPushState] = useState('unknown')
   const [pushBusy, setPushBusy] = useState(false)
+  // "Send a test notification": what the server says happened.
+  const [pushTest, setPushTest] = useState(null)
   const [services, setServices] = useState([])
   const [bk, setBk] = useState(null) // booking config (availability_settings)
   const [bkSaving, setBkSaving] = useState(false)
@@ -156,6 +159,28 @@ export default function SettingsPage() {
       setPushState(status || 'unsubscribed')
     }
     setPushBusy(false)
+  }
+
+  async function testPush() {
+    setPushTest({ busy: true })
+    const { ok, data } = await authedPost('/api/push-test')
+    if (!ok) { setPushTest({ lines: [data.error], bad: true }); return }
+    if (!data.configured) {
+      setPushTest({ bad: true, lines: [
+        'The live site is not set up to send push notifications, so none are being sent.',
+        data.missing?.length ? `Missing in Vercel's environment variables: ${data.missing.join(', ')}. Add it, then redeploy.` : `The push key in Vercel is not valid: ${data.keyError || 'unknown error'}.`,
+      ] })
+      return
+    }
+    if (!data.devices.length) { setPushTest({ bad: true, lines: ['No device has push turned on for this account. Turn it on above, on each device you use.'] }); return }
+    const sent = data.devices.filter(d => d.ok).length
+    setPushTest({
+      bad: sent === 0,
+      lines: [
+        `Sent to ${sent} of ${data.devices.length} device${data.devices.length === 1 ? '' : 's'}. If none arrived, check this device's notification settings for Vetted.bb.`,
+        ...data.devices.filter(d => !d.ok).map(d => `${d.service}: ${d.reason || `failed (${d.status})`}`),
+      ],
+    })
   }
 
   if (authLoading || !ready) {
@@ -285,6 +310,18 @@ export default function SettingsPage() {
               )}
             </div>
             {pushState === 'denied' && <p className="text-xs text-gray-400 mt-2">Notifications are blocked in your browser settings. Re-enable them there to turn this on.</p>}
+            {pushState === 'subscribed' && (
+              <div className="mt-3 flex flex-col gap-2">
+                <button onClick={testPush} disabled={pushTest?.busy} className="self-start text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-colors disabled:opacity-50" style={{ borderColor: '#00267F', color: '#00267F' }}>
+                  {pushTest?.busy ? 'Sending…' : 'Send a test notification'}
+                </button>
+                {pushTest?.lines && (
+                  <div role="status" className="text-xs leading-relaxed" style={{ color: pushTest.bad ? '#b91c1c' : '#166534' }}>
+                    {pushTest.lines.map((l, i) => <p key={i}>{l}</p>)}
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
 
           <InstallAppCard />

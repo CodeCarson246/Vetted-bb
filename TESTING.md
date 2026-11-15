@@ -44,11 +44,11 @@ Localhost uses the live database, so anything you send while testing is real.
 - [ ] The conversation header shows the Pro's email address under their name, on a phone too
 
 **Quotes, deposits and invoices**
-- [ ] A quote with a deposit shows "Deposit … upfront" on its card
-- [ ] Accept it. A **Deposit invoice** arrives for the deposit amount only (not the full total)
+- [ ] A quote with a deposit shows "Deposit … upfront" on its card, and **View & download** shows "Deposit required" and "Balance on completion" under Total
+- [ ] Accept it. A **Deposit invoice** arrives for the deposit amount only (not the full total); its **View & download** says DEPOSIT INVOICE, with "Deposit due" in bold
 - [ ] The deposit invoice PDF is titled DEPOSIT INVOICE and shows "Deposit due (50%)"
 - [ ] After the Pro records part of a payment, the card shows "Still to pay" and My jobs shows "Paid … left"
-- [ ] The balance invoice, once raised, arrives as **Balance invoice**, and its PDF shows "Deposit paid" and "Balance due"
+- [ ] The balance invoice, once raised, arrives as **Balance invoice**; its **View & download** says BALANCE INVOICE with the balance invoice's own number and due date, "Deposit paid" and "Balance due", and the buttons say "Balance invoice PDF" and "Original quote PDF"
 - [ ] A receipt PDF only downloads once the job is fully paid
 - [ ] A quote with **no** deposit is invoiced for the full total, exactly as before
 
@@ -88,12 +88,14 @@ Localhost uses the live database, so anything you send while testing is real.
 **Expenses (only you should ever see these)**
 - [ ] On a job in Quotes & earnings, **+ Add expense**: description, amount, date, a receipt photo; it appears in the list and the Invoiced / Expenses / Profit summary updates
 - [ ] Open the receipt from the list. Copy its address into a private window: it no longer opens after five minutes
-- [ ] Add one expense with **Bill to client** and one without. Send the invoice: the PDF shows the billed one as "Cost: …" and its total includes it; the unbilled one is nowhere on it
+- [ ] Add one expense with **Bill to client** and one without. The profit only goes down by the unbilled one, and the first figure reads "Quoted + to bill"
+- [ ] On a quote the client has not accepted yet, the expenses section says the billed cost goes on the invoice once they accept
+- [ ] Once the client accepts, **Send invoice**: the PDF shows the billed one as "Cost: …" and its total includes it; the unbilled one is nowhere on it
 - [ ] As the Client: the invoice card, the preview, the PDF and the email show the billed cost only; the unbilled one appears nowhere, and there is no Expenses section or profit figure anywhere
 - [ ] The **quote** PDF never shows costs
 - [ ] On a deposit job, a billed expense goes on the **balance** invoice, not the deposit invoice
 - [ ] After the invoice is sent, a new expense cannot be ticked "Bill to client" (it says it stays internal)
-- [ ] Export CSV with **Also download my expenses**: a second file with each expense and the job's invoiced, expenses and profit
+- [ ] Export CSV with **Also download my expenses**: after the first file, a **Download second file** button gives the expenses file, with each expense and the job's invoiced, expenses and profit
 
 **Outstanding card**
 - [ ] The dashboard shows **OUTSTANDING** near the top: the amount still owed (a part-paid invoice counts only what is left), "across N invoices", and "N overdue" in red when any are overdue
@@ -120,6 +122,7 @@ Localhost uses the live database, so anything you send while testing is real.
 - [ ] Click **↑ Rising** again to remove it
 
 **Account**
+- [ ] Settings → **Send a test notification** (shown when push is on). It says it was sent to your devices and one arrives; if it names a missing key, add it in Vercel and redeploy
 - [ ] **Log out** from the sidebar signs this device out only
 
 ## 4. Organisation account
@@ -138,8 +141,8 @@ Localhost uses the live database, so anything you send while testing is real.
 
 The daily job runs at 9am Barbados time. It is in **dry-run** mode (logs only, sends nothing) until `PAYMENT_REMINDERS_MODE` is set to `live` in Vercel.
 
-- [ ] After the first morning run, in Supabase run: `SELECT sent_on, invoice_number, stage, amount, dry_run, recipients FROM payment_reminder_log ORDER BY created_at DESC LIMIT 20;` and check each row is an invoice that really should be reminded
-- [ ] Only then set `PAYMENT_REMINDERS_MODE` = `live` in Vercel (Settings → Environment Variables) and redeploy
+- [ ] After the first morning run (9am Barbados time, so from Sunday 15 November), in Supabase run: `SELECT sent_on, invoice_number, stage, amount, dry_run, recipients FROM payment_reminder_log ORDER BY created_at DESC LIMIT 20;` and check each row is an invoice that really should be reminded
+- [ ] Only then add `PAYMENT_REMINDERS_MODE` = `live` in Vercel (Settings → Environment Variables → **Add**; it is not there until you add it) and redeploy
 - [ ] Settings → **Payment reminders** is on by default, and can be switched off
 - [ ] An invoice has **Pause reminders**, and a paused invoice gets nothing
 - [ ] Live: a client gets a reminder 3 days before, on the due date, then at 7, 14 and 30 days overdue, and never twice in one day
@@ -152,7 +155,8 @@ The daily job runs at 9am Barbados time. It is in **dry-run** mode (logs only, s
 
 ## 6. Rate limits
 
-- [ ] After SQL Section 46: as the Client, send an enquiry six times quickly. The sixth says "Too many messages", even across page reloads (5 per 10 minutes per person)
+- [ ] After SQL Section 48: as the Client, send an enquiry six times quickly (new or in the same conversation). The sixth is refused with "Too many enquiries: you can send 5 every 10 minutes", even across page reloads
+- [ ] Ordinary chat replies are not limited like that: send ten quick replies in a conversation and all go
 - [ ] While the Client is limited, the Pro account on the **same wifi** can still send an enquiry (the limit is per person, not per connection)
 - [ ] In Supabase, `SELECT key, window_start, hits FROM rate_limits ORDER BY window_start DESC LIMIT 10;` shows hashed keys (no IP addresses)
 

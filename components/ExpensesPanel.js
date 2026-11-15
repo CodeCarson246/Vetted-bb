@@ -115,10 +115,21 @@ export default function ExpensesPanel({ quote, freelancerId, userId, expenses = 
 
       {/* Private profit summary */}
       <dl className="grid grid-cols-3 gap-2 text-xs tabular-nums">
-        <div><dt className="text-gray-400">{p.invoicedYet ? 'Invoiced' : 'Quoted'}</dt><dd className="font-semibold text-gray-800">Bds${money2(p.invoiced)}</dd></div>
+        <div><dt className="text-gray-400">{p.invoicedYet ? 'Invoiced' : 'Quoted'}{p.toBill > 0 ? ' + to bill' : ''}</dt><dd className="font-semibold text-gray-800">Bds${money2(p.invoiced)}</dd></div>
         <div><dt className="text-gray-400">Expenses</dt><dd className="font-semibold text-gray-800">Bds${money2(p.expenses)}</dd></div>
         <div><dt className="text-gray-400">Profit</dt><dd className="font-bold" style={{ color: p.profit < 0 ? '#dc2626' : '#00267F' }}>Bds${money2(p.profit)}</dd></div>
       </dl>
+
+      {/* When the billed costs actually reach the client. */}
+      {p.toBill > 0 && (
+        <p className="text-xs text-gray-500">
+          {quote.status === 'sent'
+            ? `Bds$${money2(p.toBill)} to bill goes on the invoice. The client has not accepted this quote yet; once they do, use Send invoice.`
+            : quote.is_deposit && quote.invoice_number
+            ? `Bds$${money2(p.toBill)} to bill goes on the balance invoice, which you can raise once the deposit is paid.`
+            : `Bds$${money2(p.toBill)} to bill goes on the invoice when you send it.`}
+        </p>
+      )}
 
       {expenses.length > 0 && (
         <ul className="flex flex-col gap-1.5 border-t border-gray-100 pt-2">

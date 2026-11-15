@@ -18,6 +18,8 @@ Everything that is not SHIPPED, newest first. Last checked against the live site
 
 ### Written, not live
 
+- **[WRITTEN]** Fixes from Carson's test run of 15 November. Not deployed. SQL Section 48 (enquiry limit) can run before or after the push. Tested: 220 unit tests, Section 48 in an in-memory database (7 checks), the notification route against a fake database (29 checks), the build. NOT seen working: localhost is signed out, so the client pop-up, the expenses hints, the export's second-file button and the Settings test button were not opened.
+  - Needs testing: TESTING.md sections 2, 3, 5 and 6.
 - **[WRITTEN]** Signup password minimum raised in the Supabase dashboard (8 characters, upper and lower case, digits and symbols). Set by Carson 2026-11-13; it is a setting, not code.
 
 ### Live but not verified
@@ -108,6 +110,18 @@ The full step-by-step list is in [TESTING.md](TESTING.md), grouped by account (v
 Reverse chronological. Backfilled from git on 2026-11-13: one line per meaningful change, not per commit.
 
 Entries from 2026-11-11 onward carry a status. Earlier entries are all live; anything among them with an open question is listed under Outstanding, and the rest were not individually re-verified for this backfill.
+
+### 2026-11-15
+
+- **[WRITTEN]** From Carson's test run:
+  - The client's quote/invoice pop-up showed the first invoice's number, the full total and the first due date on a deposit job. It now shows the invoice the card was for (number, date, due date), with the deposit, balance and part-payment lines the PDF has, and buttons named after what they print ("Balance invoice PDF", "Original quote PDF"). — `app/messages/page.js`
+  - A cost ticked "Bill to client" lowered the job's profit before the invoice; it now counts as income too ("Quoted + to bill"). The expenses section says when billed costs will reach the client (the client has not accepted yet / on the balance invoice / when you send the invoice). Send invoice still appears only after the client accepts, as before. — `lib/expenses.js`, `components/ExpensesPanel.js`, `tests/expenses.test.js`
+  - The expenses CSV was a second download from one click, which browsers block; the export now offers it with its own "Download second file" button. — `components/ExportCsvDialog.js`
+  - Enquiries could be sent past the limit: they are saved from the browser, and only the notification was limited. The database now refuses a 6th enquiry in 10 minutes from one person (new conversations and "New message" enquiries in an existing one), and more than 60 replies in 10 minutes. The notification limit went from 5 to 20 per person, so an ordinary conversation is never cut off. — `SUPABASE_SQL.sql` Section 48, `app/api/notify-message/route.js`
+  - Push still not arriving: Carson's six devices all accepted a test push sent with the local keys (201), so the likely cause is the live server's push keys. Settings now has "Send a test notification", which says whether the live server is missing a key (by name) and what each device's push service answered; the server log now says when pushes are skipped for a missing key. — `app/api/push-test/route.js`, `app/settings/page.js`, `lib/serverPush.js`
+  - Not bugs: the reminder log was empty because the daily job had not run yet (9am Barbados time; the push came after Friday's run), and `PAYMENT_REMINDERS_MODE` is not listed in Vercel because it has never been added.
+  - Needs testing: TESTING.md sections 2, 3, 5 and 6
+  - SQL to run: yes, Section 48 (not run; any order)
 
 ### 2026-11-14
 

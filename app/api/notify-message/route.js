@@ -48,14 +48,17 @@ export async function POST(request) {
 
     // A generous ceiling per connection, before anything else is looked up.
     // The real limit is per person, below, once we know who is asking.
-    if (!(await rateLimit(`notify-ip:${clientIp(request)}`, { limit: 50, windowMs: 10 * 60_000 }))) {
+    if (!(await rateLimit(`notify-ip:${clientIp(request)}`, { limit: 200, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many messages. Please try again later.' }, { status: 429 })
     }
 
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey)
     const user = await signedInUser(admin, request)
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    if (!(await rateLimit(`notify:${user.id}`, { limit: 5, windowMs: 10 * 60_000 }))) {
+    // 20, not 5: this also announces a client's ordinary replies, and a
+    // conversation must not go quiet. The enquiry limit itself (5 per 10
+    // minutes) is kept by the database (SQL Section 48).
+    if (!(await rateLimit(`notify:${user.id}`, { limit: 20, windowMs: 10 * 60_000 }))) {
       return Response.json({ error: 'Too many messages. Please try again later.' }, { status: 429 })
     }
 

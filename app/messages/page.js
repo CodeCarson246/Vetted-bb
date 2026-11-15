@@ -565,6 +565,38 @@ export default function ClientMessages() {
   const activeMsg = messages.find(m => m.id === expandedId) || null
 
 
+  // The document the pop-up shows. A deposit job carries two invoices on one
+  // row: the pop-up shows the one the card was for (number, date, due date,
+  // amount), the same as its PDF, never the first invoice or the full total.
+  const vDoc = (() => {
+    const vq = viewingQuote?.quote
+    if (!vq) return null
+    const inv = viewingQuote.asInvoice && !viewingQuote.asReceipt ? invoiceFor(vq, viewingQuote.invoiceNumber) : null
+    const kind = viewingQuote.asReceipt ? 'receipt' : inv ? inv.kind : 'quote'
+    const what = kind === 'deposit' ? 'Deposit invoice' : kind === 'balance' ? 'Balance invoice' : kind === 'receipt' ? 'Receipt' : kind === 'quote' ? 'Quote' : 'Invoice'
+    const rows = []   // [label, amount, strong] under Total, as on the PDF
+    if (kind === 'quote') {
+      const dep = quoteDeposit(vq)
+      if (dep > 0) rows.push([depositLabel(vq), dep, true], ['Balance on completion', Number(vq.total) - dep, false])
+    } else if (inv) {
+      const { paid, outstanding } = invoiceBalance(vq, inv)
+      if (inv.kind === 'deposit') rows.push([depositLabel(vq).replace('required', 'due'), inv.amount, paid === 0])
+      if (inv.kind === 'balance') rows.push(['Deposit paid', Number(vq.invoice_amount) || 0, false])
+      if (paid > 0 && outstanding > 0) rows.push(['Paid', paid, false], ['Balance due', outstanding, true])
+      else if (inv.kind === 'balance') rows.push(['Balance due', outstanding, outstanding > 0])
+    }
+    return {
+      kind,
+      title: what.toUpperCase(),
+      pdfLabel: `${what} PDF`,
+      number: kind === 'quote' ? vq.quote_number : (inv?.number || vq.invoice_number || vq.quote_number),
+      date: kind === 'quote' ? vq.quote_date : (inv?.issued || vq.invoiced_at || vq.quote_date),
+      due: kind === 'quote' ? vq.due_date : (inv?.due || vq.invoice_due_date || vq.due_date),
+      invoiceNumber: inv?.number,
+      rows,
+    }
+  })()
+
   // Billed cost lines for the document being previewed (see the table below).
   const viewCosts = (() => {
     const vq = viewingQuote?.quote
@@ -789,9 +821,9 @@ export default function ClientMessages() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold" style={{ color: viewingQuote.asReceipt ? '#166534' : '#00267F' }}>{viewingQuote.asReceipt ? 'RECEIPT' : viewingQuote.asInvoice ? 'INVOICE' : 'QUOTE'}</p>
-                <p className="text-xs text-gray-400 mt-1">{viewingQuote.asInvoice ? (viewingQuote.quote.invoice_number || viewingQuote.quote.quote_number) : viewingQuote.quote.quote_number}</p>
-                <p className="text-xs text-gray-400">{formatDocDate((viewingQuote.asInvoice ? viewingQuote.quote.invoiced_at : viewingQuote.quote.quote_date) || viewingQuote.quote.quote_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="text-2xl font-bold" style={{ color: viewingQuote.asReceipt ? '#166534' : '#00267F' }}>{vDoc.title}</p>
+                <p className="text-xs text-gray-400 mt-1">{vDoc.number}</p>
+                <p className="text-xs text-gray-400">{formatDocDate(vDoc.date || viewingQuote.quote.quote_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 {viewingQuote.asReceipt && (
                   <span className="inline-block mt-2 text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#DCFCE7', color: '#166534' }}>PAID IN FULL{viewingQuote.quote.paid_at ? ` · ${formatDocDate(viewingQuote.quote.paid_at)}` : ''}</span>
                 )}
@@ -846,13 +878,21 @@ export default function ClientMessages() {
                   <span className="text-sm font-bold text-gray-900">Total</span>
                   <span className="text-sm font-bold" style={{ color: '#00267F' }}>${money2(viewCosts.length ? jobTotal(viewingQuote.quote) : viewingQuote.quote.total)}</span>
                 </div>
+                {/* Deposit, balance and part payments, as on the PDF. The bold
+                    line is the amount being asked for. */}
+                {vDoc.rows.map(([label, amount, strong]) => (
+                  <div key={label} className="flex justify-between py-1.5">
+                    <span className={`text-sm ${strong ? 'font-bold' : 'text-gray-500'}`} style={strong ? { color: '#00267F' } : undefined}>{label}</span>
+                    <span className={`text-sm ${strong ? 'font-bold' : 'font-medium text-gray-900'}`} style={strong ? { color: '#00267F' } : undefined}>${money2(amount)}</span>
+                  </div>
+                ))}
               </div>
             </div>
             <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: viewingQuote.asReceipt ? '#DCFCE7' : '#EEF2FF' }}>
               <p className="text-xs font-semibold text-gray-700 mb-0.5">{viewingQuote.asReceipt ? 'Paid in full' : 'Payment due'}</p>
               <p className="text-sm font-bold" style={{ color: viewingQuote.asReceipt ? '#166534' : '#00267F' }}>{viewingQuote.asReceipt
                 ? (viewingQuote.quote.paid_at ? `Received ${formatDocDate(viewingQuote.quote.paid_at, { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Received')
-                : formatDocDate((viewingQuote.asInvoice ? viewingQuote.quote.invoice_due_date : viewingQuote.quote.due_date) || viewingQuote.quote.due_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                : formatDocDate(vDoc.due || viewingQuote.quote.due_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </div>
             {viewingQuote.quote.notes && (
               <div className="border-t border-gray-100 pt-4 mb-4">
@@ -887,18 +927,18 @@ export default function ClientMessages() {
               ) : viewingQuote.asInvoice ? (
                 <>
                   <button
-                    onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice', invoiceNumber: viewingQuote.invoiceNumber })}
+                    onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer, { type: 'invoice', invoiceNumber: vDoc.invoiceNumber })}
                     className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
                     style={{ backgroundColor: '#F9C000', color: '#00267F' }}
                   >
-                    Invoice PDF
+                    {vDoc.pdfLabel}
                   </button>
                   <button
                     onClick={() => printSavedQuote(viewingQuote.quote, viewingQuote.freelancer)}
                     className="flex-1 py-3 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
                     style={{ backgroundColor: '#00267F' }}
                   >
-                    Quote PDF
+                    Original quote PDF
                   </button>
                 </>
               ) : (

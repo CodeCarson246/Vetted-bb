@@ -41,8 +41,21 @@ test('billed costs raise the invoice; unbilled ones never do', () => {
 
 test('the profit summary', () => {
   assert.deepEqual(jobProfit({ total: 2000, invoice_number: 'INV-1', billed_expenses_total: 450 }, [pipe, fittings, fuel]),
-    { invoiced: 2450, expenses: 490, profit: 1960, invoicedYet: true })
-  assert.deepEqual(jobProfit({ total: 2000 }, [fuel]), { invoiced: 2000, expenses: 40, profit: 1960, invoicedYet: false })
+    { invoiced: 2450, expenses: 490, profit: 1960, invoicedYet: true, toBill: 0 })
+  assert.deepEqual(jobProfit({ total: 2000 }, [fuel]), { invoiced: 2000, expenses: 40, profit: 1960, invoicedYet: false, toBill: 0 })
+})
+
+test('a cost to be billed on does not lower the profit, before or after the invoice', () => {
+  // Before the invoice: Bds$10 billed on, Bds$10 kept internal, on a Bds$150 quote.
+  const billed = { amount: 10, bill_to_client: true }, internal = { amount: 10, bill_to_client: false }
+  const before = jobProfit({ total: 150, status: 'sent' }, [billed, internal])
+  assert.deepEqual([before.invoiced, before.expenses, before.profit, before.toBill], [160, 20, 140, 10])
+  // After the invoice that carries it: counted once, in the invoiced total.
+  const after = jobProfit({ total: 150, invoice_number: 'INV-1', billed_expenses_total: 10 }, [{ ...billed, billed_invoice_number: 'INV-1' }, internal])
+  assert.deepEqual([after.invoiced, after.profit, after.toBill], [160, 140, 0])
+  // A deposit job before its balance invoice: the cost will go on the balance.
+  const dep = jobProfit({ total: 150, invoice_number: 'D', is_deposit: true, invoice_amount: 75 }, [billed])
+  assert.deepEqual([dep.invoiced, dep.profit], [160, 150])
 })
 
 const job = {
